@@ -1,0 +1,83 @@
+{
+  "name": "ui-eval",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evidence-first UI conformance evaluation for web applications",
+  "type": "module",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zw-befreed/ui-eval.git"
+  },
+  "packageManager": "bun@1.3.10",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "ui-eval": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "docs/adr",
+    "docs/architecture.md",
+    "docs/contracts.md",
+    "docs/development.md",
+    "docs/index.html",
+    "docs/integration.md",
+    "docs/limitations.md",
+    "docs/release.md",
+    "docs/roadmap.md",
+    "docs/security-model.md",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "bun run schema:check && bun run docs:check && bun run test && bun run lint && bun run typecheck && bun run build && bun run verify:dist",
+    "design:audit": "bun scripts/audit-design-tokens.ts",
+    "design:check": "bun src/design-adapters/check-entry.ts",
+    "design:import": "bun src/design-adapters/entry.ts",
+    "dev": "bun src/cli/entry.ts",
+    "docs:check": "node scripts/build-docs.mjs --check",
+    "docs:generate": "node scripts/build-docs.mjs",
+    "lint": "eslint .",
+    "prepack": "bun run build && bun run verify:dist",
+    "schema:check": "vitest run src/contracts/export-schemas.test.ts",
+    "schema:generate": "tsx src/contracts/export-schemas.ts",
+    "test": "vitest run",
+    "test:capture": "vitest run --config vitest.capture.config.ts",
+    "typecheck": "tsc --noEmit",
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "ui-eval": "bun src/cli/entry.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.52",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.3",
+    "@types/node": "^20.19.33",
+    "@types/pngjs": "^6.0.5",
+    "eslint": "^9.39.3",
+    "globals": "^16.4.0",
+    "marked": "^17.0.4",
+    "tsup": "^8.5.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.1.10"
+  }
+}

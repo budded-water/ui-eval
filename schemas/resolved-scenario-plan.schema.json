@@ -1,0 +1,6072 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "scenarioId",
+        "scenarioRevision",
+        "scenarioDigest",
+        "planDigest",
+        "visibility",
+        "target",
+        "variant",
+        "device",
+        "locale",
+        "theme",
+        "determinism",
+        "fixtures",
+        "requiredCapabilities",
+        "fixtureDigests",
+        "evidenceRequestDigest",
+        "captureConfigDigest",
+        "setup",
+        "steps",
+        "cleanup",
+        "checkpoints"
+      ],
+      "properties": {
+        "scenarioId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "scenarioRevision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "scenarioDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "visibility": {
+          "anyOf": [
+            {
+              "const": "agent-visible",
+              "type": "string"
+            },
+            {
+              "const": "holdout",
+              "type": "string"
+            }
+          ]
+        },
+        "target": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "platform",
+            "entrypoint"
+          ],
+          "properties": {
+            "platform": {
+              "const": "web",
+              "type": "string"
+            },
+            "entrypoint": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "baseUrl",
+                "path"
+              ],
+              "properties": {
+                "baseUrl": {
+                  "format": "uri",
+                  "type": "string"
+                },
+                "path": {
+                  "pattern": "^/",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "variant": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "variantKey",
+            "values",
+            "contextDigest"
+          ],
+          "properties": {
+            "variantKey": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "values": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              }
+            },
+            "contextDigest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        },
+        "device": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "profileId",
+            "renderSpace"
+          ],
+          "properties": {
+            "profileId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderSpace": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "logicalWidth",
+                "logicalHeight",
+                "logicalUnit",
+                "deviceScaleFactor",
+                "screenshotWidthPx",
+                "screenshotHeightPx",
+                "orientation"
+              ],
+              "properties": {
+                "logicalWidth": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalHeight": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalUnit": {
+                  "anyOf": [
+                    {
+                      "const": "css-px",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dp",
+                      "type": "string"
+                    },
+                    {
+                      "const": "pt",
+                      "type": "string"
+                    },
+                    {
+                      "const": "design-unit",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "deviceScaleFactor": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "screenshotWidthPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "screenshotHeightPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "orientation": {
+                  "anyOf": [
+                    {
+                      "const": "portrait",
+                      "type": "string"
+                    },
+                    {
+                      "const": "landscape",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "safeArea": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "properties": {
+                    "top": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "right": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "bottom": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "left": {
+                      "minimum": 0,
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            },
+            "userAgent": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "locale": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "const": "dark",
+              "type": "string"
+            }
+          ]
+        },
+        "determinism": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "timezone",
+            "clock"
+          ],
+          "properties": {
+            "timezone": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "clock": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "anyOf": [
+                    {
+                      "const": "fixed",
+                      "type": "string"
+                    },
+                    {
+                      "const": "real",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "value": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              }
+            },
+            "randomSeed": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "networkProfileRef": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "auth": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "storageState"
+          ],
+          "properties": {
+            "role": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "storageState": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "projectId",
+                "storeId",
+                "digest",
+                "mediaType",
+                "sizeBytes",
+                "sensitivity"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "projectId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "storeId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "digest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mediaType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sensitivity": {
+                  "anyOf": [
+                    {
+                      "const": "public",
+                      "type": "string"
+                    },
+                    {
+                      "const": "internal",
+                      "type": "string"
+                    },
+                    {
+                      "const": "sensitive",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "redaction": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "applied"
+                  ],
+                  "properties": {
+                    "applied": {
+                      "type": "boolean"
+                    },
+                    "policyId": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "secretRefs": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fixtures": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "provider",
+              "configDigest"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "const": "static",
+                    "type": "string"
+                  },
+                  {
+                    "const": "mock-server",
+                    "type": "string"
+                  },
+                  {
+                    "const": "seed-script",
+                    "type": "string"
+                  },
+                  {
+                    "const": "remote",
+                    "type": "string"
+                  }
+                ]
+              },
+              "configDigest": {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "artifact": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "projectId",
+                  "storeId",
+                  "digest",
+                  "mediaType",
+                  "sizeBytes",
+                  "sensitivity"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "digest": {
+                    "pattern": "^sha256:[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "sensitivity": {
+                    "anyOf": [
+                      {
+                        "const": "public",
+                        "type": "string"
+                      },
+                      {
+                        "const": "internal",
+                        "type": "string"
+                      },
+                      {
+                        "const": "sensitive",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "redaction": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "applied"
+                    ],
+                    "properties": {
+                      "applied": {
+                        "type": "boolean"
+                      },
+                      "policyId": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requiredCapabilities": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "const": "screenshot",
+                "type": "string"
+              },
+              {
+                "const": "element-screenshots",
+                "type": "string"
+              },
+              {
+                "const": "dom",
+                "type": "string"
+              },
+              {
+                "const": "computed-styles",
+                "type": "string"
+              },
+              {
+                "const": "accessibility-tree",
+                "type": "string"
+              },
+              {
+                "const": "view-hierarchy",
+                "type": "string"
+              },
+              {
+                "const": "layout-metadata",
+                "type": "string"
+              },
+              {
+                "const": "console",
+                "type": "string"
+              },
+              {
+                "const": "network",
+                "type": "string"
+              },
+              {
+                "const": "trace",
+                "type": "string"
+              },
+              {
+                "const": "video",
+                "type": "string"
+              },
+              {
+                "const": "device-logs",
+                "type": "string"
+              },
+              {
+                "const": "crash",
+                "type": "string"
+              },
+              {
+                "const": "performance",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "fixtureDigests": {
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "evidenceRequestDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "captureConfigDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "path"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "goto",
+                    "type": "string"
+                  },
+                  "path": {
+                    "pattern": "^/",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "path"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "goto",
+                    "type": "string"
+                  },
+                  "path": {
+                    "pattern": "^/",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "cleanup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "path"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "goto",
+                    "type": "string"
+                  },
+                  "path": {
+                    "pattern": "^/",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "web",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "uiId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "role",
+                            "type": "string"
+                          },
+                          {
+                            "const": "css",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "checkpoints": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "requiredChannels",
+              "captureScope",
+              "stabilize"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "designTargetRef": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "requiredChannels": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "screenshot",
+                      "type": "string"
+                    },
+                    {
+                      "const": "element-screenshots",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dom",
+                      "type": "string"
+                    },
+                    {
+                      "const": "computed-styles",
+                      "type": "string"
+                    },
+                    {
+                      "const": "accessibility-tree",
+                      "type": "string"
+                    },
+                    {
+                      "const": "view-hierarchy",
+                      "type": "string"
+                    },
+                    {
+                      "const": "layout-metadata",
+                      "type": "string"
+                    },
+                    {
+                      "const": "console",
+                      "type": "string"
+                    },
+                    {
+                      "const": "network",
+                      "type": "string"
+                    },
+                    {
+                      "const": "trace",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "device-logs",
+                      "type": "string"
+                    },
+                    {
+                      "const": "crash",
+                      "type": "string"
+                    },
+                    {
+                      "const": "performance",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "captureScope": {
+                "anyOf": [
+                  {
+                    "const": "viewport",
+                    "type": "string"
+                  },
+                  {
+                    "const": "full-page",
+                    "type": "string"
+                  },
+                  {
+                    "const": "element",
+                    "type": "string"
+                  }
+                ]
+              },
+              "target": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "platform",
+                  "by",
+                  "value"
+                ],
+                "properties": {
+                  "platform": {
+                    "const": "web",
+                    "type": "string"
+                  },
+                  "by": {
+                    "anyOf": [
+                      {
+                        "const": "uiId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "testId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "role",
+                        "type": "string"
+                      },
+                      {
+                        "const": "css",
+                        "type": "string"
+                      },
+                      {
+                        "const": "text",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              "stabilize": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "disableAnimations",
+                  "waitForFonts",
+                  "stableFrames",
+                  "timeoutMs"
+                ],
+                "properties": {
+                  "disableAnimations": {
+                    "type": "boolean"
+                  },
+                  "waitForFonts": {
+                    "type": "boolean"
+                  },
+                  "stableFrames": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "timeoutMs": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                }
+              },
+              "assertions": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "kind"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        },
+                        {
+                          "const": "enabled",
+                          "type": "string"
+                        },
+                        {
+                          "const": "text",
+                          "type": "string"
+                        },
+                        {
+                          "const": "url",
+                          "type": "string"
+                        },
+                        {
+                          "const": "no-crash",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "web",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "uiId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "role",
+                              "type": "string"
+                            },
+                            {
+                              "const": "css",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "expected": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "scenarioId",
+        "scenarioRevision",
+        "scenarioDigest",
+        "planDigest",
+        "visibility",
+        "target",
+        "variant",
+        "device",
+        "locale",
+        "theme",
+        "determinism",
+        "fixtures",
+        "requiredCapabilities",
+        "fixtureDigests",
+        "evidenceRequestDigest",
+        "captureConfigDigest",
+        "setup",
+        "steps",
+        "cleanup",
+        "checkpoints"
+      ],
+      "properties": {
+        "scenarioId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "scenarioRevision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "scenarioDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "visibility": {
+          "anyOf": [
+            {
+              "const": "agent-visible",
+              "type": "string"
+            },
+            {
+              "const": "holdout",
+              "type": "string"
+            }
+          ]
+        },
+        "target": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "platform",
+            "entrypoint"
+          ],
+          "properties": {
+            "platform": {
+              "const": "ios",
+              "type": "string"
+            },
+            "entrypoint": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "appId"
+              ],
+              "properties": {
+                "appId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "deepLink": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "variant": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "variantKey",
+            "values",
+            "contextDigest"
+          ],
+          "properties": {
+            "variantKey": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "values": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              }
+            },
+            "contextDigest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        },
+        "device": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "profileId",
+            "renderSpace"
+          ],
+          "properties": {
+            "profileId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderSpace": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "logicalWidth",
+                "logicalHeight",
+                "logicalUnit",
+                "deviceScaleFactor",
+                "screenshotWidthPx",
+                "screenshotHeightPx",
+                "orientation"
+              ],
+              "properties": {
+                "logicalWidth": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalHeight": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalUnit": {
+                  "anyOf": [
+                    {
+                      "const": "css-px",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dp",
+                      "type": "string"
+                    },
+                    {
+                      "const": "pt",
+                      "type": "string"
+                    },
+                    {
+                      "const": "design-unit",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "deviceScaleFactor": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "screenshotWidthPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "screenshotHeightPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "orientation": {
+                  "anyOf": [
+                    {
+                      "const": "portrait",
+                      "type": "string"
+                    },
+                    {
+                      "const": "landscape",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "safeArea": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "properties": {
+                    "top": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "right": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "bottom": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "left": {
+                      "minimum": 0,
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            },
+            "userAgent": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "locale": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "const": "dark",
+              "type": "string"
+            }
+          ]
+        },
+        "determinism": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "timezone",
+            "clock"
+          ],
+          "properties": {
+            "timezone": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "clock": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "anyOf": [
+                    {
+                      "const": "fixed",
+                      "type": "string"
+                    },
+                    {
+                      "const": "real",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "value": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              }
+            },
+            "randomSeed": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "networkProfileRef": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "auth": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "storageState"
+          ],
+          "properties": {
+            "role": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "storageState": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "projectId",
+                "storeId",
+                "digest",
+                "mediaType",
+                "sizeBytes",
+                "sensitivity"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "projectId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "storeId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "digest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mediaType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sensitivity": {
+                  "anyOf": [
+                    {
+                      "const": "public",
+                      "type": "string"
+                    },
+                    {
+                      "const": "internal",
+                      "type": "string"
+                    },
+                    {
+                      "const": "sensitive",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "redaction": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "applied"
+                  ],
+                  "properties": {
+                    "applied": {
+                      "type": "boolean"
+                    },
+                    "policyId": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "secretRefs": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fixtures": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "provider",
+              "configDigest"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "const": "static",
+                    "type": "string"
+                  },
+                  {
+                    "const": "mock-server",
+                    "type": "string"
+                  },
+                  {
+                    "const": "seed-script",
+                    "type": "string"
+                  },
+                  {
+                    "const": "remote",
+                    "type": "string"
+                  }
+                ]
+              },
+              "configDigest": {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "artifact": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "projectId",
+                  "storeId",
+                  "digest",
+                  "mediaType",
+                  "sizeBytes",
+                  "sensitivity"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "digest": {
+                    "pattern": "^sha256:[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "sensitivity": {
+                    "anyOf": [
+                      {
+                        "const": "public",
+                        "type": "string"
+                      },
+                      {
+                        "const": "internal",
+                        "type": "string"
+                      },
+                      {
+                        "const": "sensitive",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "redaction": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "applied"
+                    ],
+                    "properties": {
+                      "applied": {
+                        "type": "boolean"
+                      },
+                      "policyId": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requiredCapabilities": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "const": "screenshot",
+                "type": "string"
+              },
+              {
+                "const": "element-screenshots",
+                "type": "string"
+              },
+              {
+                "const": "dom",
+                "type": "string"
+              },
+              {
+                "const": "computed-styles",
+                "type": "string"
+              },
+              {
+                "const": "accessibility-tree",
+                "type": "string"
+              },
+              {
+                "const": "view-hierarchy",
+                "type": "string"
+              },
+              {
+                "const": "layout-metadata",
+                "type": "string"
+              },
+              {
+                "const": "console",
+                "type": "string"
+              },
+              {
+                "const": "network",
+                "type": "string"
+              },
+              {
+                "const": "trace",
+                "type": "string"
+              },
+              {
+                "const": "video",
+                "type": "string"
+              },
+              {
+                "const": "device-logs",
+                "type": "string"
+              },
+              {
+                "const": "crash",
+                "type": "string"
+              },
+              {
+                "const": "performance",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "fixtureDigests": {
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "evidenceRequestDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "captureConfigDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "ios",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "ios",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "cleanup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "ios",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "ios",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "checkpoints": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "requiredChannels",
+              "captureScope",
+              "stabilize"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "designTargetRef": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "requiredChannels": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "screenshot",
+                      "type": "string"
+                    },
+                    {
+                      "const": "element-screenshots",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dom",
+                      "type": "string"
+                    },
+                    {
+                      "const": "computed-styles",
+                      "type": "string"
+                    },
+                    {
+                      "const": "accessibility-tree",
+                      "type": "string"
+                    },
+                    {
+                      "const": "view-hierarchy",
+                      "type": "string"
+                    },
+                    {
+                      "const": "layout-metadata",
+                      "type": "string"
+                    },
+                    {
+                      "const": "console",
+                      "type": "string"
+                    },
+                    {
+                      "const": "network",
+                      "type": "string"
+                    },
+                    {
+                      "const": "trace",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "device-logs",
+                      "type": "string"
+                    },
+                    {
+                      "const": "crash",
+                      "type": "string"
+                    },
+                    {
+                      "const": "performance",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "captureScope": {
+                "anyOf": [
+                  {
+                    "const": "viewport",
+                    "type": "string"
+                  },
+                  {
+                    "const": "full-page",
+                    "type": "string"
+                  },
+                  {
+                    "const": "element",
+                    "type": "string"
+                  }
+                ]
+              },
+              "target": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "platform",
+                  "by",
+                  "value"
+                ],
+                "properties": {
+                  "platform": {
+                    "const": "ios",
+                    "type": "string"
+                  },
+                  "by": {
+                    "anyOf": [
+                      {
+                        "const": "testId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "accessibilityId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "text",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              "stabilize": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "disableAnimations",
+                  "waitForFonts",
+                  "stableFrames",
+                  "timeoutMs"
+                ],
+                "properties": {
+                  "disableAnimations": {
+                    "type": "boolean"
+                  },
+                  "waitForFonts": {
+                    "type": "boolean"
+                  },
+                  "stableFrames": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "timeoutMs": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                }
+              },
+              "assertions": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "kind"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        },
+                        {
+                          "const": "enabled",
+                          "type": "string"
+                        },
+                        {
+                          "const": "text",
+                          "type": "string"
+                        },
+                        {
+                          "const": "url",
+                          "type": "string"
+                        },
+                        {
+                          "const": "no-crash",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "ios",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "accessibilityId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "expected": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "scenarioId",
+        "scenarioRevision",
+        "scenarioDigest",
+        "planDigest",
+        "visibility",
+        "target",
+        "variant",
+        "device",
+        "locale",
+        "theme",
+        "determinism",
+        "fixtures",
+        "requiredCapabilities",
+        "fixtureDigests",
+        "evidenceRequestDigest",
+        "captureConfigDigest",
+        "setup",
+        "steps",
+        "cleanup",
+        "checkpoints"
+      ],
+      "properties": {
+        "scenarioId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "scenarioRevision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "scenarioDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "planDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "visibility": {
+          "anyOf": [
+            {
+              "const": "agent-visible",
+              "type": "string"
+            },
+            {
+              "const": "holdout",
+              "type": "string"
+            }
+          ]
+        },
+        "target": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "platform",
+            "entrypoint"
+          ],
+          "properties": {
+            "platform": {
+              "const": "android",
+              "type": "string"
+            },
+            "entrypoint": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "appId"
+              ],
+              "properties": {
+                "appId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "deepLink": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "variant": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "variantKey",
+            "values",
+            "contextDigest"
+          ],
+          "properties": {
+            "variantKey": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "values": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              }
+            },
+            "contextDigest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        },
+        "device": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "profileId",
+            "renderSpace"
+          ],
+          "properties": {
+            "profileId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "renderSpace": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "logicalWidth",
+                "logicalHeight",
+                "logicalUnit",
+                "deviceScaleFactor",
+                "screenshotWidthPx",
+                "screenshotHeightPx",
+                "orientation"
+              ],
+              "properties": {
+                "logicalWidth": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalHeight": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "logicalUnit": {
+                  "anyOf": [
+                    {
+                      "const": "css-px",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dp",
+                      "type": "string"
+                    },
+                    {
+                      "const": "pt",
+                      "type": "string"
+                    },
+                    {
+                      "const": "design-unit",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "deviceScaleFactor": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "screenshotWidthPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "screenshotHeightPx": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "orientation": {
+                  "anyOf": [
+                    {
+                      "const": "portrait",
+                      "type": "string"
+                    },
+                    {
+                      "const": "landscape",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "safeArea": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "properties": {
+                    "top": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "right": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "bottom": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "left": {
+                      "minimum": 0,
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            },
+            "userAgent": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "locale": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "const": "dark",
+              "type": "string"
+            }
+          ]
+        },
+        "determinism": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "timezone",
+            "clock"
+          ],
+          "properties": {
+            "timezone": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "clock": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "anyOf": [
+                    {
+                      "const": "fixed",
+                      "type": "string"
+                    },
+                    {
+                      "const": "real",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "value": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              }
+            },
+            "randomSeed": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "networkProfileRef": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        "auth": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "storageState"
+          ],
+          "properties": {
+            "role": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "storageState": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "projectId",
+                "storeId",
+                "digest",
+                "mediaType",
+                "sizeBytes",
+                "sensitivity"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "projectId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "storeId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "digest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mediaType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sensitivity": {
+                  "anyOf": [
+                    {
+                      "const": "public",
+                      "type": "string"
+                    },
+                    {
+                      "const": "internal",
+                      "type": "string"
+                    },
+                    {
+                      "const": "sensitive",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "redaction": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "applied"
+                  ],
+                  "properties": {
+                    "applied": {
+                      "type": "boolean"
+                    },
+                    "policyId": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "secretRefs": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fixtures": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "provider",
+              "configDigest"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "const": "static",
+                    "type": "string"
+                  },
+                  {
+                    "const": "mock-server",
+                    "type": "string"
+                  },
+                  {
+                    "const": "seed-script",
+                    "type": "string"
+                  },
+                  {
+                    "const": "remote",
+                    "type": "string"
+                  }
+                ]
+              },
+              "configDigest": {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "artifact": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "projectId",
+                  "storeId",
+                  "digest",
+                  "mediaType",
+                  "sizeBytes",
+                  "sensitivity"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "digest": {
+                    "pattern": "^sha256:[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "sensitivity": {
+                    "anyOf": [
+                      {
+                        "const": "public",
+                        "type": "string"
+                      },
+                      {
+                        "const": "internal",
+                        "type": "string"
+                      },
+                      {
+                        "const": "sensitive",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "redaction": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "applied"
+                    ],
+                    "properties": {
+                      "applied": {
+                        "type": "boolean"
+                      },
+                      "policyId": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requiredCapabilities": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "const": "screenshot",
+                "type": "string"
+              },
+              {
+                "const": "element-screenshots",
+                "type": "string"
+              },
+              {
+                "const": "dom",
+                "type": "string"
+              },
+              {
+                "const": "computed-styles",
+                "type": "string"
+              },
+              {
+                "const": "accessibility-tree",
+                "type": "string"
+              },
+              {
+                "const": "view-hierarchy",
+                "type": "string"
+              },
+              {
+                "const": "layout-metadata",
+                "type": "string"
+              },
+              {
+                "const": "console",
+                "type": "string"
+              },
+              {
+                "const": "network",
+                "type": "string"
+              },
+              {
+                "const": "trace",
+                "type": "string"
+              },
+              {
+                "const": "video",
+                "type": "string"
+              },
+              {
+                "const": "device-logs",
+                "type": "string"
+              },
+              {
+                "const": "crash",
+                "type": "string"
+              },
+              {
+                "const": "performance",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "fixtureDigests": {
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "evidenceRequestDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "captureConfigDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "android",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "android",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "cleanup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "launchApp",
+                    "type": "string"
+                  },
+                  "clearState": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "tap",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "target",
+                  "value"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "fill",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "key"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "press",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "condition"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "waitFor",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "platform",
+                      "by",
+                      "value"
+                    ],
+                    "properties": {
+                      "platform": {
+                        "const": "android",
+                        "type": "string"
+                      },
+                      "by": {
+                        "anyOf": [
+                          {
+                            "const": "testId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "accessibilityId",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "value": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "condition": {
+                    "anyOf": [
+                      {
+                        "const": "visible",
+                        "type": "string"
+                      },
+                      {
+                        "const": "hidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "enabled",
+                        "type": "string"
+                      },
+                      {
+                        "const": "app-ready",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "timeoutMs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "assertion"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "assert",
+                    "type": "string"
+                  },
+                  "assertion": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "visible",
+                            "type": "string"
+                          },
+                          {
+                            "const": "hidden",
+                            "type": "string"
+                          },
+                          {
+                            "const": "enabled",
+                            "type": "string"
+                          },
+                          {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          {
+                            "const": "url",
+                            "type": "string"
+                          },
+                          {
+                            "const": "no-crash",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "android",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "accessibilityId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "expected": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "action",
+                  "checkpointId"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "action": {
+                    "const": "checkpoint",
+                    "type": "string"
+                  },
+                  "checkpointId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "checkpoints": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "requiredChannels",
+              "captureScope",
+              "stabilize"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "designTargetRef": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "requiredChannels": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "const": "screenshot",
+                      "type": "string"
+                    },
+                    {
+                      "const": "element-screenshots",
+                      "type": "string"
+                    },
+                    {
+                      "const": "dom",
+                      "type": "string"
+                    },
+                    {
+                      "const": "computed-styles",
+                      "type": "string"
+                    },
+                    {
+                      "const": "accessibility-tree",
+                      "type": "string"
+                    },
+                    {
+                      "const": "view-hierarchy",
+                      "type": "string"
+                    },
+                    {
+                      "const": "layout-metadata",
+                      "type": "string"
+                    },
+                    {
+                      "const": "console",
+                      "type": "string"
+                    },
+                    {
+                      "const": "network",
+                      "type": "string"
+                    },
+                    {
+                      "const": "trace",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "device-logs",
+                      "type": "string"
+                    },
+                    {
+                      "const": "crash",
+                      "type": "string"
+                    },
+                    {
+                      "const": "performance",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "captureScope": {
+                "anyOf": [
+                  {
+                    "const": "viewport",
+                    "type": "string"
+                  },
+                  {
+                    "const": "full-page",
+                    "type": "string"
+                  },
+                  {
+                    "const": "element",
+                    "type": "string"
+                  }
+                ]
+              },
+              "target": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "platform",
+                  "by",
+                  "value"
+                ],
+                "properties": {
+                  "platform": {
+                    "const": "android",
+                    "type": "string"
+                  },
+                  "by": {
+                    "anyOf": [
+                      {
+                        "const": "testId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "accessibilityId",
+                        "type": "string"
+                      },
+                      {
+                        "const": "text",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "value": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              "stabilize": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "disableAnimations",
+                  "waitForFonts",
+                  "stableFrames",
+                  "timeoutMs"
+                ],
+                "properties": {
+                  "disableAnimations": {
+                    "type": "boolean"
+                  },
+                  "waitForFonts": {
+                    "type": "boolean"
+                  },
+                  "stableFrames": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "timeoutMs": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                }
+              },
+              "assertions": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "kind"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "const": "visible",
+                          "type": "string"
+                        },
+                        {
+                          "const": "hidden",
+                          "type": "string"
+                        },
+                        {
+                          "const": "enabled",
+                          "type": "string"
+                        },
+                        {
+                          "const": "text",
+                          "type": "string"
+                        },
+                        {
+                          "const": "url",
+                          "type": "string"
+                        },
+                        {
+                          "const": "no-crash",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "android",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "accessibilityId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "expected": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

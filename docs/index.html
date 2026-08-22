@@ -1,0 +1,2208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="source-sha256" content="8534571b23e91796d8c315f00b3c2a575150ea35a72a77438c288fe87e338f44">
+  <title>UI Eval technical documentation</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 920px); gap: 40px; width: min(1280px, calc(100% - 40px)); margin: 0 auto; padding: 32px 0 80px; }
+    nav { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow: auto; padding: 20px; border: 1px solid #d9e0ec; border-radius: 14px; background: #fff; }
+    nav strong { display: block; margin-bottom: 12px; font-size: 1.05rem; }
+    nav a { display: block; padding: 7px 0; color: #3156a3; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    main { min-width: 0; }
+    .hero, .document { margin-bottom: 24px; padding: clamp(24px, 4vw, 52px); border: 1px solid #d9e0ec; border-radius: 18px; background: #fff; box-shadow: 0 14px 40px rgb(23 32 51 / 6%); }
+    .hero h1 { margin-top: 0; font-size: clamp(2rem, 5vw, 3.5rem); }
+    .hero p { max-width: 68ch; color: #536079; font-size: 1.1rem; line-height: 1.7; }
+    .source { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid #e5eaf2; color: #65718a; }
+    h1, h2, h3, h4 { scroll-margin-top: 24px; line-height: 1.2; }
+    h1 { margin-top: 0; }
+    h2 { margin-top: 2.2em; }
+    p, li { line-height: 1.72; }
+    a { color: #3156a3; }
+    pre { overflow: auto; padding: 18px; border-radius: 12px; background: #111827; color: #e5edf9; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+    :not(pre) > code { padding: .15em .38em; border-radius: 5px; background: #edf1f7; }
+    table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border: 1px solid #d9e0ec; text-align: left; vertical-align: top; }
+    blockquote { margin-left: 0; padding-left: 18px; border-left: 4px solid #7896d1; color: #536079; }
+    footer, .source code { overflow-wrap: anywhere; word-break: break-word; }
+    footer { color: #65718a; font-size: .88rem; }
+    @media (max-width: 860px) { .layout { display: block; width: min(100% - 24px, 920px); } nav { position: static; margin-bottom: 24px; } }
+    @media print { nav { display: none; } .layout { display: block; width: auto; padding: 0; } .hero, .document { border: 0; box-shadow: none; break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav><strong>UI Eval docs</strong><a href="#architecture">Architecture</a>
+<a href="#contracts">Contracts</a>
+<a href="#security">Security model</a>
+<a href="#integration">Integration</a>
+<a href="#limitations">Limitations</a>
+<a href="#development">Development</a>
+<a href="#release">Release</a>
+<a href="#roadmap">Roadmap</a>
+<a href="#adr-0001">ADR 0001: standalone modular monolith</a>
+<a href="#adr-0002">ADR 0002: design constraint contract</a></nav>
+    <main>
+      <header class="hero">
+        <h1>UI Eval technical documentation</h1>
+        <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
+        <footer>Source set SHA-256: 8534571b23e91796d8c315f00b3c2a575150ea35a72a77438c288fe87e338f44</footer>
+      </header>
+      <section id="architecture" class="document">
+        <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
+        <h1>Architecture</h1>
+<p>UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.</p>
+<p>This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, baseline governance, and agent-driven repair live in the <a href="roadmap.md">roadmap</a>, not in the current architecture.</p>
+<h2>System boundary</h2>
+<p>UI Eval evaluates a candidate project but does not become part of that application&#39;s runtime:</p>
+<pre><code class="language-text">Candidate repository                         UI Eval process
+--------------------                         ---------------
+ui-eval/project.json  ─┐
+scenarios/*.json       ├─ load/validate ──&gt; compile + seal
+policies/*.json        ┘                           │
+candidate Git state ──────────────────────────────┤
+                                                  v
+                                      own/reuse candidate server
+                                                  │
+                                                  v
+                                      Playwright Chromium capture
+                                                  │
+                                                  v
+                                      evidence verification + CAS
+                                                  │
+                                                  v
+                                      deterministic evaluators
+                                                  │
+                                                  v
+                                      policy gates + report contract
+                                                  │
+                                                  v
+                                      report.json + report.html
+</code></pre>
+<p>The candidate repository remains canonical for its project configuration, scenarios, policies, and reviewed fixtures. UI Eval is canonical for contract validation and execution semantics. Generated <code>.ui-eval/</code> data is neither authoring input nor a replacement for the source files.</p>
+<h2>Module map</h2>
+<p>All modules ship from one package and use relative internal imports. The directory boundaries are architectural seams, not separately deployed services.</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/contracts/</code></td>
+<td>TypeBox schemas, derived TypeScript types, canonical JSON/digests, JSON Schema export, and structural/semantic contract validation.</td>
+</tr>
+<tr>
+<td><code>src/project/</code></td>
+<td>Safe loading of project, scenario, and policy authoring files; project-root containment and authoring semantics.</td>
+</tr>
+<tr>
+<td><code>src/manifest-compiler/</code></td>
+<td>Matrix expansion, fixture/auth materialization, capability negotiation, plan sealing, and policy materialization.</td>
+</tr>
+<tr>
+<td><code>src/capture-playwright/</code></td>
+<td>Chromium lifecycle, origin and egress guards, scenario actions, stabilization, and evidence collection.</td>
+</tr>
+<tr>
+<td><code>src/normalize/</code></td>
+<td>Platform- and source-neutral value normalization (sRGB color, logical-pixel length) shared by design producers and evidence normalizers.</td>
+</tr>
+<tr>
+<td><code>src/evaluators/</code></td>
+<td>Registry for the implemented evaluator set plus functional/runtime, advisory visual, and optional geometry evaluation. <code>geometry/</code> holds the normalized property space and the five constraint kinds used by <code>geometry@0.1.0</code>.</td>
+</tr>
+<tr>
+<td><code>src/policy-engine/</code></td>
+<td>Restricted gate-expression evaluation and disposition calculation.</td>
+</tr>
+<tr>
+<td><code>src/orchestrator/</code></td>
+<td>End-to-end coordination, Git/source identity, candidate-server lifecycle, capture/report cross-binding, and evidence aliases.</td>
+</tr>
+<tr>
+<td><code>src/storage-local/</code></td>
+<td>Project-scoped content-addressed artifacts, sensitivity metadata, atomic run storage, and path/symlink containment.</td>
+</tr>
+<tr>
+<td><code>src/report-html/</code></td>
+<td>Escaped static HTML rendering from a validated report view.</td>
+</tr>
+<tr>
+<td><code>src/design-adapters/</code></td>
+<td>Reference producers that read declarative design sources into a normalized token set, plus an offline sealed-token drift guard. Not on the evaluation path and never imported by an evaluator.</td>
+</tr>
+<tr>
+<td><code>src/cli/</code></td>
+<td><code>init</code>, <code>doctor</code>, and <code>evaluate</code>; stdout/stderr discipline, exit mapping, and signal handling.</td>
+</tr>
+<tr>
+<td><code>src/index.ts</code></td>
+<td>Supported programmatic exports.</td>
+</tr>
+</tbody></table>
+<p>The dependency intent is inward toward contracts and narrow interfaces:</p>
+<pre><code class="language-text">CLI / public API
+      │
+      v
+Orchestrator
+  ├── Project loader + compiler
+  ├── Capture adapter
+  ├── Evaluator registry + policy engine
+  ├── Local storage
+  └── HTML renderer
+             │
+             v
+          Contracts
+</code></pre>
+<p>Capture does not interpret design intent or make policy decisions. Evaluators do not start servers, drive the browser, or mutate candidate source. The policy engine consumes measurements and gates; it does not repair the application.</p>
+<h2>Executable pipeline</h2>
+<h3>1. Load and validate authoring</h3>
+<p>The project root resolves to a real path. UI Eval loads <code>ui-eval/project.json</code>, a scenario source, and a policy source using strict JSON Schema validation plus semantic checks. Referenced project files must remain inside the project root under both lexical and real-path resolution.</p>
+<p>Configuration, compiler, source-identity, and evaluator-registration errors occur before an execution is sealed. They return a structured CLI error and exit <code>2</code>; there is no run report to persist at that point.</p>
+<h3>2. Compile and seal</h3>
+<p>The compiler resolves base URL references, device profiles, locale, theme, timezone, supported capture capabilities, and permitted auth storage state. It expands the scenario matrix and creates one immutable <code>ResolvedScenarioPlan</code> per variant.</p>
+<p>The policy source is materialized into an <code>EvaluationPolicy</code>. Inline or referenced evaluator configuration is written to the project-scoped artifact store and cross-bound by digest. The runtime registry then refuses unsupported required evaluators, invalid configurations, missing core hard gates, repeatability above one attempt, and policy features that are declared but not executed.</p>
+<h3>3. Establish source and execution identity</h3>
+<p>UI Eval fingerprints the candidate Git state before capture. Commit, worktree state, tracked differences, and untracked content participate in provenance. Failure to read a mutually consistent source identity is a pre-run failure rather than a placeholder provenance value.</p>
+<p>For each resolved variant, the orchestrator seals a <code>SealedRunManifest</code> containing source/build, adapter, environment intent, scenario-plan digest, and capture key. Digest-bearing contracts are recomputed during validation; a caller cannot make a changed object authoritative by copying an old digest onto it.</p>
+<h3>4. Own the candidate server</h3>
+<p>The development server is configured as a command plus argument array and starts in the candidate project. UI Eval does not accept an occupied responding port when <code>reuseExisting</code> is false. Reuse requires a project-specific readiness path and response marker.</p>
+<p>Each matrix variant acquires and releases its server handle independently. A
+server started by UI Eval is stopped before the next variant starts, preventing
+one variant&#39;s generated run artifacts from perturbing a long-lived candidate
+watcher during the next capture. A reused server is identity-checked for every
+variant and its no-op handle never grants UI Eval permission to stop it.</p>
+<p>Resolved <code>mock-server</code> fixtures are also variant-scoped. The orchestrator
+revalidates their sealed config artifacts, binds fixed HTTP responders to
+loopback before starting the candidate server, verifies every required route
+after capture, then stops the candidate server followed by the fixture servers.
+Partial startup and cleanup failures are fail-closed and never authorize reuse
+of a pre-existing fixture port.</p>
+<p>The run store writes capture and evaluation intermediates while the variant is
+active, but does not publish <code>report.json</code> or <code>report.html</code> until every owned
+server and fixture has stopped successfully. A cleanup failure therefore cannot
+leave behind a finalized report whose disposition omits that failure.</p>
+<p>Only a process tree started by UI Eval is stopped by UI Eval. Candidate stderr is withheld from run-visible output. After planning, a server failure still produces an infrastructure/inconclusive report when the run store remains writable.</p>
+<h3>5. Capture one declared browser page</h3>
+<p>The Playwright adapter consumes only the sealed web plan. It fixes the declared rendering environment, applies stabilization, executes setup/steps/cleanup, records step and assertion outcomes, and captures requested checkpoint channels.</p>
+<p>The current contract binds a run to exactly one declared <code>Page</code>. Browser-context routing guards the initial navigation, later navigations, redirects, and popup first requests. Any additional page fails capture closed. See <a href="security-model.md">Security model</a> for authenticated containment and origin rules.</p>
+<p>Capture produces a <code>CaptureBundle</code> with:</p>
+<ul>
+<li>adapter and observed environment identity;</li>
+<li>step and assertion results;</li>
+<li>checkpoint-level evidence records;</li>
+<li>execution errors with product, runner, driver, fixture, or external-service origin;</li>
+<li>required-evidence completeness;</li>
+<li><code>completed</code>, <code>partial</code>, or <code>failed</code> capture status.</li>
+</ul>
+<p>A runner, driver, fixture, or security-boundary error cannot coexist with a truthful <code>completed</code> capture. Later storage/alias checks may preserve or lower capture status, never upgrade a failed or partial result based only on artifact counts.</p>
+<h3>6. Verify and store evidence</h3>
+<p>Binary and JSON evidence is sealed by SHA-256 in a project/store-scoped local CAS. Artifact references carry identity, digest, media type, size, and a caller-provided sensitivity label, but the label is not trusted by the presentation boundary.</p>
+<p>Evidence aliases are materialized only after integrity verification. Channel minimums and the strongest classification observed for each digest determine whether plaintext run aliases are permitted. Sensitive data remains CAS-only. A failed presentation alias is reported separately from evidence integrity; a corrupt or missing CAS object invalidates evidence.</p>
+<h3>7. Evaluate deterministic rules</h3>
+<p>The implemented registry recognizes these evaluator IDs:</p>
+<ul>
+<li><code>execution</code> — reachability, capture validity, and product execution failures;</li>
+<li><code>interaction</code> — explicit step and assertion results;</li>
+<li><code>runtime</code> — critical same-origin runtime/network/crash observations;</li>
+<li><code>visual</code> — optional raw same-size PNG comparison when a local reference is supplied.</li>
+<li><code>geometry</code> — optional constraint evaluation over normalized DOM/CSSOM evidence
+when policy registers <code>geometry@0.1.0</code>.</li>
+</ul>
+<p>Execution, interaction, and runtime are mandatory and each requires an independent non-bypassable hard gate. Visual comparison is advisory. Geometry runs only when the policy registers its implemented version and sealed config. Unsupported optional evaluator entries remain visible as skipped; unsupported required entries stop before capture.</p>
+<p>The policy engine evaluates a restricted data AST rather than arbitrary code. Missing or unknown required inputs follow the gate&#39;s explicit <code>onUnknown</code> behavior and cannot silently become a pass.</p>
+<h3>8. Cross-bind and persist the report</h3>
+<p>The orchestrator builds an <code>EvaluationPlan</code> that binds candidate evidence, the materialized policy, evaluator versions/config digests, and an optional local reference. The report contract cross-checks the plan, capture, policy, findings, gates, visual disposition, and actual evaluator execution provenance.</p>
+<p>Each completed planning path attempts to persist:</p>
+<pre><code class="language-text">.ui-eval/runs/&lt;execution-id&gt;/
+  run-manifest.json
+  capture.json
+  evaluation-plan.json
+  policy.json
+  report.json
+  report.html
+</code></pre>
+<p><code>report.json</code> is authoritative. <code>report.html</code> is an escaped, static presentation view with relative links to materialized non-sensitive evidence. Report files are pretty-printed for review; digests are computed from canonical JSON, not from file whitespace.</p>
+<h2>Outcome model</h2>
+<p>The report keeps evidence validity separate from candidate quality:</p>
+<table>
+<thead>
+<tr>
+<th><code>executionOutcome</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>valid</code></td>
+<td>The evidence is sufficient for the reported raw disposition.</td>
+</tr>
+<tr>
+<td><code>invalid-evidence</code></td>
+<td>Required evidence is missing, corrupt, incompatible, or otherwise not usable.</td>
+</tr>
+<tr>
+<td><code>infra-error</code></td>
+<td>The runner, browser, server, fixture, or storage path prevented reliable evaluation.</td>
+</tr>
+</tbody></table>
+<p>With valid evidence, <code>rawStatus</code> is <code>pass</code>, <code>fail</code>, <code>needs-review</code>, or <code>inconclusive</code>. Infrastructure and invalid-evidence outcomes map to CLI exit <code>2</code> even if another observation happened to look healthy.</p>
+<p>Product failures can remain definitive when the browser directly observed an assertion failure, crash, same-origin request failure, or relevant HTTP failure. Evidence dimensions that were not captured remain invalid or unsupported; the implementation does not manufacture an overall quality score.</p>
+<h2>Cancellation and cleanup</h2>
+<p><code>AbortSignal</code> flows from the CLI through fixture, server, and capture work. The first <code>SIGINT</code> or <code>SIGTERM</code> requests cooperative cancellation and cleanup. A second signal, or the bounded cleanup deadline, forces exit with <code>130</code> or <code>143</code>. The orchestrator attempts both owned candidate-server and fixture-server cleanup before propagating an operation or cleanup failure.</p>
+<h2>Programmatic boundary</h2>
+<p><code>src/index.ts</code> exports:</p>
+<ul>
+<li>contract schemas, derived types, canonicalization, and validators;</li>
+<li><code>evaluateScenario</code>;</li>
+<li><code>initUiEvalProject</code>;</li>
+<li><code>runDoctor</code>;</li>
+<li>the local artifact and run stores.</li>
+</ul>
+<p>Internal module paths are not a supported consumer API. The source repository is public, but the package is <code>UNLICENSED</code>, private in package metadata, and has no configured package distribution. This boundary supports source development and separately authorized local integration rather than a published SDK compatibility promise.</p>
+<h2>Explicit non-capabilities</h2>
+<p>The current architecture does not include:</p>
+<ul>
+<li>online design/Figma sync or authoritative structured design comparison;</li>
+<li>calibrated geometry, typography, accessibility, or visual release scoring;</li>
+<li>baseline/waiver ledgers or shared storage;</li>
+<li>multi-page scenarios, WebKit/Firefox, or native-app adapters;</li>
+<li>static, seed-script, or remote fixture providers; feature-flag,
+network-profile, or secret providers;</li>
+<li>MCP, automatic source repair, holdout isolation, a web console, or a service API.</li>
+</ul>
+<p>The schemas contain some forward-looking types for these areas. A schema declaration is not proof of executable support. The complete truthfulness boundary is maintained in <a href="limitations.md">Current limitations</a>.</p>
+
+      </section>
+<section id="contracts" class="document">
+        <div class="source"><span>Contracts</span><code>docs/contracts.md</code></div>
+        <h1>Contracts and Canonical Truth</h1>
+<p>UI Eval is contract-first: authoring, execution identity, evidence, policy, and reports are explicit JSON values that are validated and content-digested before downstream use.</p>
+<p>This document explains ownership, lifecycle, and compatibility. It intentionally does not duplicate every schema field. The checked-in schemas and runtime validators are the field-level source of truth.</p>
+<h2>Truth hierarchy</h2>
+<p>The current repository has four related representations with distinct roles:</p>
+<ol>
+<li><code>src/contracts/schemas.ts</code> and the public authoring schemas in <code>src/project/config.ts</code> are the in-repository TypeBox authoring sources.</li>
+<li><code>schemas/*.schema.json</code> are generated JSON Schema 2020-12 wire artifacts for the current checkout.</li>
+<li>TypeScript types are derived from TypeBox with <code>Static&lt;&gt;</code>; they must not be maintained as a second handwritten model.</li>
+<li>Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.</li>
+</ol>
+<p>The generated JSON schemas are canonical for structural wire shape. The matching runtime validators are canonical for semantic integrity such as digest recomputation, project/store scope, and exact binding between a report and its inputs.</p>
+<p>Documentation and examples are explanatory consumers. They must link to schemas rather than maintain independent field inventories. When prose and a schema disagree, fix the prose or implementation; do not treat the duplicate as an alternate contract.</p>
+<p>This repository does not provide a supported schema API or immutable network endpoint. Use the checked-in <code>schemas/</code> files from an exact source revision or the package&#39;s <code>./schemas/*</code> export from a separately authorized local build. A browsable GitHub file or schema <code>$id</code> is not a stable distribution URL.</p>
+<h2>Version dimensions</h2>
+<p>These versions solve different problems and must not be conflated:</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Package SemVer</td>
+<td>Source/API and executable distribution compatibility. No package distribution is currently configured.</td>
+</tr>
+<tr>
+<td><code>apiVersion</code></td>
+<td>Wire-contract family; current authoring and envelopes use <code>uieval.io/v1alpha1</code>.</td>
+</tr>
+<tr>
+<td>Evidence <code>schemaVersion</code></td>
+<td>Payload shape for DOM, layout, styles, console, network, and crash evidence.</td>
+</tr>
+<tr>
+<td>Evaluator version</td>
+<td>Meaning of an evaluator&#39;s measurements and findings; pinned in policy and report provenance.</td>
+</tr>
+<tr>
+<td>Adapter/orchestrator version</td>
+<td>Capture and coordination provenance.</td>
+</tr>
+<tr>
+<td>Local store ID</td>
+<td>On-disk CAS format namespace; currently the metadata-aware <code>local-cas-v2</code>.</td>
+</tr>
+</tbody></table>
+<p>An alpha wire family is not a promise of permanent compatibility. Even so, released or shared snapshots must remain immutable. A breaking wire change requires a new wire version and a migration path; changing an on-disk invariant requires a new store namespace or an explicit audited migration. Bumping only the package version does not make either break safe.</p>
+<h2>Executable contract chain</h2>
+<p>The current web execution path is:</p>
+<pre><code class="language-text">ProjectConfig + ScenarioSource + PolicySource
+              │
+              v
+      ResolvedScenarioPlan
+              │
+              v
+       SealedRunManifest
+              │
+              v
+         CaptureBundle
+              │
+              v
+EvaluationPlan + EvaluationPolicy
+              │
+              v
+       EvaluationReport
+</code></pre>
+<p><code>report.json</code> is the final authoritative raw result. <code>report.html</code> is a presentation projection and has no independent decision semantics.</p>
+<h2>Schema inventory</h2>
+<table>
+<thead>
+<tr>
+<th>Schema</th>
+<th>Current role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>project.schema.json</code></td>
+<td>Active human-authored project/server/device/default/capability configuration.</td>
+</tr>
+<tr>
+<td><code>scenario-source.schema.json</code></td>
+<td>Active human-authored web scenario input.</td>
+</tr>
+<tr>
+<td><code>policy-source.schema.json</code></td>
+<td>Active human-authored evaluator and gate input.</td>
+</tr>
+<tr>
+<td><code>resolved-scenario-plan.schema.json</code></td>
+<td>Active compiler output and complete capture input.</td>
+</tr>
+<tr>
+<td><code>sealed-run-manifest.schema.json</code></td>
+<td>Active execution/source/build/adapter identity.</td>
+</tr>
+<tr>
+<td><code>capture-bundle.schema.json</code></td>
+<td>Active immutable evidence index and execution result.</td>
+</tr>
+<tr>
+<td><code>evaluation-plan.schema.json</code></td>
+<td>Active sealed evaluator inputs and evaluation key.</td>
+</tr>
+<tr>
+<td><code>evaluation-policy.schema.json</code></td>
+<td>Active materialized policy with CAS-bound evaluator configs.</td>
+</tr>
+<tr>
+<td><code>evaluation-report.schema.json</code></td>
+<td>Active raw outcome, coverage, gates, findings, and provenance.</td>
+</tr>
+<tr>
+<td><code>scenario-manifest.schema.json</code></td>
+<td>Forward contract; the CLI currently compiles <code>ScenarioSource</code> directly and does not materialize this envelope.</td>
+</tr>
+<tr>
+<td><code>geometry-evaluator-config.schema.json</code></td>
+<td>Active sealed geometry evaluator config: a normalized token set plus the five constraint kinds.</td>
+</tr>
+<tr>
+<td><code>design-contract.schema.json</code></td>
+<td>Forward contract; carries rendered-image targets and a normalized token set, but the current orchestrator does not sync, bind, or evaluate either.</td>
+</tr>
+</tbody></table>
+<p><code>DesignContract</code> describes design facts in a source-neutral and platform-neutral
+form, so that a producer reading Figma, a stylesheet, or a serialized theme emits
+one shape. It carries normalized value sets, scales, and ranges; it carries no
+constraint selection, tolerance, or severity, which are policy. Colors are
+normalized sRGB components rather than serialized strings, and lengths are
+declared in logical units. Declared capabilities must match the payloads present:
+<code>rendered-image</code> requires <code>targets</code>, <code>tokens</code> requires <code>tokenSet</code>, and a
+capability this version cannot carry is rejected rather than silently accepted.
+See <a href="adr/0002-design-constraint-contract.md">ADR 0002</a>.</p>
+<p>Some shared schemas include iOS/Android locators and plans so future adapters can share an envelope. The current authoring loader and executable adapter are web-only. <strong>Schema-valid does not mean runtime-supported.</strong> Capability negotiation and the evaluator registry make the executable boundary explicit.</p>
+<h3>Public authoring API</h3>
+<p>The package entry point gives the executable web authoring formats explicit
+names:</p>
+<ul>
+<li><code>ProjectConfigSchema</code>, <code>validateProjectConfig</code>, and <code>assertProjectConfig</code>;</li>
+<li><code>WebScenarioSourceSchema</code>, <code>validateWebScenarioSource</code>, and
+<code>assertWebScenarioSource</code>.</li>
+</ul>
+<p>Those structural validators use the same TypeBox schemas that generate
+<code>project.schema.json</code> and <code>scenario-source.schema.json</code>. The generic
+<code>ScenarioSource</code> / <code>validateScenarioSource</code> contract exported by the shared
+contract layer is a forward multi-platform envelope; passing it does <strong>not</strong>
+mean the current CLI can execute that input.</p>
+<p>Structural validation is only the first boundary. <code>loadProjectConfig</code> and
+<code>loadScenarioSource</code> additionally enforce repository-aware semantic rules,
+real-path containment, safe referenced files, and current capability support.
+Programmatic callers that intend to execute a run should use those loaders (or
+the high-level <code>evaluateScenario</code>) rather than treating structural validation as
+authorization to capture.</p>
+<h2>Authoring ownership</h2>
+<p>Candidate repositories own these reviewed inputs:</p>
+<ul>
+<li><code>ui-eval/project.json</code>;</li>
+<li><code>ui-eval/scenarios/*.json</code>;</li>
+<li><code>ui-eval/policies/*.json</code>;</li>
+<li>explicitly reviewed, scrubbed fixture or browser-state files referenced by those inputs.</li>
+</ul>
+<p>Authoring files may use a <code>$schema</code> editor hint, but it does not affect runtime validation. The runtime always validates against its own matching contract implementation.</p>
+<p>Project references are resolved relative to the directory containing <code>ui-eval/project.json</code> and must remain within the real candidate project root. Absolute or relative spelling does not bypass real-path and symlink containment.</p>
+<h2>Compilation and immutability</h2>
+<p><code>WebScenarioSource</code> is convenient human input for the current CLI, not the adapter input. Compilation resolves:</p>
+<ul>
+<li>base URL references;</li>
+<li>matrix variants and exclusions;</li>
+<li>device viewport and scale;</li>
+<li>locale, theme, and timezone defaults;</li>
+<li>required capture capabilities;</li>
+<li>permitted storage state and artifact digests, including validated
+<code>mock-server</code> configs;</li>
+<li>setup, steps, cleanup, assertions, and checkpoints.</li>
+</ul>
+<p>The resulting <code>ResolvedScenarioPlan</code> is immutable and self-contained for capture. The adapter must not reread mutable project defaults while executing it.</p>
+<p><code>MockServerFixtureConfig</code> is a separate generated contract for the contents of a
+<code>mock-server</code> config artifact. It permits only a fixed loopback port, bounded
+exact <code>GET</code>/<code>HEAD</code> routes, non-redirect response statuses, fixed JSON/text
+bodies, and an explicit required-use bit. The compiler validates it before CAS
+materialization, and the runtime validates the resolved artifact again before
+binding a port.</p>
+<p>Policy materialization similarly replaces inline or referenced evaluator configuration with project-scoped <code>ArtifactRef</code> values and canonical config digests. Evaluators consume the sealed policy; they do not resolve a floating file path at evaluation time.</p>
+<h2>Canonical JSON and digests</h2>
+<p>Canonical JSON:</p>
+<ul>
+<li>accepts only JSON-compatible plain objects and arrays;</li>
+<li>sorts object keys;</li>
+<li>normalizes negative zero;</li>
+<li>rejects non-finite numbers, sparse arrays, cycles, functions, symbols, <code>undefined</code>, and other non-wire values;</li>
+<li>excludes nothing unless a contract call site selects a named exclusion profile.</li>
+</ul>
+<p>Digests use lowercase SHA-256 in the form <code>sha256:&lt;hex&gt;</code>. Named profiles make self-referential or operational exclusions explicit, for example:</p>
+<ul>
+<li>a resolved plan excludes <code>planDigest</code> when computing that digest;</li>
+<li>a run manifest excludes <code>executionId</code> and <code>captureKey</code> from its capture-key input;</li>
+<li>an evaluation plan excludes <code>evaluationId</code> and <code>evaluationKey</code> from its evaluation-key input;</li>
+<li>an envelope spec digest is computed from the immutable spec rather than creation metadata.</li>
+</ul>
+<p>Validators recompute these values. A stale copied digest fails validation.</p>
+<h2>Capture and evaluation identities</h2>
+<p>Capture and evaluation have separate identities because a policy or evaluator change does not necessarily require a new browser run:</p>
+<pre><code class="language-text">Capture identity
+  = source/build + resolved scenario + requested evidence
+    + adapter + intended environment
+
+Evaluation identity
+  = normalized decision-relevant candidate evidence
+    + optional local reference + evaluator/config versions
+    + sealed policy
+</code></pre>
+<p>The current implementation does not reuse a cross-run capture cache. Observed browser, OS, architecture, driver, locale, timezone, and font identity are still recorded and bound into normalized evaluation evidence so a report does not hide renderer drift.</p>
+<h2>Artifact references</h2>
+<p>Large or sensitive values are referenced, not embedded as base64 or arbitrary paths:</p>
+<pre><code class="language-text">ArtifactRef
+  id
+  projectId
+  storeId
+  digest
+  mediaType
+  sizeBytes
+  sensitivity
+  optional redaction metadata
+</code></pre>
+<p>An <code>ArtifactRef</code> is untrusted until a registered store verifies scope, containment, size, and digest. It is not a filesystem path or URL. Physical deduplication must not bypass project/store identity.</p>
+<p>Sensitivity on a caller-provided reference is also not an authority. The local CAS persists the strongest classification observed for a digest, and the presentation layer applies channel minimums. Classification can become stricter but cannot be downgraded by a later reference.</p>
+<h2>Evidence contracts</h2>
+<p>Each checkpoint contains an <code>EvidenceRecord</code> per requested channel. A record distinguishes:</p>
+<ul>
+<li><code>captured</code>;</li>
+<li><code>missing</code>;</li>
+<li><code>corrupt</code>;</li>
+<li><code>not-applicable</code>.</li>
+</ul>
+<p>Required-evidence completeness is explicit. Missing or corrupt required evidence produces invalid/inconclusive semantics rather than pass.</p>
+<p>Current structured evidence payloads have their own versions, including:</p>
+<ul>
+<li><code>uieval.dom/v1alpha1</code>;</li>
+<li><code>uieval.layout/v1alpha1</code>;</li>
+<li><code>uieval.styles/v1alpha1</code>;</li>
+<li><code>uieval.console/v1alpha1</code>;</li>
+<li><code>uieval.network/v1alpha1</code>;</li>
+<li><code>uieval.crash/v1alpha1</code>.</li>
+</ul>
+<p>Console, network, and crash payloads include collection counts for captured, dropped, and truncated entries. Consumers must not interpret an empty retained array as proof that no observation was dropped.</p>
+<p>Step and assertion results retain status and error origin. Interaction correctness comes from explicit results, not from guessing behavior from pixels.</p>
+<h2>Evaluation report semantics</h2>
+<p>An <code>EvaluationReport</code> separates:</p>
+<ul>
+<li><code>executionOutcome</code>: <code>valid</code>, <code>invalid-evidence</code>, or <code>infra-error</code>;</li>
+<li><code>rawStatus</code>: <code>pass</code>, <code>fail</code>, <code>needs-review</code>, or <code>inconclusive</code>;</li>
+<li>coverage counts, including unsupported and invalid work;</li>
+<li>hard/soft gate results and unknown handling;</li>
+<li>immutable findings with stable fingerprints;</li>
+<li>actual evaluator execution provenance.</li>
+</ul>
+<p>Configured or skipped evaluators are not reported as executed. Visual findings from a local reference identify the exact checkpoint, candidate screenshot digest, and reference digest. A reference path by itself is not sufficient identity.</p>
+<p>The current runtime does not produce waiver-adjusted dispositions or baseline decisions. Any future governance layer must append decisions without rewriting this raw report.</p>
+<h2>Change discipline</h2>
+<p>A contract change is incomplete unless all affected surfaces move together:</p>
+<ol>
+<li>Update the TypeBox authoring source.</li>
+<li>Update semantic validation and canonical digest logic if needed.</li>
+<li>Regenerate <code>schemas/*.schema.json</code>.</li>
+<li>Add valid, invalid, round-trip, and compatibility fixtures.</li>
+<li>Update authoring/compiler/adapter/report consumers.</li>
+<li>Update docs and executable examples without copying full field definitions.</li>
+<li>Explain compatibility and migration impact in the changelog.</li>
+</ol>
+<p>Run <code>bun run schema:check</code> to detect generated-schema drift. See <a href="development.md">Development</a> for the complete verification ladder and <a href="release.md">Release</a> for compatibility gates.</p>
+
+      </section>
+<section id="security" class="document">
+        <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
+        <h1>Security Model</h1>
+<p>UI Eval runs a candidate application&#39;s command and browser content with the current user&#39;s privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.</p>
+<p>For GitHub Private Vulnerability Reporting instructions, see <a href="../SECURITY.md">SECURITY.md</a>.</p>
+<h2>Assets to protect</h2>
+<ul>
+<li>Authenticated browser state and secrets referenced by project inputs.</li>
+<li>Candidate source and source provenance.</li>
+<li>Policies, evaluator configuration, and sealed run identity.</li>
+<li>Screenshots, DOM/style payloads, console/network/crash data, and traces.</li>
+<li>Project isolation inside the local content-addressed store.</li>
+<li>The integrity of capture, gate, finding, and report dispositions.</li>
+</ul>
+<h2>Trust boundaries</h2>
+<h3>Trusted configuration</h3>
+<p>The following inputs must be reviewed and trusted before execution:</p>
+<ul>
+<li>the authorized UI Eval source and dependencies;</li>
+<li><code>ui-eval/project.json</code>, especially <code>devServer.command</code> and <code>args</code>;</li>
+<li>selected scenario and policy sources;</li>
+<li>local fixture and storage-state files;</li>
+<li>the local filesystem account and CI runner configuration.</li>
+</ul>
+<p>The development-server command is data-driven but still executes a process. UI Eval passes a command and argument array without treating page content as shell instructions; it does not make an untrusted project configuration safe to run.</p>
+<h3>Untrusted candidate and capture data</h3>
+<p>Treat these as hostile data:</p>
+<ul>
+<li>candidate page DOM, accessible names, URLs, and rendered text;</li>
+<li>console messages, network URLs/failure text, exceptions, and crash messages;</li>
+<li>candidate screenshots and trace contents;</li>
+<li>adapter-returned artifact metadata, status, and sensitivity labels;</li>
+<li>the candidate application and any page it attempts to open.</li>
+</ul>
+<p>Untrusted data enters retained run output only through typed evidence structures
+and channel-specific resource ceilings. That limits what is sealed; it does not
+turn the browser or candidate into a resource sandbox. Untrusted values must
+never be interpreted as commands or instructions.</p>
+<h3>Sealed trusted facts</h3>
+<p>After validation and digest recomputation, the orchestrator treats these as trusted run facts:</p>
+<ul>
+<li>resolved scenario plan;</li>
+<li>source/build identity;</li>
+<li>selected adapter and intended environment;</li>
+<li>materialized policy and evaluator config digests;</li>
+<li>run manifest, capture/evaluation keys, and validated report bindings.</li>
+</ul>
+<p>Trust is earned through validation and cross-binding, not because an object has a familiar TypeScript type.</p>
+<h2>Project-root containment</h2>
+<p>Project, scenario, policy, fixture, storage-state, evaluator-config, and reference-image paths are constrained to the candidate project:</p>
+<ul>
+<li>lexical containment rejects <code>..</code> or absolute escapes;</li>
+<li>real-path containment rejects symlink escapes;</li>
+<li>expected regular files/directories are checked for unsafe symlinks and unexpected file types;</li>
+<li>local run and CAS writers perform atomic contained writes;</li>
+<li>identifiers used as path segments are validated.</li>
+</ul>
+<p>An <code>ArtifactRef</code> contains logical project/store identity and a digest, never an arbitrary local path or HTTP URI. Resolution checks project/store scope, object size, and SHA-256 before returning bytes.</p>
+<h2>Candidate-server ownership</h2>
+<p>UI Eval distinguishes a server process it started from an already responding port:</p>
+<ul>
+<li><code>reuseExisting: false</code> rejects an occupied responding port, even if it looks healthy;</li>
+<li><code>reuseExisting: true</code> requires a project-specific readiness path and body marker;</li>
+<li>UI Eval stops only its owned process tree;</li>
+<li>every matrix variant releases its handle before the next variant starts, and
+a cleanup failure stops the matrix rather than capturing against a process
+whose ownership state is uncertain;</li>
+<li>finalized JSON/HTML reports are published only after every owned candidate
+and fixture process for the variant has stopped successfully;</li>
+<li>cooperative abort sends termination through the owned handle, with bounded escalation;</li>
+<li>raw candidate stderr is not copied into JSON stdout, structured reports, HTML, or progress output.</li>
+</ul>
+<p>This prevents accidental evaluation of an unrelated service and avoids leaking arbitrary server diagnostics into run-visible artifacts. It does not protect the host from a malicious trusted configuration; use an OS/container sandbox when that threat matters.</p>
+<h2>Loopback mock fixture boundary</h2>
+<p>The executable <code>mock-server</code> fixture provider is deliberately smaller than a
+proxy or programmable test server:</p>
+<ul>
+<li>config comes from a project-contained regular JSON file, is sealed into the
+project CAS, size-checked, and validated again before use;</li>
+<li>listeners bind only <code>127.0.0.1</code> on an explicitly declared port and never
+reuse an occupied port;</li>
+<li>routes match an exact <code>GET</code> or <code>HEAD</code> request target and return only fixed,
+bounded JSON or text with non-redirect status codes;</li>
+<li>unmatched methods and paths fail locally; no request is forwarded and no
+script, candidate module, environment variable, secret ref, or secondary
+file is evaluated;</li>
+<li>required routes must be observed before capture can remain completed;</li>
+<li>each variant starts fixtures before its candidate server and attempts to stop
+both, including after partial startup or cancellation.</li>
+</ul>
+<p>The candidate server configuration remains trusted executable input. A mock
+fixture prevents the declared dependency from reaching a real service only
+when the candidate is already configured to use that loopback port. The
+provider is not an OS network sandbox, and another local process can reach its
+listener while it is active. Use only synthetic responses and add container or
+host network policy for authoritative CI.</p>
+<h2>Candidate-origin boundary</h2>
+<p>Every resolved web plan seals one Candidate origin. Browser-context interception and post-action checks cover:</p>
+<ul>
+<li>initial top-level navigation;</li>
+<li>redirects, with foreign <code>Location</code> rejected before following it;</li>
+<li><code>goto</code>, <code>tap</code>, and <code>press</code> actions that may navigate;</li>
+<li>the first request from a popup or additional page.</li>
+</ul>
+<p>A direct external top-level navigation is aborted before dispatch to the destination. The escape is retained as a candidate product failure; the external page is never captured as Candidate evidence.</p>
+<p>The current contract supports exactly one declared browser <code>Page</code>. Any additional page fails capture closed:</p>
+<ul>
+<li>a same-origin or otherwise non-external popup is a runner <code>unsupported-popup-created</code> error;</li>
+<li>a foreign popup is blocked at its first destination and recorded as <code>candidate-origin-escaped</code>.</li>
+</ul>
+<p>Capture finalization closes the context to drain late events and rechecks the boundary before serializing, so a late popup cannot turn into a <code>completed</code> result.</p>
+<h2>Authenticated browser containment</h2>
+<p>Storage state is supported only after exact Candidate scoping:</p>
+<ul>
+<li>every cookie domain must exactly equal the Candidate hostname;</li>
+<li>leading-dot and foreign cookie domains are rejected;</li>
+<li>every local-storage origin must exactly match Candidate scheme, host, and port.</li>
+</ul>
+<p>When a plan carries auth state:</p>
+<ul>
+<li>service workers are blocked;</li>
+<li>all foreign HTTP(S) requests and WebSockets are denied at the browser-context boundary;</li>
+<li>same-origin responses are preflighted so a foreign redirect target is rejected before following it.</li>
+</ul>
+<p>Legitimate third-party dependencies for an authenticated scenario must be provided through a same-origin proxy or deterministic fixture. The current implementation does not provide a third-party allowlist.</p>
+<p>This containment covers the controlled Playwright browser context only. It does not isolate DNS, the browser process, the development server, package hooks, or other host processes. Authoritative CI should add container and network policy appropriate to the project.</p>
+<h2>Evidence minimization and redaction</h2>
+<p>Current evidence controls include:</p>
+<ul>
+<li>per-entry, entry-count, and total-byte budgets for console, network, and crash collections;</li>
+<li>encoded-byte, IHDR-dimension, and pixel-area ceilings for candidate and
+reference PNGs, checked before image decoding; screenshot render space is
+checked before Playwright capture and the returned PNG must match it;</li>
+<li>an encoded-byte ceiling and fixed-descriptor read for Playwright trace files,
+so an oversized or changing file is not sealed;</li>
+<li>explicit captured/dropped/truncated collection statistics;</li>
+<li>identifier, text, accessible-name, and font-family removal in subtrees marked <code>data-ui-eval-sensitive</code>, <code>data-sensitive</code>, or containing password inputs;</li>
+<li>bounded browser-to-run assertion previews;</li>
+<li>credential-pattern redaction and UTF-8 byte bounds for text values;</li>
+<li>URL metrics reduced to a redacted origin/presence representation rather than userinfo, path, query contents, or fragments;</li>
+<li>a fixed <code>[REDACTED]</code> value for sensitive targets;</li>
+<li>kind checking at the capture contract followed by orchestrator re-sanitization before persistence.</li>
+</ul>
+<p>The authoritative binary ceilings live in
+<code>src/capture-playwright/binary-evidence.ts</code>; tests, rather than copied prose
+numbers, guard them against drift. Exceeding a required binary-evidence budget
+is a runner/infrastructure error and cannot become a pass.</p>
+<p>These controls reduce exposure but are not a general data-loss-prevention guarantee. Ordinary private text that does not match a redaction rule may remain in bounded DOM, screenshot, or assertion evidence. Screenshots can reveal information that text redaction cannot identify. Trace recording and browser rendering also consume resources before final artifacts can be validated, so authoritative runners still need external CPU, memory, disk, time, and process quotas.</p>
+<p>Checkpoint stabilization applies the declared timeout to font, image,
+application-readiness, and stable-frame waits. Font readiness uses the bounded
+font-status predicate directly; it does not add a second unbounded
+<code>document.fonts.ready</code> wait. The same bound is installed as both Playwright&#39;s
+action and navigation timeout before the first candidate navigation, and on
+the response preflight used by the origin guard.</p>
+<p>Before normal browser-context shutdown, the adapter drains installed HTTP route
+handlers so an in-flight origin preflight cannot race response disposal against
+context closure. Abort cleanup removes the same routes with close-race errors
+ignored, then closes only the owned context and browser.</p>
+<p>Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.</p>
+<h2>CAS sensitivity and aliases</h2>
+<p>The adapter&#39;s <code>ArtifactRef.sensitivity</code> is an input hint, not an authority. The presentation boundary applies an exhaustive minimum by evidence channel:</p>
+<ul>
+<li>console, network, trace, crash, video, device logs, and performance are at least <code>sensitive</code>;</li>
+<li>current visual/structural channels are at least <code>internal</code>.</li>
+</ul>
+<p>Every occurrence of the same digest is scanned and upgraded to its strictest effective classification. The local CAS persists the strongest classification per project/store/digest before sealing new bytes. Later or forged lower labels cannot downgrade it.</p>
+<p>The current default namespace is <code>local-cas-v2</code>, whose format invariant includes sensitivity metadata. Within that namespace:</p>
+<ul>
+<li>an older object without metadata is treated conservatively as <code>sensitive</code>;</li>
+<li>malformed, mismatched, non-regular, or symlinked metadata fails closed;</li>
+<li>earlier store namespaces are not searched or migrated implicitly.</li>
+</ul>
+<p>Sensitive artifacts remain CAS-only and do not receive plaintext aliases beside <code>report.html</code>. The local CAS is still ordinary local storage: it is not encrypted at rest, and a user or process with filesystem access may read its bytes.</p>
+<h2>Contract and report integrity</h2>
+<p>Security-sensitive status is cross-bound across the pipeline:</p>
+<ul>
+<li>source identity must be readable and internally consistent;</li>
+<li>remote repository provenance has credentials, query, fragment, and unsafe helper payloads removed;</li>
+<li>plan, manifest, capture, evaluation, policy, and report digests are recomputed;</li>
+<li>adapter identity, scenario/variant, source/build, steps, assertions, checkpoints, channels, and environment must match the sealed plan;</li>
+<li>evaluator provenance lists only implementations actually run;</li>
+<li>a local reference binds its content digest, unique checkpoint, and candidate screenshot digest;</li>
+<li>security-boundary, runner, driver, or fixture errors prohibit <code>completed</code> capture status;</li>
+<li>evidence verification can lower but never upgrade <code>failed</code> or <code>partial</code> status.</li>
+</ul>
+<p>Missing or corrupt evidence does not become green. A high visual similarity cannot offset an explicit functional failure.</p>
+<h2>Signal and cleanup behavior</h2>
+<p>The first <code>SIGINT</code> or <code>SIGTERM</code> aborts browser/server work cooperatively. UI Eval waits only for a bounded cleanup window; a second signal or deadline expiry forces the conventional exit code. Final reports are withheld until cleanup succeeds, although bounded intermediate evidence may remain in the run directory for diagnosis. This bounds CI shutdown but cannot guarantee that a malicious descendant process has not escaped the owned process group. Use stronger process isolation for hostile candidates.</p>
+<h2>Explicit non-guarantees</h2>
+<p>UI Eval currently does not provide:</p>
+<ul>
+<li>an OS, VM, container, or complete network sandbox;</li>
+<li>encryption at rest or centralized access control for local artifacts;</li>
+<li>comprehensive DLP, OCR-based screenshot redaction, or proof that evidence contains no private data;</li>
+<li>a runtime secret provider;</li>
+<li>secure holdout isolation or oracle-leakage controls;</li>
+<li>reviewer roles, baseline/waiver authorization, or an append-only governance service;</li>
+<li>an agent mutation sandbox or enforcement of <code>agentMutation</code> policy fields;</li>
+<li>multi-tenant storage;</li>
+<li>a third-party egress allowlist for authenticated capture;</li>
+<li>protection from deliberately malicious project configuration executed with the current user&#39;s privileges.</li>
+</ul>
+<h2>Deployment responsibilities</h2>
+<p>For meaningful CI security, the operator should:</p>
+<ul>
+<li>run UI Eval and the candidate in an ephemeral least-privilege environment;</li>
+<li>restrict outbound network access at the container/runner layer;</li>
+<li>use synthetic accounts and short-lived credentials;</li>
+<li>retain <code>.ui-eval/</code> only as long as required;</li>
+<li>protect uploaded reports and artifacts according to their sensitivity;</li>
+<li>keep policies and scenarios read-only to any automated code-changing actor;</li>
+<li>review dependency and browser updates before changing the authoritative environment;</li>
+<li>treat non-zero exit codes as non-green rather than retrying until a defect disappears.</li>
+</ul>
+<h2>Security change checklist</h2>
+<p>A change to paths, process lifecycle, browser routing, auth state, evidence payloads, redaction, CAS metadata, capture status, or report binding requires:</p>
+<ol>
+<li>a focused threat analysis;</li>
+<li>fail-closed negative tests;</li>
+<li>real-browser coverage when browser behavior changes;</li>
+<li>updates to this document and <a href="limitations.md">Current limitations</a>;</li>
+<li>explicit review of whether old artifacts or contracts need migration.</li>
+</ol>
+
+      </section>
+<section id="integration" class="document">
+        <div class="source"><span>Integration</span><code>docs/integration.md</code></div>
+        <h1>Project Integration</h1>
+<p>UI Eval currently integrates from a local checkout of the public source repository at <code>https://github.com/zw-befreed/ui-eval</code>. The package remains private in package metadata, <code>UNLICENSED</code>, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout&#39;s Bun scripts at a candidate project with <code>--project-root</code>.</p>
+<h2>Integration boundary</h2>
+<p>A candidate repository should retain only project-owned inputs and a generated working directory:</p>
+<pre><code class="language-text">candidate/
+  ui-eval/
+    project.json
+    scenarios/
+    policies/
+    fixtures/                 # reviewed and scrubbed only
+  .ui-eval/                   # generated, ignored
+</code></pre>
+<p>Do not copy UI Eval engine source into the candidate. Do not treat generated reports or CAS objects as authoring truth. Once a supported package distribution channel exists, the candidate should pin that engine version through its package manager and lockfile; the public Git repository is source hosting, not such a channel.</p>
+<h2>1. Prepare the candidate</h2>
+<p>The candidate must:</p>
+<ul>
+<li>be an existing readable directory;</li>
+<li>be a Git working tree with a readable revision and files;</li>
+<li>expose a deterministic local HTTP(S) development server;</li>
+<li>avoid placing credentials in committed files;</li>
+<li>be runnable with a command and argument array from its project root.</li>
+</ul>
+<p>UI Eval fingerprints committed and uncommitted source state. A directory without reliable Git identity cannot produce a sealed run.</p>
+<h2>2. Prepare the standalone checkout</h2>
+<p>From this repository:</p>
+<pre><code class="language-bash">bun install --frozen-lockfile
+bunx playwright install chromium
+</code></pre>
+<p>The runtime requirement is declared in <code>package.json</code>; <code>doctor</code> currently requires Node.js 20 or newer.</p>
+<h2>3. Initialize project inputs</h2>
+<p>Run from the standalone checkout:</p>
+<pre><code class="language-bash">bun run ui-eval init \
+  --project-root /absolute/path/to/candidate \
+  --route /account \
+  --scenario account-desktop \
+  --yes
+</code></pre>
+<p><code>init</code>:</p>
+<ul>
+<li>creates only missing project, default-policy, and scenario files;</li>
+<li>never overwrites an existing authoring file;</li>
+<li>creates or safely appends <code>.ui-eval/</code> to <code>.gitignore</code>;</li>
+<li>rejects unsafe route and scenario identifiers;</li>
+<li>reports created, updated, and preserved paths.</li>
+</ul>
+<p>Treat the generated files as a starting point, not an authoritative test design. Review every command, URL, assertion, checkpoint, capability, and policy gate before use.</p>
+<h2>4. Configure the project</h2>
+<p><code>ui-eval/project.json</code> defines:</p>
+<ul>
+<li><code>projectId</code> — local project/store scope;</li>
+<li><code>artifactRoot</code> — generated working area, normally <code>.ui-eval</code>;</li>
+<li><code>devServer</code> — command, argument array, URL, ownership/reuse behavior, readiness, and timeout;</li>
+<li><code>baseUrls</code> — named origins referenced by scenarios;</li>
+<li><code>deviceProfiles</code> — viewport and device-scale-factor definitions;</li>
+<li>default locale, theme, and IANA timezone;</li>
+<li>optional storage-state references;</li>
+<li>declared fixture/feature-flag inputs;</li>
+<li>capture capabilities the project is prepared to request.</li>
+</ul>
+<p>Read the checked-in <a href="../schemas/project.schema.json"><code>project.schema.json</code></a> for exact fields.</p>
+<h3>Server ownership</h3>
+<p>Prefer <code>reuseExisting: false</code>. UI Eval then refuses an already responding port and owns the server process it starts.</p>
+<p>If reuse is necessary, provide a project-specific readiness path and response marker. A generic <code>200 OK</code> is not sufficient identity:</p>
+<pre><code class="language-json">{
+  &quot;reuseExisting&quot;: true,
+  &quot;readiness&quot;: {
+    &quot;path&quot;: &quot;/health/ui-eval&quot;,
+    &quot;bodyIncludes&quot;: &quot;project-specific-marker&quot;
+  }
+}
+</code></pre>
+<p>The candidate must make that endpoint deterministic. UI Eval never stops a reused process.</p>
+<h3>Browser selection</h3>
+<p>With no channel flag, UI Eval uses Playwright&#39;s bundled Chromium. To use an installed Chrome channel, pass the same channel to both <code>doctor</code> and <code>evaluate</code>:</p>
+<pre><code class="language-bash">bun run ui-eval doctor \
+  --project-root /absolute/path/to/candidate \
+  --browser-channel chrome
+</code></pre>
+<p>Browser choice participates in environment intent and provenance. Do not mix channels when comparing runs without accounting for renderer differences.</p>
+<h2>5. Author scenarios</h2>
+<p>A <code>ScenarioSource</code> declares one web target plus deterministic execution context:</p>
+<ul>
+<li>named base URL and same-origin path;</li>
+<li>optional exact-scoped Playwright storage state;</li>
+<li>timezone/clock/random-seed declarations;</li>
+<li>required capture channels;</li>
+<li>device/locale/theme matrix and exclusions;</li>
+<li>setup, action, assertion, cleanup, and checkpoint steps.</li>
+</ul>
+<p>Prefer stable semantic locators in this order:</p>
+<ol>
+<li><code>uiId</code> or <code>testId</code>;</li>
+<li>accessible role and name;</li>
+<li>stable text;</li>
+<li>CSS only when the candidate deliberately owns that selector.</li>
+</ol>
+<p>Each checkpoint must name its required channels. A screenshot alone does not prove interactions or runtime health.</p>
+<p>The current executable authoring target is web-only. The only executable
+fixture provider is the bounded loopback <code>mock-server</code>; feature flags, network
+profiles, secret references, other fixture providers, and app locators remain
+unsupported and fail before capture. See <a href="limitations.md">Current limitations</a>.</p>
+<h2>6. Handle auth and fixtures safely</h2>
+<p>Committed fixture inputs must be synthetic, deterministic, and scrubbed. Never commit production credentials or a real user&#39;s browser state.</p>
+<p>When using Playwright storage state:</p>
+<ul>
+<li>reference it by a project-contained file;</li>
+<li>require every cookie domain to exactly match the Candidate hostname;</li>
+<li>reject leading-dot or foreign cookie domains;</li>
+<li>require local-storage origins to exactly match scheme, host, and port;</li>
+<li>expect authenticated capture to block service workers and all foreign HTTP(S)/WebSocket egress.</li>
+</ul>
+<p>An authenticated application that needs a third party must expose a same-origin proxy or deterministic fixture for the scenario. UI Eval does not currently provide an auth secret provider or third-party egress allowlist.</p>
+<p>For a server-side data dependency, declare a <code>mock-server</code> fixture whose config
+is a contained, reviewed JSON file:</p>
+<pre><code class="language-json">{
+  &quot;fixtures&quot;: [
+    {
+      &quot;id&quot;: &quot;catalog-api&quot;,
+      &quot;provider&quot;: &quot;mock-server&quot;,
+      &quot;configPath&quot;: &quot;fixtures/catalog-api.mock.json&quot;
+    }
+  ]
+}
+</code></pre>
+<p>The config uses the generated <code>mock-server-fixture-config.schema.json</code> shape. It
+declares a fixed loopback port and exact <code>GET</code>/<code>HEAD</code> paths with bounded
+<code>application/json</code> or <code>text/plain</code> responses. Mark a route <code>required: true</code>
+when a completed capture must prove the candidate requested it. Unmatched
+requests receive <code>404</code>/<code>405</code>; fixtures never forward a request, read another
+file, execute a script, inject an environment variable, or carry a secret ref.</p>
+<p>UI Eval starts fixtures before the candidate server and stops both after every
+matrix variant. The candidate must already be configured to call the declared
+loopback port; UI Eval does not rewrite <code>.env</code> or application code. A port
+collision, invalid artifact, missed required route, or cleanup failure is
+fixture infrastructure failure and cannot pass.</p>
+<h2>7. Author policy</h2>
+<p>The current runnable evaluator set is fixed:</p>
+<ul>
+<li>required <code>execution</code>;</li>
+<li>required <code>interaction</code>;</li>
+<li>required <code>runtime</code>;</li>
+<li>optional advisory <code>visual</code>;</li>
+<li>optional <code>geometry</code>, covered in the next section.</li>
+</ul>
+<p>Execution, interaction, and runtime each need their exact independent hard gate. The current runtime rejects zero-gate policies, multiple repeatability attempts, non-empty tolerances/dynamic regions, and non-zero evaluator weights because those semantics are not implemented.</p>
+<p>Use <code>--policy &lt;id-or-path&gt;</code> to select a policy. A simple ID resolves under <code>ui-eval/policies/</code>; an explicit JSON path resolves relative to <code>ui-eval/project.json</code> and must remain inside the project.</p>
+<h2>8. Bind design tokens and geometry constraints</h2>
+<p>This step is optional. A policy that does not register <code>geometry@0.1.0</code> behaves
+exactly as before, and nothing below changes any other dimension.</p>
+<p>The evaluator compares captured values against a <strong>token set</strong> of design facts
+using the five constraint kinds in <a href="adr/0002-design-constraint-contract.md">ADR 0002</a>.
+Facts and strictness stay separated: a producer emits only the token set, and a
+human authors the constraints, tolerances, and gates.</p>
+<h3>8.1 Produce a token set from the project&#39;s own token layer</h3>
+<pre><code class="language-bash">bun run design:import --css /absolute/path/to/candidate/app/globals.css --json
+</code></pre>
+<p>The reference producer reads declarative CSS only. It never imports, executes,
+or evaluates candidate application code. Where the authoritative values exist
+only inside executable code, the candidate owns a small export step that emits
+JSON and the producer consumes that instead.</p>
+<p>Read the non-JSON output first. It reports every declaration the producer could
+not resolve, and which scales the stylesheet actually declares. <strong>Absent is not
+unconstrained</strong>: framework default scales that the project never declares will
+be missing, and a constraint may only reference a scale that is present.</p>
+<h3>8.2 Triage before gating</h3>
+<pre><code class="language-bash">bun run design:audit --project-root /absolute/path/to/candidate \
+  --css /absolute/path/to/candidate/app/globals.css
+</code></pre>
+<p><code>design:audit</code> composes the producer, the evidence normalizer, and the
+constraint kinds over the most recent run. It is an analysis tool, never a gate,
+and it does not affect any run disposition.</p>
+<p>Its purpose is to separate two things that look identical in a violation list:</p>
+<ul>
+<li>a value that is genuinely ad hoc, and</li>
+<li>a value that is legitimate but that the token set never declared.</li>
+</ul>
+<p>Only the first is a defect. The second means the token layer is incomplete, and
+gating on it would bury real findings under noise.</p>
+<h3>8.3 Derive the tolerance from a measured noise floor</h3>
+<p>Scale and equality constraints take a tolerance. It must come from observed
+run-to-run deviation, not from a chosen round number:</p>
+<pre><code class="language-bash">for i in $(seq 1 10); do
+  bun run ui-eval evaluate &lt;scenario&gt; --project-root /absolute/path/to/candidate || true
+done
+node scripts/measure-capture-noise.mjs --project-root /absolute/path/to/candidate --limit 10
+</code></pre>
+<p>Do not touch the working tree between runs. The script refuses to certify a
+batch whose runs disagree on uncommitted source state, because a real source
+change would inflate the measured deviation and widen a tolerance until the
+constraint can no longer fail.</p>
+<p>The observed maximum is the floor a tolerance must clear, not the tolerance
+itself. It must also stay below the smallest scale step it has to distinguish.
+If those two bounds cross, the capture is too noisy to gate on, and the fix is
+determinism rather than a wider tolerance.</p>
+<h3>8.4 Author the config and register the evaluator</h3>
+<p>The config is a project file matching
+<a href="../schemas/geometry-evaluator-config.schema.json"><code>geometry-evaluator-config.schema.json</code></a>.
+<code>configPath</code> resolves relative to the <strong>policy file&#39;s own directory</strong>, so a
+sibling file is referenced by bare name:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;geometry&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;configPath&quot;: &quot;geometry.json&quot;,
+  &quot;required&quot;: false,
+  &quot;weight&quot;: 0
+}
+</code></pre>
+<p>Stage the rollout. Register the evaluator with <code>required: false</code> and <strong>no gate</strong>
+first, read the reported metrics for a while, and only then add a hard gate:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;geometry-violations&quot;,
+  &quot;hard&quot;: true,
+  &quot;expression&quot;: { &quot;metric&quot;: &quot;geometry.violations&quot;, &quot;operator&quot;: &quot;eq&quot;, &quot;value&quot;: 0 },
+  &quot;onUnknown&quot;: &quot;fail&quot;
+}
+</code></pre>
+<p>Available metrics are <code>geometry.violations</code>, <code>geometry.failedConstraints</code>, and
+<code>geometry.indecisiveConstraints</code>. The last one counts constraints that could not
+be decided; gate on it separately if a run must not pass on evidence it could
+not read.</p>
+<h3>8.5 Keep the sealed token set in step with its source</h3>
+<p>The token set is copied into the evaluator config and sealed there. It does not
+track the stylesheet it came from. When the stylesheet changes, the sealed copy
+is stale until it is regenerated, and a stale copy produces false violations or
+false silence.</p>
+<p>Regenerate it in the same change that edits the token layer, then verify the
+producer-owned part of the sealed copy:</p>
+<pre><code class="language-bash">bun run design:check \
+  --css /absolute/path/to/candidate/app/globals.css \
+  --config /absolute/path/to/candidate/ui-eval/policies/geometry.json
+</code></pre>
+<p>The reference Tailwind producer owns <code>valueSets</code> and <code>scales</code>. Policy-authored
+<code>ranges</code> are preserved and are not compared. The command never rewrites the
+config. It returns <code>0</code> when the owned collections are in sync, <code>1</code> when they
+drift, and <code>2</code> when the source cannot be resolved or either input is invalid.
+Run it after changing either the token layer or geometry config, and make it a
+CI gate once the candidate CI has an immutable way to obtain this UI Eval
+version.</p>
+<h2>9. Run doctor</h2>
+<pre><code class="language-bash">bun run ui-eval doctor --project-root /absolute/path/to/candidate
+</code></pre>
+<p><code>doctor</code> checks:</p>
+<ul>
+<li>Node runtime;</li>
+<li>project configuration;</li>
+<li>writable contained artifact root;</li>
+<li>selected browser launch;</li>
+<li>candidate-server port ownership/readiness.</li>
+</ul>
+<p>Warnings are visible, and any failing check returns exit <code>2</code>. <code>doctor</code> does not run the scenario.</p>
+<p>JSON output is available for automation:</p>
+<pre><code class="language-bash">bun run ui-eval doctor \
+  --project-root /absolute/path/to/candidate \
+  --format json
+</code></pre>
+<h2>10. Evaluate</h2>
+<pre><code class="language-bash">bun run ui-eval evaluate account-desktop \
+  --project-root /absolute/path/to/candidate
+</code></pre>
+<p>The command performs validation, compilation, source sealing, server startup/reuse, capture, evaluation, policy gates, cleanup, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. <code>report.json</code> and <code>report.html</code> are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant.</p>
+<p>Text output prints disposition and report paths. JSON mode reserves stdout for one machine payload and writes progress to stderr:</p>
+<pre><code class="language-bash">bun run ui-eval evaluate account-desktop \
+  --project-root /absolute/path/to/candidate \
+  --format json &gt; ui-eval-result.json
+</code></pre>
+<p>Preserve the process exit code; do not treat a successfully parsed JSON payload as a successful evaluation.</p>
+<table>
+<thead>
+<tr>
+<th align="right">Exit</th>
+<th>CI treatment</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="right"><code>0</code></td>
+<td>Green only for the evaluated scenario/variants and declared evidence.</td>
+</tr>
+<tr>
+<td align="right"><code>1</code></td>
+<td>Candidate defect; fail the job.</td>
+</tr>
+<tr>
+<td align="right"><code>2</code></td>
+<td>Configuration, infrastructure, or evidence problem; fail the job.</td>
+</tr>
+<tr>
+<td align="right"><code>3</code></td>
+<td>Human review required; do not auto-merge.</td>
+</tr>
+<tr>
+<td align="right"><code>130</code> / <code>143</code></td>
+<td>Interrupted/terminated; fail or cancel according to CI policy.</td>
+</tr>
+</tbody></table>
+<h2>11. Optional local image comparison</h2>
+<pre><code class="language-bash">bun run ui-eval evaluate account-desktop \
+  --project-root /absolute/path/to/candidate \
+  --reference references/account.png
+</code></pre>
+<p>The image must be a project-contained, regular, non-symlink PNG, and the plan must contain exactly one screenshot checkpoint. Dimensions must match. A pixel change returns <code>needs-review</code>; equal pixels do not upgrade missing functional/runtime evidence.</p>
+<p>Local image evidence is <code>local-unprotected</code>. Do not call it an approved baseline or holdout.</p>
+<h2>12. Retain artifacts deliberately</h2>
+<p>The authoritative result is:</p>
+<pre><code class="language-text">.ui-eval/runs/&lt;execution-id&gt;/report.json
+</code></pre>
+<p>The HTML file is a local reading view. Upload or retain run data only through an access-controlled CI mechanism appropriate for its sensitivity. Console/network/trace/crash artifacts are intentionally CAS-only and may contain private data even after bounded redaction.</p>
+<p>Do not commit <code>.ui-eval/</code>. Retention and deletion are currently operator responsibilities.</p>
+<h2>Ongoing run flow</h2>
+<p>Once integrated, the loop has three cadences.</p>
+<h3>Every change</h3>
+<pre><code class="language-bash">bun run ui-eval evaluate &lt;scenario&gt; --project-root &lt;path&gt; --format json
+</code></pre>
+<p>Preserve the process exit code; a parsed JSON payload is not a successful
+evaluation. <code>doctor</code> is worth running when the environment changed, not on every
+commit.</p>
+<table>
+<thead>
+<tr>
+<th align="right">Exit</th>
+<th>Meaning</th>
+<th>Usual action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="right"><code>0</code></td>
+<td>Evidence valid, hard gates passed</td>
+<td>Proceed</td>
+</tr>
+<tr>
+<td align="right"><code>1</code></td>
+<td>Candidate defect</td>
+<td>Fix the product</td>
+</tr>
+<tr>
+<td align="right"><code>2</code></td>
+<td>Configuration, infrastructure, or invalid evidence</td>
+<td>Fix the setup; never re-run until green</td>
+</tr>
+<tr>
+<td align="right"><code>3</code></td>
+<td>Human review required</td>
+<td>Look at the diff or the indecisive constraints</td>
+</tr>
+</tbody></table>
+<p>Exit <code>3</code> is not a soft <code>0</code>. Treating it as a retry target is how a suite decays
+into a green run that asserts nothing.</p>
+<h3>When an input changes</h3>
+<table>
+<thead>
+<tr>
+<th>Changed</th>
+<th>Required follow-up</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Design token layer (stylesheet, theme export)</td>
+<td>Regenerate the sealed token set (8.1) and re-triage (8.2)</td>
+</tr>
+<tr>
+<td>New page or new state to cover</td>
+<td>New scenario; a screenshot alone does not prove interactions or runtime health</td>
+</tr>
+<tr>
+<td>Component identity (<code>uiId</code>, <code>testId</code>, roles)</td>
+<td>Re-check constraints whose scope or grouping relied on it; a zero-match constraint fails as invalid rather than passing</td>
+</tr>
+<tr>
+<td>Browser channel, viewport, device scale, or stabilization</td>
+<td>Re-measure the noise floor (8.3); the old tolerance no longer describes this capture</td>
+</tr>
+<tr>
+<td>Policy strictness</td>
+<td>Re-read the metrics before tightening a gate</td>
+</tr>
+</tbody></table>
+<h3>Periodically</h3>
+<p>Re-run the noise measurement even when nothing changed. Capture determinism
+drifts with browser updates and page content, and a tolerance derived months ago
+silently stops describing the current capture.</p>
+<p>Re-run <code>design:audit</code> to catch token-layer drift that no gate covers yet, such
+as scales the stylesheet still does not declare.</p>
+<h2>Programmatic integration</h2>
+<p>The root entry point exports contracts, orchestration helpers, initialization, doctor checks, and local storage. Because no package distribution is configured, there is no supported registry install command. Separately authorized source-checkout tools may use the built entry point, but must not import <code>src/*</code> internals or claim compatibility beyond the exact source snapshot they pin.</p>
+<p>When a package distribution channel is introduced, integration documentation must be updated together with package exports, lockfile pinning, clean-install tests, licensing, and release policy. Until then, separately authorized local checkout invocation is the only workflow described here.</p>
+
+      </section>
+<section id="limitations" class="document">
+        <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
+        <h1>Current Limitations</h1>
+<p>UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.</p>
+<p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
+<h2>Support matrix</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Current status</th>
+<th>Consequence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Platform</td>
+<td>Web only.</td>
+<td>iOS/Android types are forward contracts; there is no app driver.</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>Playwright Chromium, with an optional installed Chrome channel.</td>
+<td>WebKit, Firefox, cross-OS renderer profiles, and device farms are not supported.</td>
+</tr>
+<tr>
+<td>Page model</td>
+<td>Exactly one declared browser page.</td>
+<td>Any popup/additional page fails capture closed, including same-origin popups.</td>
+</tr>
+<tr>
+<td>Core evaluation</td>
+<td>Execution, interaction, and runtime deterministic gates.</td>
+<td>All three evaluators and independent hard gates are mandatory.</td>
+</tr>
+<tr>
+<td>Visual</td>
+<td>Same-size PNG raw changed-pixel comparison.</td>
+<td>A difference is <code>needs-review</code>; no calibrated pass/fail threshold exists.</td>
+</tr>
+<tr>
+<td>Design</td>
+<td>Token sets only, sealed inside the geometry evaluator config.</td>
+<td>No online design sync, pinned design revision, <code>DesignContract</code> loading path, or design-node to runtime-node mapping. A token set is bound by policy, not by a design revision.</td>
+</tr>
+<tr>
+<td>Geometry/typography</td>
+<td>Constraint evaluation over structured web evidence, when a policy registers <code>geometry@0.1.0</code>.</td>
+<td>Runs only from DOM/CSSOM evidence and never from raster pixels. Tolerances are policy inputs and are not calibrated against a labeled corpus, so a passing geometry gate is not a calibrated score. Padding, margin, and gap are not captured, so spacing is only observable through box rectangles. <code>box.overflowRight</code> measures a node against its containing element but does not inspect that element&#39;s clipping or scrolling behavior, so an intentional horizontal scroll container can be reported as a violation.</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td>Evidence capability is declared in shared contracts, but no current evaluator/gate is implemented.</td>
+<td>Do not claim an accessibility result.</td>
+</tr>
+<tr>
+<td>Repeatability</td>
+<td>One attempt.</td>
+<td>No flake agreement or multi-attempt gate is executed.</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Local filesystem CAS and run store.</td>
+<td>No shared service, encryption at rest, RBAC, or managed retention.</td>
+</tr>
+<tr>
+<td>Governance</td>
+<td>Raw report only.</td>
+<td>No baseline promotion, waiver, reviewer role, or append-only decision ledger.</td>
+</tr>
+<tr>
+<td>Agents</td>
+<td>None.</td>
+<td>No MCP, fix task, protected patch workspace, mutation enforcement, or auto-rerun loop.</td>
+</tr>
+<tr>
+<td>Service surface</td>
+<td>CLI and local programmatic API.</td>
+<td>No hosted API, queue, web console, or multi-tenant control plane.</td>
+</tr>
+<tr>
+<td>Distribution</td>
+<td>Public source repository; private, unpublished package.</td>
+<td>Source visibility is not an open-source license, registry distribution, or compatibility/support promise.</td>
+</tr>
+</tbody></table>
+<h2>Visual truthfulness</h2>
+<p>A local reference:</p>
+<ul>
+<li>must be project-relative and resolve to a regular non-symlink file;</li>
+<li>requires exactly one screenshot checkpoint;</li>
+<li>must have the same dimensions as the candidate screenshot;</li>
+<li>is bound to the selected checkpoint and candidate artifact digest;</li>
+<li>is marked <code>local-unprotected</code>.</li>
+</ul>
+<p>Equal pixels can support a pass only when all required execution, interaction, runtime, and evidence gates also pass. Changed pixels require review. Corrupt, ambiguous, missing, escaped, or mismatched evidence is inconclusive.</p>
+<p>There is no current support for calibrated tolerances, approved masks, dynamic-region governance, perceptual scoring, responsive metamorphic rules, or protected baselines.</p>
+<h2>Declared but non-executable scenario state</h2>
+<p>The authoring and shared contract schemas reserve fields for future providers. The current runtime fails closed rather than ignoring requested state:</p>
+<ul>
+<li><code>auth.secretRefs</code>;</li>
+<li>static, seed-script, and remote fixture providers (<code>mock-server</code> fixtures and
+fixture sets containing only that provider are executable);</li>
+<li>feature-flag sets;</li>
+<li>network profiles;</li>
+<li>native-app targets and steps.</li>
+</ul>
+<p>Playwright storage state is supported under the exact-origin restrictions in the <a href="security-model.md">Security model</a>. There is no runtime secret injection provider.</p>
+<h2>Policy restrictions</h2>
+<p>The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:</p>
+<ul>
+<li>missing or optionalized execution/interaction/runtime core evaluators;</li>
+<li>missing independent core hard gates;</li>
+<li>required unknown evaluators or versions;</li>
+<li>a policy with zero gates;</li>
+<li>repeatability above one attempt;</li>
+<li>non-empty tolerances or dynamic regions;</li>
+<li>non-zero evaluator weights.</li>
+</ul>
+<p>Optional unsupported evaluators remain visible as skipped. They do not contribute coverage or provenance as though they ran.</p>
+<p><code>agentMutation</code> fields can be preserved in policy contracts, but no agent or patch validator currently enforces them. They are not a security boundary.</p>
+<h2>Evidence and privacy limits</h2>
+<p>UI Eval bounds and redacts structured evidence, but:</p>
+<ul>
+<li>redaction is pattern- and marker-based, not general DLP;</li>
+<li>screenshots can contain private information;</li>
+<li>ordinary text that does not match a credential pattern may remain in bounded payloads;</li>
+<li>candidate/reference PNGs have encoded-byte, dimension, and pixel-area
+ceilings, and trace files have an encoded-byte ceiling; exceeding a required
+limit is infrastructure/inconclusive rather than pass;</li>
+<li>browser rendering and trace recording may consume resources before their
+final artifacts can be inspected, and repeated runs have no global disk or
+retention quota;</li>
+<li>local CAS bytes are not encrypted;</li>
+<li>a process with filesystem access can read CAS data;</li>
+<li>collection budgets mean retained arrays may omit observations, with drops/truncation reported separately;</li>
+<li>no centralized retention or deletion policy is enforced.</li>
+</ul>
+<p>Use synthetic accounts, deterministic scrubbed fixtures, ephemeral runners, and external access controls.</p>
+<h2>Network and process isolation limits</h2>
+<p>Candidate-origin checks and authenticated browser-context egress denial are browser-automation controls. They do not isolate:</p>
+<ul>
+<li>the candidate development server;</li>
+<li>install/build hooks;</li>
+<li>DNS or browser maintenance traffic outside the controlled context;</li>
+<li>other host processes;</li>
+<li>a malicious trusted <code>devServer.command</code> configuration.</li>
+</ul>
+<p>Authenticated scenarios that legitimately need third parties must use same-origin proxies or deterministic fixtures. The current runtime has no third-party allowlist.</p>
+<p>The mock fixture provider is intentionally not a general proxy. It binds only
+<code>127.0.0.1</code>, serves fixed bounded <code>GET</code>/<code>HEAD</code> responses, forbids redirects,
+never forwards traffic, and requires the candidate to already target its fixed
+port. It does not inject environment variables, match request bodies, generate
+dynamic responses, or isolate the candidate process from other host network
+access. Other local processes can reach the loopback listener while it is
+running; authoritative CI still needs OS/container isolation.</p>
+<p>CI that requires a real security boundary must add least-privilege containers, network policy, filesystem isolation, and short-lived credentials.</p>
+<h2>Determinism limits</h2>
+<p>UI Eval fixes or records viewport, DPR, locale, timezone, browser/driver, OS/architecture, and font identity. It applies the largest declared checkpoint timeout to browser actions, navigation, and origin-guard response preflights, and waits for configured font, image, application-readiness, and stable-frame signals within the checkpoint timeout. It cannot make arbitrary applications deterministic, and authoritative runners still need an outer job deadline for browser or operating-system failure modes.</p>
+<p>Normal context shutdown waits for installed HTTP route handlers to drain. Abort
+cleanup instead removes routes with close-race errors ignored so cancellation
+does not manufacture an unhandled response-disposal failure.</p>
+<p>Potential sources of variation remain:</p>
+<ul>
+<li>remote data and assets not fixture-backed;</li>
+<li>system font differences;</li>
+<li>GPU/rasterizer/OS/browser changes;</li>
+<li>animation or timers outside the stabilization strategy;</li>
+<li>long polling and application-specific readiness;</li>
+<li>non-deterministic server state;</li>
+<li>use of real clock mode;</li>
+<li>browser-channel drift.</li>
+</ul>
+<p>There is no cross-run capture cache and no repeatability gate. Compare runs only when their environment provenance is compatible.</p>
+<h2>Failure/report limits</h2>
+<p>Preflight configuration, compilation, source-identity, and evaluator-registration failures occur before a sealed run and therefore return a structured CLI error without <code>report.json</code>.</p>
+<p>After planning, the orchestrator attempts to write an infrastructure/inconclusive report when server, capture, evidence, or storage work fails and the run store is still writable. Final <code>report.json</code> and <code>report.html</code> publication occurs only after owned candidate and fixture cleanup succeeds. Cleanup failure may leave bounded intermediate run artifacts for diagnosis, but no finalized report. A completely unwritable run store cannot promise a report.</p>
+<p>The static HTML view is convenience output. It does not contain every sensitive artifact and cannot replace <code>report.json</code> or authorized CAS inspection.</p>
+<h2>Contract maturity</h2>
+<p>The wire family is currently alpha. Generated schemas, TypeScript types, validators, CLI semantics, and documentation must move together, but this public source repository has no released package compatibility history.</p>
+<p>Forward contracts such as <code>DesignContract</code>, <code>ScenarioManifest</code>, and app unions may change before their runtime paths exist. Consumers must not infer a support promise from their presence.</p>
+<h2>What not to claim</h2>
+<p>Do not describe the current implementation as:</p>
+<ul>
+<li>design-to-code validation;</li>
+<li>authoritative visual regression testing;</li>
+<li>a Figma evaluator;</li>
+<li>accessibility certification;</li>
+<li>a secure browser or operating-system sandbox;</li>
+<li>a DLP system;</li>
+<li>a protected holdout evaluator;</li>
+<li>an autonomous fixing agent;</li>
+<li>a shared team platform or SaaS;</li>
+<li>native mobile support;</li>
+<li>an open-source project;</li>
+<li>a publicly released package or supported software.</li>
+</ul>
+<p>Planned increments and their evidence gates are listed in the <a href="roadmap.md">Roadmap</a>.</p>
+
+      </section>
+<section id="development" class="document">
+        <div class="source"><span>Development</span><code>docs/development.md</code></div>
+        <h1>Development</h1>
+<p>UI Eval is a public-source TypeScript ESM project built as a single modular monolith. The package remains private and unpublished. Bun manages the workspace; the built runtime targets Node.js 20 or newer.</p>
+<p>This guide describes how to change the repository. It does not imply that any command has passed on a particular revision; run the required checks against the source you intend to review.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>Node.js satisfying <code>package.json#engines</code>.</li>
+<li>Bun matching <code>package.json#packageManager</code>.</li>
+<li>Git.</li>
+<li>Playwright Chromium for real-browser conformance tests.</li>
+</ul>
+<p>Install dependencies without rewriting the lockfile:</p>
+<pre><code class="language-bash">bun install --frozen-lockfile
+</code></pre>
+<p>Install the browser only when capture development or conformance tests require it:</p>
+<pre><code class="language-bash">bunx playwright install chromium
+</code></pre>
+<p>On Linux CI, Playwright may require its documented system dependencies in addition to the browser binary.</p>
+<h2>Source layout</h2>
+<pre><code class="language-text">src/
+  contracts/             schemas, types, canonical JSON, validators
+  project/               authoring loaders and containment
+  manifest-compiler/     scenario/policy materialization
+  capture-playwright/    browser adapter and evidence collection
+  evaluators/            implemented evaluator registry
+  policy-engine/         deterministic gate AST
+  orchestrator/          pipeline, identity, server, cross-binding
+  storage-local/         CAS and run store
+  report-html/           static report view
+  cli/                   commands, output, exits, signals
+  index.ts               supported programmatic exports
+schemas/                 generated JSON Schema artifacts
+docs/                    Markdown source documentation
+</code></pre>
+<p>Keep internal dependencies directed toward contracts and narrow interfaces. Do not import candidate-application code, candidate aliases, fixtures, routes, environment variables, or framework-specific modules into the engine.</p>
+<h2>Common commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bun run ui-eval --help</code></td>
+<td>Run the source CLI through Bun.</td>
+</tr>
+<tr>
+<td><code>bun run design:check --css &lt;path&gt; --config &lt;path&gt;</code></td>
+<td>Fail closed when Tailwind-produced token facts drift from a sealed geometry config; does not rewrite either input.</td>
+</tr>
+<tr>
+<td><code>bun run test</code></td>
+<td>Run unit/contract tests; excludes <code>*.capture.ts</code>.</td>
+</tr>
+<tr>
+<td><code>bun run test:capture</code></td>
+<td>Run the opt-in real-browser conformance suite.</td>
+</tr>
+<tr>
+<td><code>bun run schema:generate</code></td>
+<td>Regenerate checked-in JSON schemas from TypeBox sources.</td>
+</tr>
+<tr>
+<td><code>bun run schema:check</code></td>
+<td>Verify generated-schema expectations.</td>
+</tr>
+<tr>
+<td><code>bun run lint</code></td>
+<td>Run ESLint.</td>
+</tr>
+<tr>
+<td><code>bun run typecheck</code></td>
+<td>Run TypeScript without emitting files.</td>
+</tr>
+<tr>
+<td><code>bun run build</code></td>
+<td>Build ESM library and CLI artifacts with tsup.</td>
+</tr>
+<tr>
+<td><code>bun run check</code></td>
+<td>Check schemas and generated docs, run unit tests, lint and typecheck, build, and verify the direct and symlinked dist CLI.</td>
+</tr>
+</tbody></table>
+<p><code>bun run check</code> does not replace the real-browser suite. Changes to capture, browser routing, stabilization, auth state, evidence collection, or lifecycle require <code>bun run test:capture</code> as an additional gate.</p>
+<h2>Change workflow</h2>
+<ol>
+<li>Inspect the affected module, its tests, public contract, and related docs.</li>
+<li>State the intended behavior and truthfulness boundary before editing.</li>
+<li>Add or update a failing focused test.</li>
+<li>Make the smallest coherent implementation change.</li>
+<li>Run focused tests while iterating.</li>
+<li>Run the verification ladder appropriate to the risk.</li>
+<li>Scan every surface that repeats the changed fact: schema, types, validators, CLI help, examples, docs, changelog, report renderer, and policy defaults.</li>
+</ol>
+<p>Generated files must be regenerated by their owning script, not edited by hand.</p>
+<h2>Contract changes</h2>
+<p>Public contract work has a higher bar because a structural pass can still be semantically unsafe.</p>
+<p>For every contract change:</p>
+<ul>
+<li>update the TypeBox authoring source;</li>
+<li>derive types rather than creating duplicate interfaces;</li>
+<li>regenerate <code>schemas/*.schema.json</code>;</li>
+<li>update structural and semantic validators;</li>
+<li>add valid, malformed, digest-mismatch, and round-trip tests;</li>
+<li>test every compiler/adapter/evaluator/report consumer;</li>
+<li>decide whether the change is additive or breaking for <code>uieval.io/v1alpha1</code>;</li>
+<li>document migration and changelog impact;</li>
+<li>keep examples schema-valid in CI once executable examples exist.</li>
+</ul>
+<p>Canonical digest exclusions must use a named contract profile. Do not add a broad global exclusion to make a failing digest test pass.</p>
+<h2>Capture and security changes</h2>
+<p>Browser behavior is security-sensitive. A change to routing, redirects, popups, auth storage state, service workers, egress, assertion serialization, evidence budgets, or context shutdown requires:</p>
+<ul>
+<li>pure classification/contract tests where possible;</li>
+<li>a real Chromium case for browser-observable behavior;</li>
+<li>a negative case proving the external destination or unsafe data is not requested/persisted;</li>
+<li>capture-status monotonicity checks;</li>
+<li>updates to <a href="security-model.md">Security model</a> and <a href="limitations.md">Current limitations</a>.</li>
+</ul>
+<p>Do not weaken a boundary merely to make a third-party-dependent scenario pass. Add a same-origin proxy or deterministic fixture, or keep the result inconclusive.</p>
+<h2>Storage changes</h2>
+<p>Local storage is project/store scoped. Test:</p>
+<ul>
+<li>atomic writes and concurrent puts;</li>
+<li>lexical and real-path containment;</li>
+<li>symlink, non-regular file, and corruption cases;</li>
+<li>size and digest verification;</li>
+<li>scope mismatch;</li>
+<li>monotonic per-digest sensitivity;</li>
+<li>conservative behavior for metadata-less objects;</li>
+<li>namespace isolation across storage-format versions.</li>
+</ul>
+<p>Changing a storage invariant requires a new store ID or an explicit migration tool. Never make the normal read path guess how to upgrade old bytes.</p>
+<h2>Report and CLI changes</h2>
+<p>Machine interfaces must remain deterministic:</p>
+<ul>
+<li>JSON mode writes one JSON value to stdout and progress to stderr;</li>
+<li>candidate raw stderr stays withheld;</li>
+<li>exit codes preserve product/infra/review distinctions;</li>
+<li>HTML escapes untrusted strings and uses local relative links;</li>
+<li>report provenance lists only evaluators actually executed;</li>
+<li>pre-plan failures do not pretend a sealed run exists;</li>
+<li>post-plan failures attempt a truthful report when storage permits;</li>
+<li>cancellation retains <code>130</code>/<code>143</code> semantics and cleans only owned processes.</li>
+</ul>
+<p>Use golden tests for CLI output and cross-contract tests for report changes. Never use HTML as an alternate source of result semantics.</p>
+<h2>Fixtures and test data</h2>
+<p>All fixtures must be synthetic and minimal. Do not add:</p>
+<ul>
+<li>real cookies, tokens, API keys, or storage state;</li>
+<li>customer or employee data;</li>
+<li>production URLs or internal repository credentials;</li>
+<li>unredacted browser traces from a real account;</li>
+<li>candidate-specific business content in generic engine tests.</li>
+</ul>
+<p>Security fixtures should demonstrate the smallest hostile condition needed for the test.</p>
+<h2>Documentation rules</h2>
+<ul>
+<li>Markdown is the canonical documentation source.</li>
+<li>Do not hand-copy full schema definitions into prose.</li>
+<li>Label current, forward-contract, and planned behavior explicitly.</li>
+<li>Do not claim tests passed without running them on the stated revision.</li>
+<li>Do not claim package publication, support, or licensing beyond the configured public source repository and <code>UNLICENSED</code> status.</li>
+<li>Update <code>CHANGELOG.md</code> under <code>Unreleased</code> for user-visible behavior.</li>
+<li>If a generated HTML reading view is retained, regenerate it from its Markdown source and verify its source digest; never edit it independently.</li>
+</ul>
+<h2>Verification ladder</h2>
+<p>Choose the smallest sufficient start, then finish with the gates for the affected surface.</p>
+<h3>Documentation-only</h3>
+<pre><code class="language-bash">bun run lint
+bun run typecheck
+</code></pre>
+<p>Also check local Markdown links, capability wording, and forbidden project-specific content. If documentation sync tests exist, run them explicitly.</p>
+<h3>Contracts, compiler, evaluator, policy, storage, report, or CLI</h3>
+<pre><code class="language-bash">bun run schema:check
+bun run test
+bun run lint
+bun run typecheck
+bun run build
+</code></pre>
+<p><code>bun run check</code> is the shorthand for this non-browser set.</p>
+<h3>Browser/capture/lifecycle</h3>
+<p>Run the non-browser set and:</p>
+<pre><code class="language-bash">bun run test:capture
+</code></pre>
+<p>When a change affects actual candidate orchestration, also run <code>doctor</code> and an end-to-end scenario against a synthetic project fixture. Record exact commands and outcomes in the review, not in timeless architecture prose.</p>
+<h3>Packaging readiness</h3>
+<p>Before any package-distribution decision, inspect the built tarball shape from a clean state and install that artifact into a clean synthetic consumer. The public source repository is not a package publication channel, so this remains a readiness check rather than a publish instruction.</p>
+<h2>Review checklist</h2>
+<ul>
+<li><input disabled="" type="checkbox"> Current behavior, schema, tests, docs, and changelog agree.</li>
+<li><input disabled="" type="checkbox"> Required evidence cannot become pass when missing or corrupt.</li>
+<li><input disabled="" type="checkbox"> Product, infrastructure, and advisory failures remain distinct.</li>
+<li><input disabled="" type="checkbox"> No candidate-specific source, fixture, path, route, port, or secret entered the engine.</li>
+<li><input disabled="" type="checkbox"> No new arbitrary code execution path was introduced.</li>
+<li><input disabled="" type="checkbox"> Sensitive evidence cannot acquire a weaker alias or metadata label.</li>
+<li><input disabled="" type="checkbox"> Browser and process cleanup remain bounded and ownership-safe.</li>
+<li><input disabled="" type="checkbox"> Forward-looking types are not documented as implemented runtime support.</li>
+<li><input disabled="" type="checkbox"> Verification commands were run and their actual outcomes reported.</li>
+</ul>
+
+      </section>
+<section id="release" class="document">
+        <div class="source"><span>Release</span><code>docs/release.md</code></div>
+        <h1>Release Process</h1>
+<p>UI Eval&#39;s source repository is public at <code>https://github.com/zw-befreed/ui-eval</code>. The package remains private and <code>UNLICENSED</code>; no registry publication, release artifact, signing, provenance, or support policy is established.</p>
+<p>Accordingly, this document defines a package release-readiness gate and the decisions required before any future artifact distribution. Public source hosting is not authorization to publish a package or release.</p>
+<h2>Current distribution status</h2>
+<ul>
+<li><code>package.json</code> is private.</li>
+<li>The license is <code>UNLICENSED</code>.</li>
+<li>The public source remote is <code>https://github.com/zw-befreed/ui-eval</code>.</li>
+<li>No public registry package or download URL is documented.</li>
+<li>No release-tagging or immutable-artifact convention is configured.</li>
+<li>GitHub Private Vulnerability Reporting is enabled for security intake.</li>
+<li><code>CHANGELOG.md</code> contains only unreleased work.</li>
+<li>Separately authorized local checkout execution is the current integration path.</li>
+</ul>
+<p>Do not remove <code>private</code>, change the license, create a tag/release artifact, or run a publish command without explicit owner approval covering intellectual property, audience, destination, and support obligations.</p>
+<h2>Version model</h2>
+<p>When releases are authorized, keep these version dimensions independent:</p>
+<ul>
+<li>package SemVer for executable and programmatic API compatibility;</li>
+<li><code>uieval.io/v1alpha1</code> for the current wire family;</li>
+<li>evidence payload versions for channel-specific JSON;</li>
+<li>evaluator semantic versions for rule behavior;</li>
+<li>adapter/orchestrator versions for provenance;</li>
+<li>local CAS store ID for on-disk format invariants.</li>
+</ul>
+<p>A package patch must not silently change report disposition, exit-code meaning, evaluator semantics, accepted/rejected contract shape, or storage interpretation. Breaking wire changes need a new wire version and migration guide. Storage invariant changes need a new namespace or explicit migration tool.</p>
+<h2>Required decisions before first distribution</h2>
+<p>The repository owner must explicitly decide and record:</p>
+<ol>
+<li><strong>License and ownership</strong> — proprietary distribution or an approved open-source license; dependency obligations and notices.</li>
+<li><strong>Package identity</strong> — final registry name/scope and ownership. Do not assume the private working name is available.</li>
+<li><strong>Release authority</strong> — protected branch/tag policy and authorized releasers for the configured GitHub remote.</li>
+<li><strong>Supported environments</strong> — Node, Bun for development, operating systems, browser channels, and support window.</li>
+<li><strong>Artifact policy</strong> — whether schemas, source maps, browser dependencies, notices, and changelogs ship.</li>
+<li><strong>Security intake</strong> — private reporting channel and supported-version policy.</li>
+<li><strong>Provenance</strong> — trusted publishing/signing, immutable tags, checksums, and build environment.</li>
+<li><strong>Compatibility policy</strong> — how long old authoring inputs and reports remain readable.</li>
+</ol>
+<p>Until all decisions are complete, source visibility remains public while package and release-artifact distribution remain disabled.</p>
+<h2>Release candidate gates</h2>
+<p>Run every gate from a clean source snapshot. Record actual commands, environment, and outcomes in the release review; do not copy transient test counts into architecture docs.</p>
+<h3>Source and dependency gate</h3>
+<ul>
+<li>The working tree contains only intended changes.</li>
+<li>Lockfile and declared dependencies agree.</li>
+<li>No candidate-specific fixtures, secrets, reports, screenshots, CAS bytes, or internal URLs are present.</li>
+<li>Dependency license/security review is complete for the intended distribution model.</li>
+</ul>
+<h3>Contract gate</h3>
+<pre><code class="language-bash">bun run schema:check
+bun run test
+</code></pre>
+<p>Additionally:</p>
+<ul>
+<li>generated schemas match TypeBox sources;</li>
+<li>all schema examples and compatibility fixtures validate;</li>
+<li>digest and cross-object validators cover changed invariants;</li>
+<li>additive/breaking classification is documented;</li>
+<li>wire/evidence/evaluator/store version changes are explicit;</li>
+<li>old sanitized reports and inputs required by the support policy remain readable.</li>
+</ul>
+<h3>Static quality gate</h3>
+<pre><code class="language-bash">bun run lint
+bun run typecheck
+bun run build
+</code></pre>
+<p>The build must produce the documented library and CLI entries without relying on source-only paths or undeclared files.</p>
+<h3>Browser conformance gate</h3>
+<pre><code class="language-bash">bunx playwright install chromium
+bun run test:capture
+</code></pre>
+<p>Run this gate on each authoritative environment declared by the future support policy. Browser tests must cover origin escape, popup handling, auth containment, evidence bounds/redaction, capture status, and cooperative cleanup when those areas changed.</p>
+<h3>End-to-end gate</h3>
+<p>Use a synthetic independent web project, not a business application fixture, to verify:</p>
+<ul>
+<li><code>init</code> is non-destructive;</li>
+<li><code>doctor</code> distinguishes owned, reusable, and occupied servers;</li>
+<li>source identity seals a clean and dirty Git state truthfully;</li>
+<li><code>evaluate</code> produces validated JSON/HTML and expected exit codes;</li>
+<li>local reference equal/change/corrupt/dimension cases behave truthfully;</li>
+<li>sensitive evidence remains CAS-only;</li>
+<li>a packaged artifact can be installed and executed from a clean consumer without repository-relative source assumptions.</li>
+</ul>
+<h3>Package-content gate</h3>
+<p>Inspect the exact archive that would be distributed. It should contain only intended runtime output, schemas, and approved documentation. Verify:</p>
+<ul>
+<li>CLI shebang and executable mapping;</li>
+<li>ESM and type-declaration exports;</li>
+<li>schema subpath exports;</li>
+<li>no source secrets or generated <code>.ui-eval/</code> data;</li>
+<li>license/notice files consistent with the approved model;</li>
+<li>no dependency on files excluded from the archive.</li>
+</ul>
+<p>An archive dry run is not enough: install the produced archive into a clean synthetic consumer and run its CLI and programmatic smoke tests.</p>
+<h2>Changelog discipline</h2>
+<p>User-visible changes begin under <code>CHANGELOG.md#Unreleased</code> in one of these categories:</p>
+<ul>
+<li>Added;</li>
+<li>Changed;</li>
+<li>Fixed;</li>
+<li>Security;</li>
+<li>Deprecated;</li>
+<li>Removed.</li>
+</ul>
+<p>At an authorized release, move only verified entries into the released section. Every entry should explain impact, not implementation trivia. Contract, evaluator, storage, exit-code, evidence privacy, and migration changes must be called out explicitly.</p>
+<p>Do not mark a version released until the immutable artifact and its provenance exist at the approved destination.</p>
+<h2>Proposed release sequence</h2>
+<p>After release authority and tooling exist:</p>
+<ol>
+<li>Freeze the intended source revision.</li>
+<li>Complete all gates above.</li>
+<li>Review generated schema/package diffs and changelog.</li>
+<li>Build in the approved trusted environment.</li>
+<li>Sign/attest the exact artifact if required by policy.</li>
+<li>Publish to the approved destination using least-privilege credentials.</li>
+<li>Verify clean installation from that destination.</li>
+<li>Create the immutable source tag/release record.</li>
+<li>Announce supported environments, known limitations, and migration actions.</li>
+</ol>
+<p>The concrete commands for steps 5–8 must be added only after a destination and toolchain are configured. This document intentionally does not invent them.</p>
+<h2>Failure and rollback</h2>
+<p>If a candidate fails any gate, fix it and rebuild from a new clean snapshot. Do not mutate or overwrite an artifact already distributed.</p>
+<p>For a defective future release:</p>
+<ul>
+<li>stop promoting the affected version;</li>
+<li>publish a corrected new version rather than replacing bytes;</li>
+<li>document impact and workaround;</li>
+<li>rotate any exposed credentials;</li>
+<li>follow the coordinated process in <a href="../SECURITY.md">SECURITY.md</a> for vulnerabilities;</li>
+<li>preserve enough provenance to explain which contract/evaluator/store behavior was affected.</li>
+</ul>
+<h2>First-release definition of done</h2>
+<p>The first distribution is not ready until:</p>
+<ul>
+<li>licensing and ownership are explicit;</li>
+<li>package identity and releaser authority are configured;</li>
+<li>clean-install and independent-consumer tests exist;</li>
+<li>schema, CLI, adapter, report, and storage compatibility gates are green on declared environments;</li>
+<li>security intake is operational;</li>
+<li>README integration instructions use the real distribution channel;</li>
+<li>no statement confuses public source visibility with package publication, licensing, or support.</li>
+</ul>
+
+      </section>
+<section id="roadmap" class="document">
+        <div class="source"><span>Roadmap</span><code>docs/roadmap.md</code></div>
+        <h1>Roadmap</h1>
+<p>UI Eval&#39;s roadmap is capability-gated, not date-driven. Each increment must preserve the core truthfulness rule: missing capability or evidence is unknown/inconclusive, never an implicit pass.</p>
+<p>The current implementation and its non-capabilities are documented in <a href="architecture.md">Architecture</a> and <a href="limitations.md">Current limitations</a>. Items below are proposals, not commitments or shipped features.</p>
+<h2>Guiding sequence</h2>
+<pre><code class="language-text">stabilize standalone contracts and capture
+                │
+                v
+prove reuse in an independent synthetic/consumer project
+                │
+                v
+add structured design evidence and calibrated evaluators
+                │
+                v
+add shared governance and CI workflows
+                │
+                v
+add constrained agent and native-app integrations
+                │
+                v
+consider a hosted multi-project platform
+</code></pre>
+<h2>Milestone 1: Standalone hardening</h2>
+<p>Goal: make the current public-source modular monolith self-contained and independently verifiable without implying package publication or open-source licensing.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>remove repository-relative assumptions inherited from earlier embedding;</li>
+<li>provide a synthetic framework-neutral example project;</li>
+<li>validate <code>init</code>, <code>doctor</code>, and <code>evaluate</code> outside the engine repository;</li>
+<li>add clean-package/install smoke tests;</li>
+<li>keep JSON schemas, derived types, validators, CLI help, and docs synchronized;</li>
+<li>define sanitized compatibility corpora for authoring inputs and reports;</li>
+<li>exercise real-browser origin/auth/popup/redaction/lifecycle cases in CI;</li>
+<li>decide license, package identity, package distribution, and support model;</li>
+<li>establish protected branch/tag policy and release authority for the public remote.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>an independent project runs without copying engine source;</li>
+<li>no engine module imports candidate application code, aliases, fixtures, or environment variables;</li>
+<li>authoring files survive migration unchanged or through a documented explicit migration;</li>
+<li>old sanitized reports remain explainable under the declared compatibility policy;</li>
+<li>package contents work from a clean installation artifact;</li>
+<li>security and release policies reflect an operational, not hypothetical, channel.</li>
+</ul>
+<h2>Milestone 2: Structured design evaluation</h2>
+<p>Goal: evaluate selected design dimensions only when authoritative structured design evidence exists.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>pinned immutable design snapshots;</li>
+<li>design source adapter separated from gate-time execution;</li>
+<li>structured node tree, layout, style, typography, token, and asset capabilities;</li>
+<li>explicit design-target to scenario-checkpoint binding;</li>
+<li>deterministic design/runtime element mapping with confidence;</li>
+<li>geometry and typography evaluators backed by required capabilities;</li>
+<li>calibrated visual evaluator and a manually labeled Gold Corpus;</li>
+<li>desktop/mobile profiles selected from actual design targets.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>design revisions and artifacts are content-addressed and reproducible offline;</li>
+<li>geometry/typography never run from raster evidence alone;</li>
+<li>injected layout, typography, content, and runtime defects are detected against a labeled corpus;</li>
+<li>critical false-pass observations and sample size are reported;</li>
+<li>repeated captures meet a predeclared stability target;</li>
+<li>thresholds are versioned policy, not hard-coded folklore.</li>
+</ul>
+<h2>Milestone 3: Shared Web governance</h2>
+<p>Goal: support team CI without allowing mutable baselines or policy to hide raw evidence.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>project-scoped shared CAS with short-lived credentials;</li>
+<li>Design/Baseline/Candidate comparisons;</li>
+<li>append-only baseline and waiver decisions;</li>
+<li>reviewer authorization and compare-and-swap baseline promotion;</li>
+<li>Git provider check summaries and controlled artifact retention;</li>
+<li>impact-based scenario selection plus critical smoke suites;</li>
+<li>repeatability and flake reporting;</li>
+<li>protected policy/scenario/fixture materialization outside writable candidate workspaces.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>raw reports remain immutable while effective disposition names its ledger revision;</li>
+<li>baseline/waiver updates require an independent reviewer and audit reason;</li>
+<li>project/artifact authorization prevents cross-project reads;</li>
+<li>CI cannot turn invalid evidence into green;</li>
+<li>impact selection expands conservatively when mapping is incomplete;</li>
+<li>retention and deletion leave auditable records.</li>
+</ul>
+<h2>Milestone 4: Constrained repair integration</h2>
+<p>Goal: let an external coding agent consume findings and verify scoped changes without owning evaluation truth.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>stable CLI/API or MCP read/run/report interface;</li>
+<li>server-generated fix tasks from immutable findings;</li>
+<li>path/file/line/iteration budgets enforced outside prompts;</li>
+<li>separate writable patch workspace and read-only policy/design/holdout material;</li>
+<li>affected-scenario selection and automatic rerun;</li>
+<li>patch audit for skips, masks, screenshot replacement, hard-coded viewport hacks, and test weakening;</li>
+<li>attempt provenance, cost, score delta, plateau, and stop conditions;</li>
+<li>withheld/holdout validation only where read isolation is real.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>the agent cannot change evaluator, policy, required scenario, baseline, waiver, or historical run truth;</li>
+<li>an invalid or out-of-scope patch is rejected before verification;</li>
+<li>holdout details remain unavailable and attempts are rate/budget limited;</li>
+<li>repairs improve predeclared quality metrics without increasing critical regressions;</li>
+<li>human review time and maintenance cost are measured against a baseline.</li>
+</ul>
+<h2>Milestone 5: Native-app adapters</h2>
+<p>Goal: reuse upper contracts and governance without pretending apps have DOM/CSSOM evidence.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>a validated Maestro capture adapter for a real target project;</li>
+<li>screenshot, accessibility/view hierarchy, interaction, crash/log, and device-environment evidence;</li>
+<li>normalized logical/physical units, pixel ratio, safe areas, orientation, keyboard, and system UI;</li>
+<li>optional project debug metadata for component/token/layout identity;</li>
+<li>platform-specific policy capability negotiation.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>app evidence absence produces unsupported/unknown by dimension;</li>
+<li>Web-specific structured rules do not run against insufficient app evidence;</li>
+<li>adapter conformance covers simulator/emulator lifecycle and artifact integrity;</li>
+<li>at least one real project proves the shared contract without schema forks.</li>
+</ul>
+<h2>Milestone 6: Hosted multi-project platform</h2>
+<p>Goal: consider service boundaries only after local and shared workflows prove their value.</p>
+<p>Candidate scope:</p>
+<ul>
+<li>control-plane database, object storage, job queue, cancellation, and audit events;</li>
+<li>isolated untrusted runners;</li>
+<li>project RBAC and reviewer/admin separation;</li>
+<li>review console and history/trend views;</li>
+<li>policy profiles and managed retention;</li>
+<li>bounded multi-agent coordination only for non-overlapping source ownership.</li>
+</ul>
+<p>Exit evidence:</p>
+<ul>
+<li>project isolation and threat model pass independent review;</li>
+<li>local/offline execution remains possible for sensitive projects;</li>
+<li>service cost and operational burden are justified by measured use;</li>
+<li>shared state does not create a second mutable source of contract truth;</li>
+<li>migration/export paths avoid vendor lock-in for raw reports and artifacts.</li>
+</ul>
+<h2>Deferred research</h2>
+<p>The following stay outside committed milestones until evidence justifies them:</p>
+<ul>
+<li>WebKit/Firefox and multiple authoritative OS renderer profiles;</li>
+<li>motion/video evaluation;</li>
+<li>Canvas, map, chart, WebGL, and complex dynamic-region evaluation;</li>
+<li>design-system token enforcement;</li>
+<li>calibrated VLM semantic judging;</li>
+<li>device farms and broad physical-device gates;</li>
+<li>hosted multi-tenant commercial packaging.</li>
+</ul>
+<p>VLM output, if explored, remains advisory until a fixed Gold Corpus demonstrates bounded error. It must not become the sole source of a formal pass.</p>
+<h2>Roadmap governance</h2>
+<p>Before moving an item into current architecture:</p>
+<ol>
+<li>define the contract and required capabilities;</li>
+<li>define failure, unknown, and infrastructure semantics;</li>
+<li>identify new trust boundaries and storage/retention impact;</li>
+<li>add conformance and negative tests;</li>
+<li>calibrate against independent labeled evidence where scoring is involved;</li>
+<li>update schemas, validators, CLI/API, reports, docs, and changelog together;</li>
+<li>remove the corresponding limitation only after verification.</li>
+</ol>
+<p>Roadmap prose is not an API promise. The current code, validated contracts, and release evidence determine what is supported.</p>
+
+      </section>
+<section id="adr-0001" class="document">
+        <div class="source"><span>ADR 0001: standalone modular monolith</span><code>docs/adr/0001-standalone-modular-monolith.md</code></div>
+        <h1>ADR 0001: Standalone Single-Package Modular Monolith</h1>
+<ul>
+<li>Status: Accepted</li>
+<li>Scope: Repository and runtime topology</li>
+</ul>
+<h2>Context</h2>
+<p>UI Eval needs stable boundaries between contracts, project loading, scenario compilation, browser capture, deterministic evaluation, policy gates, storage, reporting, and CLI behavior. It also needs to run locally against independent candidate repositories without importing their application code.</p>
+<p>Those boundaries do not currently require separately published packages, services, queues, databases, or deployment units. Splitting them prematurely would introduce version coordination, distribution, network failure, and operational complexity before the contract and evaluator semantics have a compatibility history.</p>
+<p>The source repository is public at <code>https://github.com/zw-befreed/ui-eval</code>, but it remains <code>UNLICENSED</code> and has no package publication configured. The current execution path is one local Node.js process plus the candidate server and Playwright browser processes it owns or controls.</p>
+<h2>Decision</h2>
+<p>Maintain UI Eval as a standalone, single-package TypeScript modular monolith.</p>
+<p>Logical components remain explicit source modules:</p>
+<pre><code class="language-text">contracts
+project loader
+manifest compiler
+capture-playwright
+evaluators
+policy engine
+orchestrator
+storage-local
+report-html
+CLI / public entry point
+</code></pre>
+<p>The CLI and root programmatic entry point are composition boundaries. Internal modules use relative imports and narrow interfaces. Candidate repositories own only their authoring inputs and generated <code>.ui-eval/</code> working data; they do not copy engine source.</p>
+<p>Current and forward-looking capabilities must remain separate. New adapters or service concepts enter the roadmap first and are not represented by empty packages or deployed components.</p>
+<h2>Dependency rules</h2>
+<ul>
+<li>Contract schemas/types/validation do not depend on capture, storage, reports, or a candidate application.</li>
+<li>Project loading and compilation produce sealed inputs; adapters do not reread floating authoring defaults during capture.</li>
+<li>Capture records evidence and execution facts; it does not make policy decisions.</li>
+<li>Evaluators consume immutable evidence; they do not drive browsers or mutate source.</li>
+<li>The policy engine evaluates restricted expressions; it does not execute arbitrary project code.</li>
+<li>The orchestrator coordinates modules and cross-binds results; the CLI stays thin.</li>
+<li>Storage implementations verify scope/integrity and do not redefine wire semantics.</li>
+<li>Report HTML is a projection of a validated machine report, never an alternate truth source.</li>
+<li>No engine module imports candidate code, aliases, fixtures, environment variables, routes, or business-specific paths.</li>
+</ul>
+<h2>Consequences</h2>
+<h3>Positive</h3>
+<ul>
+<li>One install/build/runtime boundary keeps local use and debugging simple.</li>
+<li>Contract and behavior changes can be validated atomically.</li>
+<li>Module seams remain available for future extraction after real reuse proves them.</li>
+<li>No service is required for sensitive local evaluation.</li>
+<li>Browser, storage, and report failures are easier to reason about in one orchestrated lifecycle.</li>
+</ul>
+<h3>Negative</h3>
+<ul>
+<li>Consumers cannot independently upgrade an adapter or evaluator package.</li>
+<li>The package carries browser, schema, image, and runtime dependencies together.</li>
+<li>Internal boundaries rely on code review and tests rather than separate package visibility.</li>
+<li>A single process contains multiple trust-boundary implementations, so strong OS isolation remains an operator responsibility.</li>
+</ul>
+<h3>Risks and mitigations</h3>
+<ul>
+<li><strong>Boundary erosion:</strong> enforce source-module ownership and dependency rules in review/tests.</li>
+<li><strong>Candidate coupling:</strong> reject candidate imports and prove integration against an independent synthetic project.</li>
+<li><strong>Documentation overclaim:</strong> keep current capability in architecture/limitations and proposals in roadmap.</li>
+<li><strong>Future extraction cost:</strong> use narrow interfaces, stable contracts, conformance tests, and avoid internal-path consumers.</li>
+</ul>
+<h2>Revisit triggers</h2>
+<p>Reconsider this decision only when evidence shows that a boundary needs independent ownership or deployment, for example:</p>
+<ul>
+<li>a second implementation of a capture/storage/evaluator interface needs an independent release cadence;</li>
+<li>browser dependencies materially harm ordinary consumer installation;</li>
+<li>untrusted runners require process or network isolation from a control plane;</li>
+<li>a shared team workflow requires queues, RBAC, durable decisions, and remote artifact storage;</li>
+<li>multiple real consumer projects prove a stable plugin API and compatibility matrix.</li>
+</ul>
+<p>Crossing a trigger does not automatically authorize a split. A follow-up ADR must define package/service ownership, dependency direction, versioning, migration, security boundary, and release tests.</p>
+<h2>Rejected alternatives</h2>
+<h3>Keep the engine embedded in each candidate repository</h3>
+<p>Rejected because copied contracts, evaluators, policies, and storage implementations drift and let application-specific assumptions become engine behavior.</p>
+<h3>Publish many packages immediately</h3>
+<p>Rejected because no package distribution or stable compatibility history exists, and independent package versions would multiply unsupported combinations. Public source hosting does not change that compatibility decision.</p>
+<h3>Build a hosted control plane first</h3>
+<p>Rejected because the current local pipeline does not require service infrastructure, and hosted execution would expand security, retention, RBAC, and operations before local value and reuse are proven.</p>
+<h3>Collapse all modules into the CLI file</h3>
+<p>Rejected because contracts, capture, evaluation, storage, and reporting have different responsibilities and test/security boundaries even when they share one package.</p>
+
+      </section>
+<section id="adr-0002" class="document">
+        <div class="source"><span>ADR 0002: design constraint contract</span><code>docs/adr/0002-design-constraint-contract.md</code></div>
+        <h1>ADR 0002: Platform-Neutral Design Constraint Contract</h1>
+<ul>
+<li>Status: Accepted</li>
+<li>Scope: Design contract shape, evidence normalization, geometry/typography evaluation inputs</li>
+<li>Implemented: the contract shape, the normalized property space, the web
+evidence normalizer, the five constraint kinds, a reference Tailwind producer,
+and a runnable <code>geometry@0.1.0</code> evaluator. Not implemented: binding a
+standalone <code>DesignContract</code> at gate time, design-node to runtime-node mapping,
+tolerance calibration against a labeled corpus, and any native adapter. The
+token set is therefore sealed inside the evaluator config rather than loaded
+from a pinned design revision; see docs/limitations.md.</li>
+</ul>
+<h2>Context</h2>
+<p>The current <code>DesignContractSpec</code> accepts exactly one capability, <code>rendered-image</code>, and one source kind, <code>image</code>. Geometry and typography are unsupported: <code>dom</code>, <code>computed-styles</code>, and <code>layout-metadata</code> are captured and stored, but every geometry-dimension record is counted as <code>unsupported</code> in coverage.</p>
+<p>Two forces now push against that shape.</p>
+<p><strong>Design sources vary per project.</strong> Candidate projects do not share a design origin. One project&#39;s authoritative values live in Figma variables; another&#39;s live in a Tailwind <code>@theme</code> block; another&#39;s live in a framework theme object that was hand-transcribed from a design file. A contract that encodes one origin&#39;s field names makes every other origin a schema fork.</p>
+<p><strong>Platforms vary per project.</strong> Web evidence is DOM plus CSSOM in CSS pixels. Native evidence is a view hierarchy in points or density-independent pixels. A contract that encodes CSS property names cannot describe a native target without pretending native apps have a CSSOM, which Milestone 5 explicitly forbids.</p>
+<p>The naive response — extract Figma values into a Figma-shaped contract and compare CSS strings against them — fails both forces at once, and additionally makes the engine depend on candidate application code, which ADR 0001 prohibits.</p>
+<p>There is also a weaker but more valuable class of check available today that needs no design source at all. Most implementation drift is not a transcription error against a known value; it is an ad-hoc value that belongs to no scale at all. Detecting &quot;this radius is not any radius in the system&quot; requires only a value set, and a value set can be produced from the candidate&#39;s own token layer. Treating a design file as a precondition for any geometry evaluation therefore blocks the majority of available signal on the minority case.</p>
+<h2>Decision</h2>
+<p>Separate three concerns that the current shape conflates: <strong>design facts</strong>, <strong>constraint form</strong>, and <strong>strictness</strong>. Each is owned by a different artifact, and no artifact may name another&#39;s vocabulary.</p>
+<pre><code class="language-text">DesignContract   facts       normalized token sets: value sets, scales, ranges, ratios
+EvaluationPolicy strictness  which constraints run, tolerance, severity, required-ness
+Engine           form        five constraint primitives, unaware of any design source or platform
+</code></pre>
+<p>The engine gains a normalized property space. Both sides — design facts and captured evidence — are translated into that space before any comparison happens. Comparison never sees a Figma field name, a CSS property string, or a platform unit.</p>
+<pre><code class="language-text">  Figma ────┐                                      ┌──── web (DOM + CSSOM)
+  Tailwind ─┼─→ design adapter ─┐      ┌─ evidence normalizer ─┼──── native (view hierarchy)
+  theme JSON┘                   ↓      ↑                       └──── (future adapters)
+                          ┌──────────────────────────┐
+                          │ normalized property space │
+                          └──────────────────────────┘
+                                       ↓
+                        geometry / typography evaluator
+                             (five constraint kinds)
+</code></pre>
+<h3>Normalized property space</h3>
+<p>The engine addresses properties by abstract name, never by platform property. Adapters own the mapping; the evaluator owns none of it.</p>
+<table>
+<thead>
+<tr>
+<th>Abstract property</th>
+<th>Web source</th>
+<th>Native source (Milestone 5)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>box.width</code>, <code>box.height</code>, <code>box.x</code>, <code>box.y</code></td>
+<td><code>layout</code> evidence <code>rect</code></td>
+<td>view frame</td>
+</tr>
+<tr>
+<td><code>box.radius</code></td>
+<td><code>computedStyle.borderRadius</code></td>
+<td>corner radius</td>
+</tr>
+<tr>
+<td><code>fill.color</code>, <code>text.color</code>, <code>stroke.color</code></td>
+<td><code>backgroundColor</code>, <code>color</code>, <code>borderColor</code></td>
+<td>view background, label color, border</td>
+</tr>
+<tr>
+<td><code>text.size</code>, <code>text.weight</code>, <code>text.lineHeight</code></td>
+<td><code>fontSize</code>, <code>fontWeight</code>, <code>lineHeight</code></td>
+<td>font point size, weight, line height</td>
+</tr>
+<tr>
+<td><code>text.family</code></td>
+<td><code>fontFamily</code></td>
+<td>font family</td>
+</tr>
+<tr>
+<td><code>effect.shadow</code></td>
+<td><code>boxShadow</code></td>
+<td>layer shadow</td>
+</tr>
+</tbody></table>
+<p>Values are normalized before comparison:</p>
+<ul>
+<li><strong>Color</strong> becomes an sRGB 8-bit tuple plus alpha. The engine never compares color strings, so <code>#2e8b57</code>, <code>rgb(46, 139, 87)</code>, and a native color object are the same value.</li>
+<li><strong>Length</strong> becomes a logical unit paired with the capture&#39;s scale factor, recorded in the existing <code>renderSpace</code>. The engine never sees <code>&quot;16px&quot;</code>.</li>
+<li><strong>Family</strong> becomes the first non-fallback family, unquoted and case-folded.</li>
+<li>A value that cannot be normalized is <code>unnormalizable</code> and counts as invalid evidence. It never counts as a pass.</li>
+</ul>
+<p>Spacing is derived from adjacent <code>rect</code> values rather than captured directly. The current evidence payload records <code>display</code>, <code>position</code>, <code>color</code>, <code>backgroundColor</code>, <code>borderColor</code>, <code>borderRadius</code>, <code>boxShadow</code>, <code>fontFamily</code>, <code>fontSize</code>, <code>fontWeight</code>, and <code>lineHeight</code>; it does not record padding, margin, or gap. Derived spacing is also closer to rendered truth than declared box properties, so this is a deliberate choice rather than a temporary gap.</p>
+<h3>Five constraint kinds</h3>
+<p>The engine implements exactly these, and adding a sixth requires an ADR. Each names an abstract property, resolves its expectation from a token-set reference, and declares its own unknown semantics.</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Asserts</th>
+<th>Expectation source</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>value-in-set</code></td>
+<td>value belongs to a finite set</td>
+<td><code>valueSets[id]</code></td>
+<td>color in palette, family in approved list</td>
+</tr>
+<tr>
+<td><code>value-on-scale</code></td>
+<td>value lands on a scale step within tolerance</td>
+<td><code>scales[id]</code></td>
+<td>size on a type scale, spacing on a 4/8 grid</td>
+</tr>
+<tr>
+<td><code>value-in-range</code></td>
+<td>value lies within <code>[min, max]</code></td>
+<td><code>ranges[id]</code></td>
+<td>minimum touch target, maximum line length</td>
+</tr>
+<tr>
+<td><code>cross-node-equal</code></td>
+<td>grouped nodes agree on a property</td>
+<td>none (self-referential)</td>
+<td>one component&#39;s geometry consistent across pages</td>
+</tr>
+<tr>
+<td><code>ratio</code></td>
+<td>ratio of two properties lies within a range</td>
+<td><code>ranges[id]</code> with <code>unit: ratio</code></td>
+<td>line height over font size, aspect ratio, contrast</td>
+</tr>
+</tbody></table>
+<p><code>value-in-range</code> and <code>ratio</code> share one expectation shape and differ only in the
+unit and in how many properties the evaluator reads, so the token set carries one
+<code>ranges</code> collection rather than two near-identical ones.</p>
+<p><code>cross-node-equal</code> requires no design source at all. It groups by <code>uiId</code>, <code>testId</code>, or role plus accessible name — identities the layout and styles payloads already carry — and compares across checkpoints, matrix variants, and scenarios.</p>
+<p>Every constraint declares <code>requireMatch</code>, defaulting to <code>true</code>. A constraint whose scope matches zero nodes is invalid, not vacuously passing. Silent zero-match is the standard way a conformance suite decays into a green run that asserts nothing.</p>
+<h3>Failure, unknown, and infrastructure semantics</h3>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Constraint evaluated, expectation met</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>Constraint evaluated, expectation missed</td>
+<td>product failure</td>
+</tr>
+<tr>
+<td>Required abstract property absent from captured evidence</td>
+<td><code>unsupported</code> for the dimension</td>
+</tr>
+<tr>
+<td>Captured value cannot be normalized</td>
+<td>invalid evidence</td>
+</tr>
+<tr>
+<td>Constraint scope matches zero nodes and <code>requireMatch</code> is true</td>
+<td>invalid evidence</td>
+</tr>
+<tr>
+<td>Policy references a token-set id absent from the contract</td>
+<td>configuration error, exit <code>2</code></td>
+</tr>
+<tr>
+<td>Platform does not expose the capability the property needs</td>
+<td><code>unsupported</code>, never pass</td>
+</tr>
+</tbody></table>
+<p>This preserves the core rule without exception: absent capability or absent evidence is unknown or inconclusive, never an implicit pass.</p>
+<h3>Contract shape</h3>
+<p><code>DesignContractSpec</code> widens additively. <code>capabilities</code> becomes a union whose existing <code>rendered-image</code> member keeps its meaning, <code>source</code> gains a <code>structured</code> kind, and a <code>tokenSet</code> member carries facts only. Existing image-only contracts remain valid without migration.</p>
+<p>The token set holds no constraint semantics, no severity, and no tolerance. It is a normalized vocabulary: named value sets, named scales with a unit and steps, and named ranges. An adapter that knows nothing about policy can produce it, and two adapters reading different origins can produce byte-identical output for the same design system.</p>
+<p>Capabilities reuse the existing forward-facing design vocabulary rather than introducing a second narrower one that would drift from it. Which members this version can carry is enforced structurally instead: <code>rendered-image</code> requires <code>targets</code>, <code>tokens</code> requires <code>tokenSet</code>, a payload without its capability is rejected, and a capability with no payload in this version is rejected rather than silently accepted.</p>
+<p>Constraint instances live in the geometry evaluator&#39;s policy configuration and reference token-set entries by id. Tolerance and severity are therefore versioned policy rather than adapter behavior, satisfying the Milestone 2 requirement that thresholds are policy and not hard-coded folklore.</p>
+<h3>Adapter boundary</h3>
+<p>Design adapters consume declarative or serialized inputs only: stylesheets, JSON, design-tool API responses. An adapter must never execute, import, or evaluate candidate application code, including theme modules written in TypeScript. Where the authoritative token values exist only inside executable code, the candidate project owns a small export step that emits JSON, and the adapter consumes that JSON.</p>
+<p>This keeps ADR 0001&#39;s rule intact — no engine module imports candidate code — and avoids making the engine responsible for parsing arbitrary application source. Reference adapters may live under <code>src/design-adapters/</code>, reachable from the CLI and never imported by an evaluator.</p>
+<h3>Portability acceptance</h3>
+<p>The design is portable when a second candidate project with a different token carrier is onboarded by writing <code>ui-eval/project.json</code> and running one adapter, with no change under <code>src/</code>. The workspace already contains a suitable second consumer: one project carries tokens as CSS custom properties in a Tailwind <code>@theme</code> block, another carries them as a framework theme object. Same platform, unrelated carriers. A third consumer on a native platform validates the unit normalization independently.</p>
+<p>A grep-level dependency test enforces the boundary: no identifier belonging to a design tool, CSS framework, or UI library may appear under <code>src/contracts/</code> or <code>src/evaluators/</code>.</p>
+<h2>Consequences</h2>
+<h3>Positive</h3>
+<ul>
+<li>Design source and platform become adapter concerns; the evaluator has one input shape.</li>
+<li>The majority of available signal — values that belong to no scale — becomes reachable before any design file exists.</li>
+<li>Constraint tolerance and severity live in versioned policy, where the roadmap requires them.</li>
+<li>Native support later reuses the constraint kinds unchanged, because none of them mention CSS or DOM.</li>
+<li>Two projects sharing a design system produce comparable token sets even from different carriers.</li>
+</ul>
+<h3>Negative</h3>
+<ul>
+<li>Two translation layers exist where there was none, and each is a place a mapping bug can hide.</li>
+<li>The abstract property table is a new compatibility surface that must be versioned.</li>
+<li>Projects that only want &quot;compare to the design file&quot; pay for indirection they do not use.</li>
+<li>Spacing derived from adjacent rectangles is harder to explain in a report than a declared padding value.</li>
+</ul>
+<h3>Risks and mitigations</h3>
+<ul>
+<li><strong>Abstraction that fits only web:</strong> validate the property table against a native evidence sample before implementing the evaluator, not after.</li>
+<li><strong>Adapter divergence:</strong> define one conformance corpus that every adapter must reproduce, so two carriers of one design system are provably equal.</li>
+<li><strong>Vacuous passes:</strong> default <code>requireMatch</code> to true, and report matched-node counts per constraint in the report.</li>
+<li><strong>Tolerance folklore:</strong> derive initial tolerances from a measured repeat-capture noise floor, and record the measurement alongside the policy revision.</li>
+<li><strong>Boundary erosion:</strong> enforce the design-source vocabulary ban with a test, not with review alone.</li>
+</ul>
+<h2>Revisit triggers</h2>
+<ul>
+<li>A real constraint cannot be expressed as one of the five kinds, and composing them is materially worse than a sixth kind.</li>
+<li>A native adapter cannot populate a required abstract property without inventing evidence.</li>
+<li>Two adapters for the same design system cannot be made to agree on the conformance corpus.</li>
+<li>Measured noise makes a scale tolerance wider than the smallest step it must distinguish, which would make <code>value-on-scale</code> unable to fail.</li>
+</ul>
+<h2>Rejected alternatives</h2>
+<h3>Encode Figma&#39;s structure directly in the design contract</h3>
+<p>Rejected because it makes every non-Figma origin a schema fork, and because it would place a specific vendor&#39;s field names inside a contract that native and non-design-tool origins must also satisfy.</p>
+<h3>Compare captured CSS strings against expected CSS strings</h3>
+<p>Rejected because equal values have unequal serializations, unequal values can share a serialization across units, and the comparison cannot be expressed for a platform without a CSSOM.</p>
+<h3>Put constraints in the design contract rather than in policy</h3>
+<p>Rejected because it would give adapters authority over strictness. An adapter would then decide what constitutes a failure, thresholds would vary by origin rather than by project decision, and the roadmap requirement that thresholds are versioned policy could not hold.</p>
+<h3>Require a design source before any geometry evaluation runs</h3>
+<p>Rejected because self-referential constraints need no design source, and because gating all geometry work on design availability discards the larger share of detectable drift while waiting for the smaller share.</p>
+<h3>Let adapters import the candidate&#39;s theme module</h3>
+<p>Rejected because it executes candidate application code inside the engine process, which ADR 0001 forbids, and because it makes evaluation depend on the candidate&#39;s build configuration resolving correctly.</p>
+
+      </section>
+    </main>
+  </div>
+</body>
+</html>

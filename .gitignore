@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.ui-eval/
+examples/**/.ui-eval/
+*.log
+.DS_Store
+
+# Local cross-repository working records and candidate-specific incubation data
+HANDOFF.md
+docs/archive/

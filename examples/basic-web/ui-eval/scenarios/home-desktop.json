@@ -1,0 +1,128 @@
+{
+  "apiVersion": "uieval.io/v1alpha1",
+  "kind": "ScenarioSource",
+  "id": "home-desktop",
+  "revision": 1,
+  "name": "Basic Web home desktop smoke",
+  "visibility": "agent-visible",
+  "tags": ["example", "smoke"],
+  "owner": "ui-eval",
+  "target": {
+    "platform": "web",
+    "entrypoint": {
+      "baseUrlRef": "local",
+      "path": "/"
+    }
+  },
+  "determinism": {
+    "timezone": "UTC",
+    "clock": {
+      "mode": "fixed",
+      "value": "2026-01-01T00:00:00.000Z"
+    },
+    "randomSeed": "basic-web-home-v1"
+  },
+  "requiredCapabilities": [
+    "screenshot",
+    "dom",
+    "computed-styles",
+    "layout-metadata",
+    "console",
+    "network",
+    "trace",
+    "crash"
+  ],
+  "matrix": {
+    "deviceProfiles": ["desktop-chromium"],
+    "locales": ["en"],
+    "themes": ["light"]
+  },
+  "steps": [
+    {
+      "id": "open-home",
+      "action": "goto",
+      "path": "/"
+    },
+    {
+      "id": "wait-for-main",
+      "action": "waitFor",
+      "target": {
+        "platform": "web",
+        "by": "css",
+        "value": "main"
+      },
+      "condition": "visible",
+      "timeoutMs": 15000
+    },
+    {
+      "id": "assert-heading",
+      "action": "assert",
+      "assertion": {
+        "id": "home-heading-text",
+        "kind": "text",
+        "target": {
+          "platform": "web",
+          "by": "role",
+          "value": "heading",
+          "name": "UI Eval Basic Web Example"
+        },
+        "expected": "UI Eval Basic Web Example"
+      }
+    },
+    {
+      "id": "capture-ready",
+      "action": "checkpoint",
+      "checkpointId": "ready"
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "ready",
+      "requiredChannels": [
+        "screenshot",
+        "dom",
+        "computed-styles",
+        "layout-metadata",
+        "console",
+        "network",
+        "trace",
+        "crash"
+      ],
+      "captureScope": "full-page",
+      "stabilize": {
+        "disableAnimations": true,
+        "waitForFonts": true,
+        "stableFrames": 2,
+        "timeoutMs": 15000
+      },
+      "assertions": [
+        {
+          "id": "home-main-visible",
+          "kind": "visible",
+          "target": {
+            "platform": "web",
+            "by": "css",
+            "value": "main"
+          },
+          "expected": true
+        },
+        {
+          "id": "home-heading-visible",
+          "kind": "visible",
+          "target": {
+            "platform": "web",
+            "by": "role",
+            "value": "heading",
+            "name": "UI Eval Basic Web Example"
+          },
+          "expected": true
+        },
+        {
+          "id": "home-no-crash",
+          "kind": "no-crash",
+          "expected": true
+        }
+      ]
+    }
+  ]
+}

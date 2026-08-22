@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "evaluationId",
+    "candidate",
+    "policy",
+    "evaluationKey"
+  ],
+  "properties": {
+    "evaluationId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "candidate": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "captureBundleDigest",
+        "normalizedCandidateEvidenceDigest"
+      ],
+      "properties": {
+        "captureBundleDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "normalizedCandidateEvidenceDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "design": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "contractDigest",
+        "targetIds"
+      ],
+      "properties": {
+        "contractDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "targetIds": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      }
+    },
+    "baseline": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "captureDigests",
+        "environmentCompatibilityDigest"
+      ],
+      "properties": {
+        "captureDigests": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "environmentCompatibilityDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "policy": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "policyDigest",
+        "evaluators"
+      ],
+      "properties": {
+        "policyDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "evaluators": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "version",
+              "configRef",
+              "configDigest",
+              "required"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "version": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "configRef": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "projectId",
+                  "storeId",
+                  "digest",
+                  "mediaType",
+                  "sizeBytes",
+                  "sensitivity"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "digest": {
+                    "pattern": "^sha256:[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "sensitivity": {
+                    "anyOf": [
+                      {
+                        "const": "public",
+                        "type": "string"
+                      },
+                      {
+                        "const": "internal",
+                        "type": "string"
+                      },
+                      {
+                        "const": "sensitive",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "redaction": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "applied"
+                    ],
+                    "properties": {
+                      "applied": {
+                        "type": "boolean"
+                      },
+                      "policyId": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "configDigest": {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "localReference": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "inputDigest",
+        "trust",
+        "checkpointId"
+      ],
+      "properties": {
+        "inputDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "trust": {
+          "const": "local-unprotected",
+          "type": "string"
+        },
+        "checkpointId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "candidateArtifactDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "evaluationKey": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    }
+  }
+}

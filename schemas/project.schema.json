@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "$id": "https://uieval.io/source/project-config",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "devServer",
+    "baseUrls",
+    "deviceProfiles",
+    "defaults",
+    "supportedCapabilities"
+  ],
+  "properties": {
+    "$schema": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "apiVersion": {
+      "const": "uieval.io/v1alpha1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "ProjectConfig",
+      "type": "string"
+    },
+    "projectId": {
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "type": "string"
+    },
+    "artifactRoot": {
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$",
+      "default": ".ui-eval",
+      "type": "string"
+    },
+    "devServer": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "command",
+        "args",
+        "url",
+        "reuseExisting",
+        "startupTimeoutMs"
+      ],
+      "properties": {
+        "command": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "url": {
+          "minLength": 1,
+          "pattern": "^https?://",
+          "type": "string"
+        },
+        "reuseExisting": {
+          "type": "boolean"
+        },
+        "readiness": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "path",
+            "bodyIncludes"
+          ],
+          "properties": {
+            "path": {
+              "minLength": 1,
+              "pattern": "^/(?!/)",
+              "type": "string"
+            },
+            "bodyIncludes": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        },
+        "startupTimeoutMs": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    },
+    "baseUrls": {
+      "minProperties": 1,
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "minLength": 1,
+          "pattern": "^https?://",
+          "type": "string"
+        }
+      }
+    },
+    "deviceProfiles": {
+      "minProperties": 1,
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "viewport",
+            "deviceScaleFactor"
+          ],
+          "properties": {
+            "viewport": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "width",
+                "height"
+              ],
+              "properties": {
+                "width": {
+                  "minimum": 1,
+                  "maximum": 16384,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "maximum": 16384,
+                  "type": "integer"
+                }
+              }
+            },
+            "deviceScaleFactor": {
+              "exclusiveMinimum": 0,
+              "maximum": 8,
+              "type": "number"
+            },
+            "userAgent": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "safeArea": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "top",
+                "right",
+                "bottom",
+                "left"
+              ],
+              "properties": {
+                "top": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "right": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "bottom": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "left": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "defaults": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "locale",
+        "theme",
+        "timezone"
+      ],
+      "properties": {
+        "locale": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "const": "light",
+              "type": "string"
+            },
+            {
+              "const": "dark",
+              "type": "string"
+            }
+          ]
+        },
+        "timezone": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    },
+    "storageStates": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$",
+          "type": "string"
+        }
+      }
+    },
+    "fixtureSets": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "provider"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "type": "string"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "const": "static",
+                    "type": "string"
+                  },
+                  {
+                    "const": "mock-server",
+                    "type": "string"
+                  },
+                  {
+                    "const": "seed-script",
+                    "type": "string"
+                  },
+                  {
+                    "const": "remote",
+                    "type": "string"
+                  }
+                ]
+              },
+              "configPath": {
+                "minLength": 1,
+                "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$",
+                "type": "string"
+              },
+              "artifactPath": {
+                "minLength": 1,
+                "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$",
+                "type": "string"
+              },
+              "mediaType": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "secretRefs": {
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "featureFlagSets": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "supportedCapabilities": {
+      "minItems": 1,
+      "uniqueItems": true,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "const": "screenshot",
+            "type": "string"
+          },
+          {
+            "const": "element-screenshots",
+            "type": "string"
+          },
+          {
+            "const": "dom",
+            "type": "string"
+          },
+          {
+            "const": "computed-styles",
+            "type": "string"
+          },
+          {
+            "const": "accessibility-tree",
+            "type": "string"
+          },
+          {
+            "const": "view-hierarchy",
+            "type": "string"
+          },
+          {
+            "const": "layout-metadata",
+            "type": "string"
+          },
+          {
+            "const": "console",
+            "type": "string"
+          },
+          {
+            "const": "network",
+            "type": "string"
+          },
+          {
+            "const": "trace",
+            "type": "string"
+          },
+          {
+            "const": "video",
+            "type": "string"
+          },
+          {
+            "const": "device-logs",
+            "type": "string"
+          },
+          {
+            "const": "crash",
+            "type": "string"
+          },
+          {
+            "const": "performance",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  }
+}

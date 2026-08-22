@@ -1,0 +1,790 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "tokenSet",
+    "constraints"
+  ],
+  "properties": {
+    "tokenSet": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "valueSets": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "valueKind",
+                  "values"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "valueKind": {
+                    "const": "color",
+                    "type": "string"
+                  },
+                  "values": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "r",
+                        "g",
+                        "b",
+                        "alpha"
+                      ],
+                      "properties": {
+                        "r": {
+                          "minimum": 0,
+                          "maximum": 255,
+                          "type": "integer"
+                        },
+                        "g": {
+                          "minimum": 0,
+                          "maximum": 255,
+                          "type": "integer"
+                        },
+                        "b": {
+                          "minimum": 0,
+                          "maximum": 255,
+                          "type": "integer"
+                        },
+                        "alpha": {
+                          "minimum": 0,
+                          "maximum": 1,
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "id",
+                  "valueKind",
+                  "values"
+                ],
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "valueKind": {
+                    "anyOf": [
+                      {
+                        "const": "family",
+                        "type": "string"
+                      },
+                      {
+                        "const": "keyword",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "values": {
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "scales": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "unit",
+              "steps"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "const": "logical-px",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ratio",
+                    "type": "string"
+                  },
+                  {
+                    "const": "unitless",
+                    "type": "string"
+                  }
+                ]
+              },
+              "steps": {
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        "ranges": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "unit"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "const": "logical-px",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ratio",
+                    "type": "string"
+                  },
+                  {
+                    "const": "unitless",
+                    "type": "string"
+                  }
+                ]
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "property",
+              "valueSetRef"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "visibleOnly": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "requireMatch": {
+                "type": "boolean"
+              },
+              "kind": {
+                "const": "value-in-set",
+                "type": "string"
+              },
+              "property": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "valueSetRef": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "property",
+              "scaleRef",
+              "tolerance"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "visibleOnly": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "requireMatch": {
+                "type": "boolean"
+              },
+              "kind": {
+                "const": "value-on-scale",
+                "type": "string"
+              },
+              "property": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "scaleRef": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "tolerance": {
+                "minimum": 0,
+                "type": "number"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "property",
+              "rangeRef"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "visibleOnly": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "requireMatch": {
+                "type": "boolean"
+              },
+              "kind": {
+                "const": "value-in-range",
+                "type": "string"
+              },
+              "property": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "rangeRef": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "property",
+              "tolerance"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "visibleOnly": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "requireMatch": {
+                "type": "boolean"
+              },
+              "kind": {
+                "const": "cross-node-equal",
+                "type": "string"
+              },
+              "property": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "tolerance": {
+                "minimum": 0,
+                "type": "number"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "kind",
+              "numerator",
+              "denominator",
+              "rangeRef"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "visibleOnly": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "requireMatch": {
+                "type": "boolean"
+              },
+              "kind": {
+                "const": "ratio",
+                "type": "string"
+              },
+              "numerator": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "denominator": {
+                "anyOf": [
+                  {
+                    "const": "box.x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.width",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.height",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.radius",
+                    "type": "string"
+                  },
+                  {
+                    "const": "box.overflowRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fill.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "stroke.color",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.size",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.weight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.lineHeight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text.family",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect.shadow",
+                    "type": "string"
+                  }
+                ]
+              },
+              "rangeRef": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

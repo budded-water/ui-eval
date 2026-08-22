@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "$id": "https://uieval.io/fixture/mock-server-config",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "listen",
+    "routes"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/v1alpha1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "MockServerFixtureConfig",
+      "type": "string"
+    },
+    "listen": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "port"
+      ],
+      "properties": {
+        "port": {
+          "minimum": 1024,
+          "maximum": 65535,
+          "type": "integer"
+        }
+      }
+    },
+    "routes": {
+      "minItems": 1,
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "method",
+          "path",
+          "required",
+          "response"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "const": "GET",
+                "type": "string"
+              },
+              {
+                "const": "HEAD",
+                "type": "string"
+              }
+            ]
+          },
+          "path": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^/(?!/)[^#\\r\\n\\\\]*$",
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "response": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "status",
+              "contentType",
+              "body"
+            ],
+            "properties": {
+              "status": {
+                "anyOf": [
+                  {
+                    "minimum": 200,
+                    "maximum": 299,
+                    "type": "integer"
+                  },
+                  {
+                    "minimum": 400,
+                    "maximum": 599,
+                    "type": "integer"
+                  }
+                ]
+              },
+              "contentType": {
+                "anyOf": [
+                  {
+                    "const": "application/json",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text/plain",
+                    "type": "string"
+                  }
+                ]
+              },
+              "body": {
+                "maxLength": 65536,
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

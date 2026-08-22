@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "executionId",
+    "scenarioPlanDigest",
+    "sourceRevision",
+    "build",
+    "adapter",
+    "environmentDigest",
+    "captureKey"
+  ],
+  "properties": {
+    "executionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "scenarioPlanDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceRevision": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "repository",
+        "commitSha"
+      ],
+      "properties": {
+        "repository": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "commitSha": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dirtyTree": {
+          "type": "boolean"
+        },
+        "diffDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "build": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "platform",
+        "artifactDigest",
+        "buildConfigDigest",
+        "publicEnvironmentDigest"
+      ],
+      "properties": {
+        "platform": {
+          "anyOf": [
+            {
+              "const": "web",
+              "type": "string"
+            },
+            {
+              "const": "ios",
+              "type": "string"
+            },
+            {
+              "const": "android",
+              "type": "string"
+            }
+          ]
+        },
+        "artifactDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "buildConfigDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "publicEnvironmentDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "appId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    },
+    "adapter": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    },
+    "environmentDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "captureKey": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "apiVersion": "uieval.io/v1alpha1",
+  "kind": "ProjectConfig",
+  "projectId": "ui-eval-basic-web",
+  "artifactRoot": ".ui-eval",
+  "devServer": {
+    "command": "node",
+    "args": ["server.mjs"],
+    "url": "http://127.0.0.1:3210",
+    "reuseExisting": false,
+    "startupTimeoutMs": 15000
+  },
+  "baseUrls": {
+    "local": "http://127.0.0.1:3210"
+  },
+  "deviceProfiles": {
+    "desktop-chromium": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "deviceScaleFactor": 1
+    }
+  },
+  "defaults": {
+    "locale": "en",
+    "theme": "light",
+    "timezone": "UTC"
+  },
+  "supportedCapabilities": [
+    "screenshot",
+    "dom",
+    "computed-styles",
+    "layout-metadata",
+    "console",
+    "network",
+    "trace",
+    "crash"
+  ]
+}

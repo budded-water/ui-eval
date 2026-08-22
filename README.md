@@ -1,0 +1,173 @@
+# UI Eval
+
+UI Eval is a local-first, evidence-first conformance harness for web user interfaces. It compiles reviewable project inputs into sealed execution plans, captures browser evidence with Playwright, applies deterministic policy gates, and writes a validated JSON result plus a static HTML view.
+
+The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service, a coding agent, or a general UI quality scorer.
+
+> **Repository status:** the source is publicly visible at [zw-befreed/ui-eval](https://github.com/zw-befreed/ui-eval) and remains `UNLICENSED`. Public visibility is not an open-source license and does not grant permission to use, copy, modify, or redistribute the code. No npm publication or support promise is configured.
+
+## What works today
+
+- Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
+- Strict JSON authoring for project configuration, web scenarios, and evaluation policies.
+- Matrix expansion into sealed, content-digested run plans.
+- Per-variant, loopback-only mock HTTP fixtures with fixed bounded responses and
+  required-route verification for deterministic server-side data flows.
+- Playwright Chromium capture with fixed viewport, DPR, locale, timezone, stabilization, interaction assertions, and checkpoint evidence.
+- Screenshot, DOM, computed-style, layout, console, network, trace, and crash/page-error evidence where requested and supported.
+- Deterministic execution, interaction, and runtime gates.
+- Optional same-size PNG comparison that reports raw changed pixels for human review.
+- Project-scoped local content-addressed storage and atomically materialized
+  per-run records. Local files are not write-once or tamper-proof.
+- Validated `report.json` as the machine result and a static `report.html` reading view.
+
+See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; typography, authoritative design sync, baselines, waivers, native apps, agent fixing, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config.
+
+## Requirements
+
+- Node.js 20 or newer.
+- Bun, using the version declared by `packageManager` in `package.json`.
+- Git in each candidate project. UI Eval seals source provenance and fails before a run when it cannot establish a consistent source identity.
+- Playwright's bundled Chromium, or a locally installed Chrome channel selected explicitly.
+
+## Start from an authorized checkout
+
+Install the standalone repository dependencies:
+
+```bash
+bun install --frozen-lockfile
+bunx playwright install chromium
+```
+
+Create authoring files in a candidate project. Existing authoring files are preserved, and the command requires `--yes` because it writes project files:
+
+```bash
+bun run ui-eval init \
+  --project-root /absolute/path/to/candidate \
+  --route / \
+  --scenario home-desktop \
+  --yes
+```
+
+Review the generated `ui-eval/project.json`, scenario, and policy before running them. The configured development-server command is trusted configuration and executes in the candidate project.
+
+Check prerequisites and server ownership without evaluating a scenario:
+
+```bash
+bun run ui-eval doctor --project-root /absolute/path/to/candidate
+```
+
+Run the scenario:
+
+```bash
+bun run ui-eval evaluate home-desktop \
+  --project-root /absolute/path/to/candidate
+```
+
+For a locally installed Chrome channel:
+
+```bash
+bun run ui-eval doctor \
+  --project-root /absolute/path/to/candidate \
+  --browser-channel chrome
+
+bun run ui-eval evaluate home-desktop \
+  --project-root /absolute/path/to/candidate \
+  --browser-channel chrome
+```
+
+For CI or another machine consumer, request JSON. Stdout is reserved for one JSON payload; progress goes to stderr:
+
+```bash
+bun run ui-eval evaluate home-desktop \
+  --project-root /absolute/path/to/candidate \
+  --format json
+```
+
+## Inputs and outputs
+
+Candidate repositories own and review these inputs:
+
+```text
+ui-eval/
+  project.json
+  scenarios/*.json
+  policies/*.json
+  fixtures/*                 # reviewed, scrubbed inputs only
+```
+
+Generated state belongs outside Git:
+
+```text
+.ui-eval/
+  artifacts/                 # project/store-scoped content-addressed objects
+  runs/<execution-id>/
+    run-manifest.json
+    capture.json
+    evaluation-plan.json
+    policy.json
+    report.json               # authoritative machine result
+    report.html               # presentation view
+    candidate.png             # only when safe to materialize
+    reference.png / diff.png  # only for local image comparison
+```
+
+Sensitive evidence such as console, network, trace, and crash data remains in the content-addressed store and does not receive a plaintext run alias. `.ui-eval/` is a local working area, not a canonical source of project policy or scenarios, and it is not encrypted at rest.
+
+## Result and exit semantics
+
+| Exit code | Meaning |
+| ---: | --- |
+| `0` | Valid evidence and all hard gates passed. |
+| `1` | Valid evidence captured a candidate failure. |
+| `2` | Configuration, infrastructure, invalid evidence, or inconclusive result. |
+| `3` | Valid evidence requires human review. |
+| `130` | Interrupted by `SIGINT`. |
+| `143` | Terminated by `SIGTERM`. |
+
+Missing or corrupt required evidence never becomes a pass. Product failures, runner/infrastructure failures, and advisory observations remain separate in the report.
+
+The first termination signal requests cooperative browser/server cleanup. A second signal, or expiry of the bounded cleanup window, forces the conventional signal exit code. UI Eval stops only the development-server process tree it started.
+
+## Local image review
+
+`--reference` accepts a project-relative, regular, non-symlink PNG. The resolved scenario must have exactly one checkpoint that requires screenshot evidence, and the image dimensions must match the candidate screenshot.
+
+```bash
+bun run ui-eval evaluate home-desktop \
+  --project-root /absolute/path/to/candidate \
+  --reference references/home.png
+```
+
+The reference is explicitly `local-unprotected`. A changed image produces `needs-review`; it is not a calibrated visual regression gate or protected holdout.
+
+## Programmatic surface
+
+The package entry point exports shared contract types/validators, the active
+`ProjectConfigSchema` and `WebScenarioSourceSchema` authoring surfaces with
+their structural validators, `evaluateScenario`, `initUiEvalProject`,
+`runDoctor`, and the local artifact/run stores. The generic multi-platform
+`ScenarioSource` contract is forward-facing and is not proof that the current
+web CLI can execute native scenarios. This repository currently has no
+supported package distribution channel, so downstream code must not assume
+that the package can be installed from a registry.
+
+Do not import internal `src/*` modules from a consumer. See [Contracts](docs/contracts.md) for the wire/runtime boundary and [Integration](docs/integration.md) for the current local-checkout workflow.
+
+## Documentation
+
+- [Browser-readable technical documentation](docs/index.html)
+- [Architecture](docs/architecture.md)
+- [Contracts and canonical truth](docs/contracts.md)
+- [Security model](docs/security-model.md)
+- [Project integration](docs/integration.md)
+- [Development](docs/development.md)
+- [Release process](docs/release.md)
+- [Current limitations](docs/limitations.md)
+- [Roadmap](docs/roadmap.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security reporting](SECURITY.md)
+
+## License
+
+This repository is `UNLICENSED`. Public visibility or possession of the source does not grant permission to use, copy, modify, or redistribute it beyond separately granted authorization.
