@@ -2,9 +2,24 @@ import type { Page } from "playwright"
 import { describe, expect, it, vi } from "vitest"
 
 import type { WebCheckpointSpec } from "../contracts/model"
-import { stabilizePage } from "./stabilize"
+import {
+  DISABLE_MOTION_CSS,
+  imageRequestSettled,
+  stabilizePage,
+} from "./stabilize"
 
 describe("stabilizePage", () => {
+  it("removes Next.js development chrome from candidate screenshots", () => {
+    expect(DISABLE_MOTION_CSS).toContain("nextjs-portal")
+    expect(DISABLE_MOTION_CSS).toContain("display: none !important")
+  })
+
+  it("does not block viewport capture on an unrequested native lazy image", () => {
+    expect(imageRequestSettled({ complete: false, currentSrc: "" })).toBe(true)
+    expect(imageRequestSettled({ complete: false, currentSrc: "/requested.jpg" })).toBe(false)
+    expect(imageRequestSettled({ complete: true, currentSrc: "/loaded.jpg" })).toBe(true)
+  })
+
   it("does not add an unbounded document.fonts.ready wait", async () => {
     const page = {
       emulateMedia: vi.fn(async () => {}),

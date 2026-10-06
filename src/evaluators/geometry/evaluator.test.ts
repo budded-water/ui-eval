@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { GeometryEvaluatorConfig } from "../../contracts/model"
+import { validateLayoutEvidencePayload, validateStylesEvidencePayload } from "../../contracts/validation"
 
 import { evaluateGeometryEvidence } from "./evaluator"
 
@@ -26,11 +27,13 @@ const config: GeometryEvaluatorConfig = {
 
 const checkpoint = (checkpointId: string, backgroundColor: string) => ({
   checkpointId,
-  layout: {
+  layout: validateLayoutEvidencePayload({
     schemaVersion: "uieval.layout/v1alpha1" as const,
     renderSpace: {
-      viewportWidthPx: 800,
-      viewportHeightPx: 600,
+      logicalWidth: 800,
+      logicalHeight: 600,
+      logicalUnit: "css-px",
+      orientation: "landscape",
       deviceScaleFactor: 1,
       screenshotWidthPx: 800,
       screenshotHeightPx: 600,
@@ -42,18 +45,18 @@ const checkpoint = (checkpointId: string, backgroundColor: string) => ({
         visible: true,
       },
     ],
-  },
-  styles: {
+  }),
+  styles: validateStylesEvidencePayload({
     schemaVersion: "uieval.styles/v1alpha1" as const,
     nodes: [{ nodeId: "1", computedStyle: { backgroundColor } }],
-  },
+  }),
 })
 
 describe("geometry evaluator", () => {
   it("reports metrics, coverage, and findings per checkpoint", () => {
     const result = evaluateGeometryEvidence(config, [
-      checkpoint("ready", "#ffffff") as never,
-      checkpoint("after-scroll", "rgb(1, 2, 3)") as never,
+      checkpoint("ready", "#ffffff"),
+      checkpoint("after-scroll", "rgb(1, 2, 3)"),
     ])
 
     expect(result.metrics).toEqual({
@@ -76,7 +79,7 @@ describe("geometry evaluator", () => {
 
   it("counts an undecidable constraint without letting it pass", () => {
     const result = evaluateGeometryEvidence(config, [
-      checkpoint("ready", "color-mix(in srgb, red, blue)") as never,
+      checkpoint("ready", "color-mix(in srgb, red, blue)"),
     ])
     expect(result.metrics["geometry.violations"]).toBe(0)
     expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
@@ -84,9 +87,39 @@ describe("geometry evaluator", () => {
     expect(result.coverage.invalid).toBe(1)
   })
 
-  it("evaluates nothing when no checkpoint carried structured evidence", () => {
-    const result = evaluateGeometryEvidence(config, [])
-    expect(result.coverage.expected).toBe(0)
+  it("retains missing planned checkpoints as invalid coverage", () => {
+    const result = evaluateGeometryEvidence(config, [], ["ready", "after-scroll"])
+    expect(result.coverage.expected).toBe(2)
+    expect(result.coverage.invalid).toBe(2)
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(2)
     expect(result.findings).toEqual([])
+  })
+
+  it("does not report zero indecisive constraints for an empty input", () => {
+    expect(evaluateGeometryEvidence(config, []).metrics["geometry.indecisiveConstraints"]).toBe(1)
+  })
+
+  it("compares the same identity across checkpoints once and attributes its finding", () => {
+    const first = checkpoint("ready", "#ffffff")
+    const second = checkpoint("after-scroll", "#ffffff")
+    first.layout.nodes[0].testId = second.layout.nodes[0].testId = "button"
+    second.layout.nodes[0].rect.width = 20
+    const result = evaluateGeometryEvidence({
+      tokenSet: {},
+      constraints: [{ id: "consistent-width", kind: "cross-node-equal", property: "box.width", tolerance: 0 }],
+    }, [first, second])
+    expect(result.coverage).toMatchObject({ expected: 1, failed: 1 })
+    expect(result.findings).toHaveLength(1)
+    expect(result.findings[0].checkpointId).toBe("ready")
+  })
+
+  it("keeps a missing checkpoint unknown during an equality comparison", () => {
+    const first = checkpoint("ready", "#ffffff")
+    first.layout.nodes[0].testId = "button"
+    const result = evaluateGeometryEvidence({
+      tokenSet: {},
+      constraints: [{ id: "consistent-width", kind: "cross-node-equal", property: "box.width", tolerance: 0 }],
+    }, [first], ["ready", "after-scroll"])
+    expect(result.coverage).toMatchObject({ expected: 1, invalid: 1, passed: 0 })
   })
 })

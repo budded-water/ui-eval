@@ -5,7 +5,7 @@ import {
   DigestExclusionProfiles,
 } from "../contracts/canonical-json"
 import type { WebResolvedScenarioPlan } from "../contracts/model"
-import { captureWebScenario } from "./adapter"
+import { captureWebScenario, closePlaywrightResources } from "./adapter"
 import { BINARY_EVIDENCE_LIMITS } from "./binary-evidence"
 
 const digest = canonicalDigest({ adapter: "unit" }) as `sha256:${string}`
@@ -92,6 +92,45 @@ function context(artifactStore: {
 }
 
 describe("captureWebScenario preflight", () => {
+  it("bounds Playwright cleanup when Chrome does not settle", async () => {
+    const neverSettles = new Promise<void>(() => undefined)
+    const browserContext = {
+      unrouteAll: vi.fn(() => neverSettles),
+      close: vi.fn(() => neverSettles),
+    }
+    const browser = { close: vi.fn(() => neverSettles) }
+    const startedAt = Date.now()
+
+    await expect(closePlaywrightResources(
+      browserContext as never,
+      browser as never,
+      30,
+    )).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
+
+    expect(Date.now() - startedAt).toBeLessThan(500)
+    expect(browserContext.unrouteAll).toHaveBeenCalledWith({
+      behavior: "ignoreErrors",
+    })
+    expect(browserContext.close).toHaveBeenCalledOnce()
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("attempts browser shutdown but rejects when context close fails", async () => {
+    const browser = { close: vi.fn(async () => {}) }
+    await expect(closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: async () => { throw new Error("transport failed") },
+    } as never, browser as never, 30)).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("allows bounded route teardown when context and browser close succeed", async () => {
+    await expect(closePlaywrightResources({
+      unrouteAll: () => new Promise<void>(() => {}),
+      close: async () => {},
+    } as never, { close: async () => {} } as never, 30)).resolves.toBeUndefined()
+  })
+
   it("fails closed before browser launch when screenshot dimensions exceed the budget", async () => {
     const plan = planWithCapability("screenshot")
     plan.device.renderSpace.logicalWidth =

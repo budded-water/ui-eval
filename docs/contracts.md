@@ -8,7 +8,7 @@ This document explains ownership, lifecycle, and compatibility. It intentionally
 
 The current repository has four related representations with distinct roles:
 
-1. `src/contracts/schemas.ts` and the public authoring schemas in `src/project/config.ts` are the in-repository TypeBox authoring sources.
+1. TypeBox sources under `src/contracts/`, `src/project/`, and `src/agent/` define the wire and active authoring shapes.
 2. `schemas/*.schema.json` are generated JSON Schema 2020-12 wire artifacts for the current checkout.
 3. TypeScript types are derived from TypeBox with `Static<>`; they must not be maintained as a second handwritten model.
 4. Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.
@@ -65,7 +65,9 @@ EvaluationPlan + EvaluationPolicy
 | --- | --- |
 | `project.schema.json` | Active human-authored project/server/device/default/capability configuration. |
 | `scenario-source.schema.json` | Active human-authored web scenario input. |
-| `policy-source.schema.json` | Active human-authored evaluator and gate input. |
+| `policy-source.schema.json` | Active web authoring: compact `web-default` profile or existing full policy. |
+| `agent-suite.schema.json` | Active Agent scenario/check/mutation configuration. |
+| `agent-summary.schema.json` | Validated Agent terminal result; HTML is derived from the same value. |
 | `resolved-scenario-plan.schema.json` | Active compiler output and complete capture input. |
 | `sealed-run-manifest.schema.json` | Active execution/source/build/adapter identity. |
 | `capture-bundle.schema.json` | Active immutable evidence index and execution result. |
@@ -95,20 +97,37 @@ names:
 
 - `ProjectConfigSchema`, `validateProjectConfig`, and `assertProjectConfig`;
 - `WebScenarioSourceSchema`, `validateWebScenarioSource`, and
-  `assertWebScenarioSource`.
+  `assertWebScenarioSource`;
+- `WebPolicySourceSchema`, `validateWebPolicySource`, and
+  `assertWebPolicySource`.
 
 Those structural validators use the same TypeBox schemas that generate
-`project.schema.json` and `scenario-source.schema.json`. The generic
-`ScenarioSource` / `validateScenarioSource` contract exported by the shared
-contract layer is a forward multi-platform envelope; passing it does **not**
+`project.schema.json`, `scenario-source.schema.json`, and
+`policy-source.schema.json`. The generic
+`ScenarioSource` / `validateScenarioSource` contract under the explicit
+`forwardContracts` namespace is a forward multi-platform envelope; passing it does **not**
 mean the current CLI can execute that input.
 
-Structural validation is only the first boundary. `loadProjectConfig` and
-`loadScenarioSource` additionally enforce repository-aware semantic rules,
+Structural validation is only the first boundary. `loadProjectConfig`,
+`loadScenarioSource`, and `loadPolicySource` additionally enforce repository-aware semantic rules,
 real-path containment, safe referenced files, and current capability support.
 Programmatic callers that intend to execute a run should use those loaders (or
 the high-level `evaluateScenario`) rather than treating structural validation as
 authorization to capture.
+
+This source revision narrows the root programmatic API to executable web
+contracts. Consumers of generic native/design/governance names should migrate
+to `forwardContracts`, for example
+`forwardContracts.validateScenarioSource(input)`. Their wire schemas remain
+available; changing the import does not add runtime support.
+
+The `web-default` profile accepts evaluator and gate additions. It expands
+mandatory core declarations plus advisory visual support and required-evidence
+coverage before semantic validation and CAS materialization. Additions cannot
+replace default IDs: duplicate IDs are rejected. Existing complete policies
+remain accepted. The loaded policy digest describes the expanded value, and
+the generated run's `policy.json` records every effective setting. A profile is
+an authoring convenience, not an alternate evaluation contract or repair scope.
 
 ## Authoring ownership
 
@@ -236,11 +255,20 @@ An `EvaluationReport` separates:
 - coverage counts, including unsupported and invalid work;
 - hard/soft gate results and unknown handling;
 - immutable findings with stable fingerprints;
+- optional `metrics`, containing raw evaluator values, including zero-valued
+  measurements, rather than calibrated quality scores;
 - actual evaluator execution provenance.
 
 Configured or skipped evaluators are not reported as executed. Visual findings from a local reference identify the exact checkpoint, candidate screenshot digest, and reference digest. A reference path by itself is not sufficient identity.
 
 The current runtime does not produce waiver-adjusted dispositions or baseline decisions. Any future governance layer must append decisions without rewriting this raw report.
+
+Current runs seal their evaluator metrics into the report spec and bind them to
+the values used for gates. `visual.changedPixelRatio` is present for a measured
+comparison, including identical pixels, and absent when comparison is unknown.
+Reports without `metrics` remain structurally readable; absence is not proof of
+a zero result. The additional field extends the current alpha contract; readers
+using older strict schemas need the updated source revision to read new output.
 
 ## Change discipline
 

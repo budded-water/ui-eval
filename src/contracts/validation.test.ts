@@ -467,6 +467,17 @@ describe("Phase 0A contracts", () => {
     const roundTripped = JSON.parse(JSON.stringify(report))
     expect(validateEvaluationReport(roundTripped)).toEqual(report)
 
+    const measuredReport = { ...report, spec: { ...report.spec, metrics: { "visual.changedPixelRatio": 0 } } }
+    measuredReport.metadata = { ...metadata, specDigest: canonicalDigest(measuredReport.spec) }
+    expect(validateEvaluationReport(JSON.parse(JSON.stringify(measuredReport)))).toEqual(measuredReport)
+    const alteredMetric = structuredClone(measuredReport)
+    alteredMetric.spec.metrics["visual.changedPixelRatio"] = 0.1
+    expect(() => validateEvaluationReport(alteredMetric)).toThrow(/specDigest/)
+    const invalidMetric = structuredClone(measuredReport)
+    invalidMetric.spec.metrics["visual.changedPixelRatio"] = 2
+    invalidMetric.metadata.specDigest = canonicalDigest(invalidMetric.spec)
+    expect(() => validateEvaluationReport(invalidMetric)).toThrow(/finite ratio/)
+
     const invalidEvidencePass = structuredClone(report)
     invalidEvidencePass.spec.executionOutcome = "infra-error"
     invalidEvidencePass.spec.rawStatus = "pass"

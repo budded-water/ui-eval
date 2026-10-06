@@ -149,6 +149,44 @@ describe("runCli", () => {
     expect(stream.stderr.join("")).toContain("capturing")
   })
 
+  it("runs an agent suite with repair opt-in and keeps JSON stdout machine-readable", async () => {
+    const stream = output()
+    const agent = vi.fn(async (options) => {
+      options.onProgress?.("iteration 1")
+      return {
+        suiteId: "rentals",
+        status: "accepted" as const,
+        accepted: true,
+        iterations: [],
+        summaryPath: "/project/.ui-eval/agent-runs/run/summary.json",
+        summaryHtmlPath: "/project/.ui-eval/agent-runs/run/summary.html",
+        generatedAt: "2026-08-24T00:00:00.000Z",
+        reason: "all gates passed",
+      }
+    })
+
+    const code = await runCli(
+      ["agent", "rentals", "--repair", "--format", "json"],
+      stream.io,
+      { agent },
+    )
+
+    expect(code).toBe(0)
+    expect(agent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectRoot: "/project",
+        suite: "rentals",
+        repair: true,
+      }),
+    )
+    expect(JSON.parse(stream.stdout.join(""))).toMatchObject({
+      suiteId: "rentals",
+      accepted: true,
+      summaryHtmlPath: "/project/.ui-eval/agent-runs/run/summary.html",
+    })
+    expect(stream.stderr.join("")).toContain("iteration 1")
+  })
+
   it.each([
     ["valid", "fail", 1],
     ["infra-error", "inconclusive", 2],

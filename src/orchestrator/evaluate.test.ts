@@ -33,6 +33,7 @@ import {
   normalizedCandidateEvidenceDigest,
 } from "./evaluate"
 import { MockServerError } from "./mock-server"
+import { IncompleteCleanupError } from "../runtime/cleanup"
 
 const roots: string[] = []
 
@@ -234,6 +235,13 @@ async function project(): Promise<string> {
     route: "/privacy",
     scenarioId: "privacy-desktop",
   })
+  // These contract/privacy fixtures exercise every supported evidence channel,
+  // beyond the smaller smoke scenario authored by init.
+  const path = join(root, "ui-eval/scenarios/privacy-desktop.json")
+  const scenario = JSON.parse(await readFile(path, "utf8"))
+  scenario.requiredCapabilities = ["screenshot", "dom", "computed-styles", "layout-metadata", "console", "network", "trace", "crash"]
+  scenario.checkpoints[0].requiredChannels = [...scenario.requiredCapabilities]
+  await writeFile(path, JSON.stringify(scenario))
   return root
 }
 
@@ -324,6 +332,57 @@ const deps = {
 } satisfies Parameters<typeof evaluateScenario>[1]
 
 describe("evaluateScenario", () => {
+  it.each(["valid", "absent", "corrupt"] as const)("binds geometry %s evidence to JSON and HTML", async (evidenceState) => {
+    const projectRoot = await project()
+    await writeFile(join(projectRoot, "ui-eval/policies/default.json"), JSON.stringify({
+      apiVersion: "uieval.io/v1alpha1", kind: "PolicySource", id: "geometry-test", revision: 1, profile: "web-default",
+      evaluators: [{ id: "geometry", version: "0.1.0", required: true, weight: 0, config: {
+        tokenSet: { ranges: [{ id: "width", unit: "logical-px", min: 1, max: 100 }] },
+        constraints: [{ id: "bounded-width", kind: "value-in-range", property: "box.width", rangeRef: "width" }],
+      } }],
+      gates: [{ id: "geometry-clean", hard: true, expression: { metric: "geometry.violations", operator: "eq", value: 0 }, onUnknown: "fail" }],
+    }))
+    if (evidenceState === "absent") {
+      const path = join(projectRoot, "ui-eval/scenarios/privacy-desktop.json")
+      const scenario = JSON.parse(await readFile(path, "utf8"))
+      scenario.checkpoints[0].requiredChannels = scenario.checkpoints[0].requiredChannels.filter((channel: string) => channel !== "layout-metadata")
+      await writeFile(path, JSON.stringify(scenario))
+    }
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop" }, {
+      ...deps,
+      capture: async (plan, context) => {
+        const capture = await successfulCapture(plan, context)
+        if (evidenceState === "valid") {
+          const checkpoint = capture.checkpoints[0]
+          const record = checkpoint.evidence.find((record) => record.channel === "layout-metadata")!
+          record.artifact = await context.artifactStore.put({
+            schemaVersion: "uieval.layout/v1alpha1", renderSpace: checkpoint.renderSpace,
+            nodes: [{ nodeId: "one", visible: true, rect: { x: 0, y: 0, width: 80, height: 20 } }],
+          }, { mediaType: "application/json", sensitivity: "internal" })
+          const styles = checkpoint.evidence.find((record) => record.channel === "computed-styles")!
+          styles.artifact = await context.artifactStore.put({ schemaVersion: "uieval.styles/v1alpha1", nodes: [] }, { mediaType: "application/json", sensitivity: "internal" })
+        }
+        return capture
+      },
+    })
+    const run = result.runs[0]
+    const geometry = run.report.spec.coverage.byDimension.find((entry) => entry.dimension === "geometry")!
+    expect(geometry.counts.expected).toBe(1)
+    expect(run.report.spec.provenance.evaluators.some((evaluator) => evaluator.id === "geometry")).toBe(true)
+    const html = await readFile(run.htmlPath, "utf8")
+    expect(html).toContain("Geometry / typography constraints")
+    if (evidenceState === "valid") {
+      expect(run.rawStatus).toBe("pass")
+      expect(geometry.counts.passed).toBe(1)
+      expect(html).toMatch(/Geometry \/ typography constraints<\/td>\s*<td><span class="pill measured">/)
+    } else {
+      expect(run.executionOutcome).toBe("invalid-evidence")
+      expect(run.rawStatus).toBe("inconclusive")
+      expect(geometry.counts.invalid).toBe(1)
+      expect(html).toMatch(/Geometry \/ typography constraints<\/td>\s*<td><span class="pill unknown">/)
+    }
+  })
+
   it("runs the sealed pipeline and writes canonical JSON plus a truthful HTML view", async () => {
     const projectRoot = await project()
     const result = await evaluateScenario(
@@ -652,6 +711,10 @@ describe("evaluateScenario", () => {
     expect(html).toContain(
       '<span>Reference</span><img src="reference.png"',
     )
+    expect(result.runs[0].report.spec.metrics?.["visual.changedPixelRatio"]).toBe(0)
+    expect(result.runs[0].report.spec.findings.some((finding) => finding.dimension === "pixel")).toBe(false)
+    const savedReport = JSON.parse(await readFile(result.runs[0].reportPath, "utf8"))
+    expect(savedReport.spec.metrics["visual.changedPixelRatio"]).toBe(0)
   })
 
   it("keys the evaluation by reference content without keying finding identity by measurement", async () => {
@@ -856,6 +919,74 @@ describe("evaluateScenario", () => {
       ),
     ).rejects.toBe(interruption)
     expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it("rejects with incomplete cleanup when the capture adapter never returns", async () => {
+    const projectRoot = await project()
+    const controller = new AbortController()
+    const interruption = Object.assign(new Error("capture transport stalled"), {
+      code: "INTERRUPTED",
+    })
+    const stop = vi.fn(async () => {})
+    let captureStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      captureStarted = resolve
+    })
+
+    const evaluation = evaluateScenario(
+      {
+        projectRoot,
+        scenario: "privacy-desktop",
+        signal: controller.signal,
+      },
+      {
+        ...deps,
+        captureCleanupTimeoutMs: 10,
+        ensureServer: async () => ({
+          url: "http://127.0.0.1:3000",
+          reused: false,
+          stop,
+        }),
+        capture: async () => {
+          captureStarted()
+          return new Promise<never>(() => undefined)
+        },
+      },
+    )
+
+    await started
+    controller.abort(interruption)
+    await expect(evaluation).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
+    expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it("withholds final reports when capture resource cleanup fails", async () => {
+    const projectRoot = await project()
+    const stop = vi.fn(async () => {})
+    await expect(evaluateScenario({ projectRoot, scenario: "privacy-desktop" }, {
+      ...deps,
+      ensureServer: async () => ({ url: "http://127.0.0.1:3000", reused: false, stop }),
+      capture: async () => { throw new IncompleteCleanupError("Owned browser cleanup did not settle") },
+    })).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
+    expect(stop).toHaveBeenCalledOnce()
+    expect((await filesUnder(join(projectRoot, ".ui-eval"))).filter((path) => /report\.(json|html)$/.test(path))).toEqual([])
+  })
+
+  it("waits for capture cleanup within the abort grace before propagating cancellation", async () => {
+    const projectRoot = await project()
+    const controller = new AbortController()
+    const interruption = new Error("cancelled")
+    let captureSettled = false
+    await expect(evaluateScenario({ projectRoot, scenario: "privacy-desktop", signal: controller.signal }, {
+      ...deps, captureCleanupTimeoutMs: 100,
+      capture: async () => {
+        controller.abort(interruption)
+        await new Promise((settle) => setTimeout(settle, 20))
+        captureSettled = true
+        throw interruption
+      },
+    })).rejects.toBe(interruption)
+    expect(captureSettled).toBe(true)
   })
 
   it("cleans up when cancellation races with owned server readiness", async () => {
@@ -1206,6 +1337,13 @@ describe("normalizedCandidateEvidenceDigest", () => {
         includeScreenshot: false,
       }),
     ).toBe(first)
+
+    const layoutChanged = structuredClone(envelope.spec)
+    const layout = layoutChanged.checkpoints[0].evidence.find((record) => record.channel === "layout-metadata")!
+    layout.artifact = { ...layout.artifact!, digest: `sha256:${"c".repeat(64)}` }
+    expect(normalizedCandidateEvidenceDigest(layoutChanged, { includeScreenshot: false, includeGeometry: true })).not.toBe(
+      normalizedCandidateEvidenceDigest(envelope.spec, { includeScreenshot: false, includeGeometry: true }),
+    )
 
     const failedAssertion = structuredClone(envelope.spec)
     failedAssertion.assertionResults[0].status = "failed"

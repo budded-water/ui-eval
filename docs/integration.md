@@ -129,6 +129,28 @@ Prefer stable semantic locators in this order:
 
 Each checkpoint must name its required channels. A screenshot alone does not prove interactions or runtime health.
 
+`init` starts with screenshot, console, network, and crash channels. Geometry
+requires `layout-metadata`; also add `computed-styles` for style or text
+constraints to the checkpoint's required channels. DOM and trace are opt-in
+diagnostic evidence. Selecting geometry without usable structured evidence
+produces an inconclusive result.
+
+The generated default policy is a compact authoring profile:
+
+```json
+{
+  "apiVersion": "uieval.io/v1alpha1",
+  "kind": "PolicySource",
+  "id": "default",
+  "revision": 1,
+  "profile": "web-default"
+}
+```
+
+Add project-specific `evaluators` and `gates` when needed. Profile additions
+cannot replace core/default IDs. Existing full policies remain usable, and the
+run's `policy.json` always contains the complete expanded and sealed policy.
+
 The current executable authoring target is web-only. The only executable
 fixture provider is the bounded loopback `mock-server`; feature flags, network
 profiles, secret references, other fixture providers, and app locators remain
@@ -347,6 +369,13 @@ bun run ui-eval evaluate account-desktop \
 ```
 
 The command performs validation, compilation, source sealing, server startup/reuse, capture, evaluation, policy gates, cleanup, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. `report.json` and `report.html` are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant.
+
+Programmatic cancellation and browser shutdown retain a distinct
+`IncompleteCleanupError` (`OWNED_RESOURCE_CLEANUP_INCOMPLETE`) when owned
+resources cannot be confirmed closed. Treat that error as a blocked job rather
+than retrying in the same process. Raw evaluator values live in canonical report
+`spec.metrics`; a measured `visual.changedPixelRatio` of zero is preserved even
+when no visual finding exists. Reference acceptance checks every matrix variant.
 
 Text output prints disposition and report paths. JSON mode reserves stdout for one machine payload and writes progress to stderr:
 

@@ -317,6 +317,24 @@
             }
           }
         },
+        "metrics": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            }
+          }
+        },
         "coverage": {
           "additionalProperties": false,
           "type": "object",

@@ -1,4 +1,5 @@
-import { execFile, spawn } from "node:child_process"
+import { spawn } from "node:child_process"
+import { ownedProcessTree as defaultProcessTree } from "../runtime/owned-process"
 
 import type { ProjectConfig } from "../project/config"
 
@@ -145,71 +146,10 @@ const defaultFetch: DevServerFetch = async (url, init) => fetch(url, init)
 const defaultSpawn: DevServerSpawn = (command, args, options) =>
   spawn(command, [...args], options) as unknown as DevServerChildProcess
 
-function hasErrorCode(error: unknown, code: string): boolean {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    typeof error.code === "string" &&
-    error.code === code
-  )
-}
-
 function usablePid(child: DevServerChildProcess): number | undefined {
   return Number.isSafeInteger(child.pid) && (child.pid ?? 0) > 0
     ? child.pid
     : undefined
-}
-
-function processTarget(child: DevServerChildProcess): number | undefined {
-  const pid = usablePid(child)
-  if (pid === undefined) return undefined
-  return process.platform === "win32" ? pid : -pid
-}
-
-async function runTaskkill(pid: number, force: boolean): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    execFile(
-      "taskkill",
-      ["/PID", String(pid), "/T", ...(force ? ["/F"] : [])],
-      { windowsHide: true, timeout: STOP_TIMEOUT_MS, killSignal: "SIGKILL" },
-      (error) => {
-        if (error) reject(error)
-        else resolve()
-      },
-    )
-  })
-}
-
-const defaultProcessTree: DevServerProcessTree = {
-  async isAlive(child) {
-    const target = processTarget(child)
-    if (target === undefined) {
-      return child.exitCode === null && child.signalCode === null
-    }
-    try {
-      process.kill(target, 0)
-      return true
-    } catch (error) {
-      if (hasErrorCode(error, "ESRCH")) return false
-      if (hasErrorCode(error, "EPERM")) return true
-      throw error
-    }
-  },
-  async signal(child, signal) {
-    const pid = usablePid(child)
-    if (process.platform === "win32" && pid !== undefined) {
-      await runTaskkill(pid, signal === "SIGKILL")
-      return
-    }
-    const target = processTarget(child)
-    if (target !== undefined) {
-      process.kill(target, signal)
-      return
-    }
-    if (!child.kill(signal)) {
-      throw new Error(`Could not deliver ${signal} to the owned dev server`)
-    }
-  },
 }
 
 function emitProgress(

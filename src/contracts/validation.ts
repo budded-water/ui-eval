@@ -724,6 +724,14 @@ function semanticIssues(schema: TSchema, value: unknown): ContractValidationIssu
       "gate result",
       "gateId",
     )
+    const pixelRatio = report.spec.metrics?.["visual.changedPixelRatio"]
+    if (pixelRatio !== undefined &&
+      (typeof pixelRatio !== "number" || !Number.isFinite(pixelRatio) || pixelRatio < 0 || pixelRatio > 1)) {
+      issues.push(semanticIssue(
+        "/spec/metrics/visual.changedPixelRatio", "invalidPixelRatio",
+        "visual.changedPixelRatio must be a finite ratio between zero and one",
+      ))
+    }
     if (report.spec.executionOutcome !== "valid" && report.spec.scores !== undefined) {
       issues.push(
         semanticIssue(

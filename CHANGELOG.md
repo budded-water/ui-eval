@@ -8,6 +8,25 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Optional canonical report `metrics`, binding raw evaluator measurements used
+  for gates, including a zero changed-pixel ratio. Existing reports without the
+  field remain readable; older strict-schema readers need the updated source
+  revision for new output. These measurements are not calibrated quality scores.
+
+- Compact `web-default` policy authoring, expanded into the existing sealed
+  policy with shared mandatory core evaluators and hard gates. Complete policy
+  documents remain accepted; duplicate additions cannot replace profile defaults.
+- Generated Agent suite and terminal-summary schemas. Agent result types now
+  derive from TypeBox, and terminal values are validated before JSON/HTML handoff.
+
+- Agent terminal runs now publish a responsive, print-friendly `summary.html`
+  acceptance dashboard beside canonical `summary.json`. It aggregates required
+  dimensions, project/API checks, interaction and visual scenarios,
+  candidate/reference/diff evidence, detailed report links, changed files, and
+  the repair iteration timeline. Text CLI output presents HTML first, JSON
+  output includes both paths, and failure to publish the human report fails the
+  Agent command closed.
+
 - Public source hosting at `https://github.com/zw-befreed/ui-eval` with GitHub
   Private Vulnerability Reporting enabled; the project remains `UNLICENSED`,
   unpublished as a package, and without a support promise.
@@ -62,6 +81,19 @@ The source repository is public, but the project has no package release or confi
 
 ### Changed
 
+- New `init` and example smoke scenarios request screenshot, console, network,
+  and crash by default. DOM, computed styles, layout, and trace remain explicit
+  supported requests. Existing authoring files are not rewritten by `init`.
+- The root library API now names executable web contracts. Generic native,
+  design-binding, and governance imports move to the explicit `forwardContracts`
+  namespace; their wire contracts remain available. Existing consumers of those
+  former root names must update imports for this source revision.
+- Extracted coverage, geometry evidence loading, normalized decision-evidence
+  digests, report capability projection, and pure Agent assessment from the
+  orchestration modules. Gate and local artifact types derive from shared contracts.
+- Shared owned-process signaling for server and Agent commands, with bounded
+  collection, graceful/forced timeout cleanup, and cancellation propagation.
+
 - Widened `DesignContract` from image-only to also carry a normalized token set
   of value sets, scales, and ranges, plus a `structured` source kind and an
   optional `targets` list. Existing image-only contracts remain valid unchanged.
@@ -74,6 +106,50 @@ The source repository is public, but the project has no package release or confi
   multi-platform scenario envelope.
 
 ### Fixed
+
+- Agent visual acceptance requires each variant's explicit pixel measurement;
+  equal screenshots can pass without a finding, while missing measurements and
+  failed or inconclusive reports cannot be covered by another variant's result.
+  Inconclusive visual comparisons remain infrastructure retries rather than
+  product repair, even when scenario execution itself was valid.
+- Browser close failures and expired capture cancellation cleanup propagate as
+  `OWNED_RESOURCE_CLEANUP_INCOMPLETE`. Final evaluation reports are withheld;
+  Agent failure records retain `cleanupSettled` and block further work when
+  cleanup is incomplete, even if the outer evaluator Promise has settled.
+
+- Geometry retains missing planned checkpoints as invalid coverage and compares
+  equality peers across checkpoints within one evaluation. Cross-variant and
+  cross-scenario comparison remains unsupported. Missing geometry without an
+  observed product defect is inconclusive, and normalized evidence identity
+  includes decision-relevant layout/style artifacts when geometry runs.
+- HTML geometry/typography capability labels derive from canonical coverage
+  and actual execution instead of a fixed unsupported label.
+- Agent plateau uses continuous `progressScore` independently of strict
+  acceptance score. Evidence reuse compares source snapshots after checks;
+  repair-request source identity hashes file contents instead of changed paths.
+  Snapshots preserve NUL-delimited Git paths, executable mode, and symlink
+  targets without following symlinks or buffering whole source files.
+- Real-browser navigation assertions allow an asynchronous keyboard navigation
+  failure to be attributed to its checkpoint while still requiring failed
+  capture, no retained checkpoint evidence, and no external request.
+
+- Infrastructure-only Agent retries no longer count toward product score
+  plateau detection. They consume the finite iteration budget and can end as
+  `exhausted`, but never masquerade as repair stagnation or invoke product
+  repair. Accepted immutable scenario evidence is reused only while source
+  state remains unchanged, so the retry runs failed or unexecuted scenarios
+  instead of repeating all live browser/API work; any repair clears the reuse
+  set.
+- Diagnostic scenario reports with `infra-error` or `invalid-evidence`
+  execution outcomes no longer enter product repair. Report presence improves
+  diagnosis but cannot reclassify non-valid evidence as a candidate defect.
+- Agent scenario timeouts now block immediately when evaluator cleanup misses
+  its bounded grace period. A run cannot repair, reuse evidence, or later claim
+  acceptance while browser resources may still be live.
+- The executable CLI now exits explicitly after awaited report publication and
+  bounded cleanup, preventing cancelled third-party browser handles from
+  keeping a terminal command resident. Programmatic APIs retain process
+  ownership and never force exit.
 
 - Normalized `lab()` and `oklab()`, the notations Chromium serializes computed
   colors into when a stylesheet declares `oklch()`. Without them every correctly

@@ -230,6 +230,15 @@ describe("cross-node-equal", () => {
     ])
     expect(evaluateConstraint(constraint, nodes, {}).status).toBe("passed")
   })
+
+  it("requires comparable peers rather than accepting one identified node", () => {
+    const nodes = nodesFrom([
+      { nodeId: "1", rect: { x: 0, y: 0, width: 80, height: 48 }, uiId: "cta" },
+    ])
+    expect(evaluateConstraint(constraint, nodes, {})).toMatchObject({
+      status: "invalid", invalidReason: "insufficient-peers", comparedNodes: 1,
+    })
+  })
 })
 
 describe("ratio", () => {
@@ -373,5 +382,137 @@ describe("box.overflowRight", () => {
   it("passes for a node contained by its parent", () => {
     const nodes = withParents().filter((node) => node.nodeId !== "overflowing")
     expect(evaluateConstraint(constraint, nodes, tokens).status).toBe("passed")
+  })
+
+  it("uses the nearest box-generating ancestor through display: contents", () => {
+    const nodes = normalizeWebEvidence(
+      {
+        schemaVersion: "uieval.layout/v1alpha1",
+        renderSpace: {
+          logicalWidth: 390,
+          logicalHeight: 800,
+          logicalUnit: "css-px",
+          deviceScaleFactor: 1,
+          screenshotWidthPx: 390,
+          screenshotHeightPx: 800,
+          orientation: "portrait",
+        },
+        nodes: [
+          { nodeId: "root", rect: { x: 0, y: 0, width: 390, height: 800 }, visible: true },
+          {
+            nodeId: "contents",
+            parentNodeId: "root",
+            rect: { x: 0, y: 0, width: 0, height: 0 },
+            visible: false,
+          },
+          {
+            nodeId: "link",
+            parentNodeId: "contents",
+            rect: { x: 320, y: 20, width: 40, height: 40 },
+            visible: true,
+          },
+        ],
+      } as never,
+      {
+        schemaVersion: "uieval.styles/v1alpha1",
+        nodes: [
+          { nodeId: "root", computedStyle: { display: "block" } },
+          { nodeId: "contents", computedStyle: { display: "contents" } },
+          { nodeId: "link", computedStyle: { display: "flex" } },
+        ],
+      },
+    )
+
+    expect(evaluateConstraint(constraint, nodes, tokens).status).toBe("passed")
+    expect(nodes.find((node) => node.nodeId === "link")?.properties.get("box.overflowRight"))
+      .toEqual({ kind: "length", px: -30 })
+  })
+
+  it("still evaluates a real zero-sized parent as a containing box", () => {
+    const nodes = normalizeWebEvidence(
+      {
+        schemaVersion: "uieval.layout/v1alpha1",
+        renderSpace: {
+          logicalWidth: 390,
+          logicalHeight: 800,
+          logicalUnit: "css-px",
+          deviceScaleFactor: 1,
+          screenshotWidthPx: 390,
+          screenshotHeightPx: 800,
+          orientation: "portrait",
+        },
+        nodes: [
+          { nodeId: "root", rect: { x: 0, y: 0, width: 390, height: 800 }, visible: true },
+          {
+            nodeId: "zero-box",
+            parentNodeId: "root",
+            rect: { x: 20, y: 20, width: 0, height: 0 },
+            visible: false,
+          },
+          {
+            nodeId: "child",
+            parentNodeId: "zero-box",
+            rect: { x: 20, y: 20, width: 40, height: 40 },
+            visible: true,
+          },
+        ],
+      } as never,
+      {
+        schemaVersion: "uieval.styles/v1alpha1",
+        nodes: [
+          { nodeId: "root", computedStyle: { display: "block" } },
+          { nodeId: "zero-box", computedStyle: { display: "block" } },
+          { nodeId: "child", computedStyle: { display: "block" } },
+        ],
+      },
+    )
+
+    const result = evaluateConstraint(constraint, nodes, tokens)
+    expect(result.status).toBe("failed")
+    expect(result.violations.map((violation) => violation.nodeId)).toContain("child")
+  })
+
+  it("uses the positioned containing block for an absolute child", () => {
+    const nodes = normalizeWebEvidence(
+      {
+        schemaVersion: "uieval.layout/v1alpha1",
+        renderSpace: {
+          logicalWidth: 820,
+          logicalHeight: 1180,
+          logicalUnit: "css-px",
+          deviceScaleFactor: 1,
+          screenshotWidthPx: 820,
+          screenshotHeightPx: 1180,
+          orientation: "portrait",
+        },
+        nodes: [
+          { nodeId: "header", rect: { x: 0, y: 0, width: 820, height: 56 }, visible: true },
+          {
+            nodeId: "padded-row",
+            parentNodeId: "header",
+            rect: { x: 16, y: 0, width: 788, height: 56 },
+            visible: true,
+          },
+          {
+            nodeId: "menu",
+            parentNodeId: "padded-row",
+            rect: { x: 0, y: 56, width: 820, height: 182 },
+            visible: true,
+          },
+        ],
+      } as never,
+      {
+        schemaVersion: "uieval.styles/v1alpha1",
+        nodes: [
+          { nodeId: "header", computedStyle: { display: "block", position: "sticky" } },
+          { nodeId: "padded-row", computedStyle: { display: "flex", position: "static" } },
+          { nodeId: "menu", computedStyle: { display: "block", position: "absolute" } },
+        ],
+      },
+    )
+
+    expect(evaluateConstraint(constraint, nodes, tokens).status).toBe("passed")
+    expect(nodes.find((node) => node.nodeId === "menu")?.properties.get("box.overflowRight"))
+      .toEqual({ kind: "length", px: 0 })
   })
 })

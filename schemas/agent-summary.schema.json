@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "suiteId",
+    "status",
+    "accepted",
+    "iterations",
+    "summaryPath",
+    "summaryHtmlPath",
+    "generatedAt",
+    "reason"
+  ],
+  "properties": {
+    "suiteId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "accepted",
+          "type": "string"
+        },
+        {
+          "const": "blocked",
+          "type": "string"
+        },
+        {
+          "const": "exhausted",
+          "type": "string"
+        },
+        {
+          "const": "plateau",
+          "type": "string"
+        }
+      ]
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "iterations": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "iteration",
+          "score",
+          "accepted",
+          "checks",
+          "scenarios",
+          "dimensions",
+          "changedFiles"
+        ],
+        "properties": {
+          "iteration": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "score": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "progressScore": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "passed",
+                "onFailure",
+                "exitCode",
+                "durationMs",
+                "output"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "passed": {
+                  "type": "boolean"
+                },
+                "onFailure": {
+                  "anyOf": [
+                    {
+                      "const": "repair",
+                      "type": "string"
+                    },
+                    {
+                      "const": "block",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "exitCode": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "durationMs": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "output": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "accepted",
+                "score",
+                "reports",
+                "reasons"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "accepted": {
+                  "type": "boolean"
+                },
+                "score": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "changedPixelRatio": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "maxChangedPixelRatio": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "reusedFromIteration": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "cleanupSettled": {
+                  "type": "boolean"
+                },
+                "reports": {
+                  "type": "array",
+                  "items": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "variantKey",
+                      "rawStatus",
+                      "executionOutcome",
+                      "reportPath",
+                      "htmlPath"
+                    ],
+                    "properties": {
+                      "variantKey": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "rawStatus": {
+                        "anyOf": [
+                          {
+                            "const": "pass",
+                            "type": "string"
+                          },
+                          {
+                            "const": "fail",
+                            "type": "string"
+                          },
+                          {
+                            "const": "needs-review",
+                            "type": "string"
+                          },
+                          {
+                            "const": "inconclusive",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "executionOutcome": {
+                        "anyOf": [
+                          {
+                            "const": "valid",
+                            "type": "string"
+                          },
+                          {
+                            "const": "invalid-evidence",
+                            "type": "string"
+                          },
+                          {
+                            "const": "infra-error",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "reportPath": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "htmlPath": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "status",
+                "score",
+                "evidence"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "pass",
+                      "type": "string"
+                    },
+                    {
+                      "const": "fail",
+                      "type": "string"
+                    },
+                    {
+                      "const": "not-evaluated",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "score": {
+                  "anyOf": [
+                    {
+                      "const": 0,
+                      "type": "number"
+                    },
+                    {
+                      "const": 1,
+                      "type": "number"
+                    }
+                  ]
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "changedFiles": {
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "repairRequestPath": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summaryPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "summaryHtmlPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "generatedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "reason": {
+      "minLength": 1,
+      "type": "string"
+    }
+  }
+}

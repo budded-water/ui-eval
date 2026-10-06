@@ -396,6 +396,28 @@ describe("compileScenario", () => {
     expect(materializer.values).toEqual([])
   })
 
+  it("preserves an explicit public-state mode in the sealed plan", async () => {
+    const { project, scenario } = await createLoadedSources({
+      scenario: {
+        auth: {
+          mode: "public-state",
+          role: "anonymous-market-selected",
+          storageStateRef: "signedIn",
+        },
+        matrix: { deviceProfiles: ["desktop"] },
+      },
+    })
+
+    const result = await compileScenario(scenario, project, {
+      artifactMaterializer: createMaterializer(),
+    })
+
+    expect(result[0].auth).toMatchObject({
+      mode: "public-state",
+      role: "anonymous-market-selected",
+    })
+  })
+
   it("fails closed for unsupported fixture providers before reading or materializing them", async () => {
     const cases: Array<{
       scenario: Record<string, unknown>

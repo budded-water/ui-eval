@@ -12,7 +12,7 @@
 
 ## Context
 
-The current `DesignContractSpec` accepts exactly one capability, `rendered-image`, and one source kind, `image`. Geometry and typography are unsupported: `dom`, `computed-styles`, and `layout-metadata` are captured and stored, but every geometry-dimension record is counted as `unsupported` in coverage.
+At the time of this decision, `DesignContractSpec` accepted exactly one capability, `rendered-image`, and one source kind, `image`. Geometry and typography were unsupported: `dom`, `computed-styles`, and `layout-metadata` were captured and stored, but every geometry-dimension record was counted as `unsupported` in coverage.
 
 Two forces now push against that shape.
 
@@ -86,7 +86,17 @@ The engine implements exactly these, and adding a sixth requires an ADR. Each na
 unit and in how many properties the evaluator reads, so the token set carries one
 `ranges` collection rather than two near-identical ones.
 
-`cross-node-equal` requires no design source at all. It groups by `uiId`, `testId`, or role plus accessible name — identities the layout and styles payloads already carry — and compares across checkpoints, matrix variants, and scenarios.
+`cross-node-equal` requires no design source at all. It groups by `uiId`, `testId`,
+or role plus accessible name — identities the layout and styles payloads already
+carry. The current evaluator pools the checkpoints within one evaluation and
+requires at least one comparable peer group. Cross-variant and cross-scenario
+aggregation remains planned; a single observation cannot prove equality.
+
+Coverage is planned before reading evidence. Local constraints count once per
+planned checkpoint; equality constraints count once per evaluation. Missing
+checkpoints prevent a successful comparison, while observed violations remain
+defects. HTML capability labels derive from actual evaluator provenance and
+canonical coverage rather than a separate capability list.
 
 Every constraint declares `requireMatch`, defaulting to `true`. A constraint whose scope matches zero nodes is invalid, not vacuously passing. Silent zero-match is the standard way a conformance suite decays into a green run that asserts nothing.
 

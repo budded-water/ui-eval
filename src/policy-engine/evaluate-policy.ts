@@ -1,21 +1,9 @@
 export type MetricPrimitive = string | number | boolean
 
-export type GateExpression =
-  | {
-      metric: string
-      operator: "lt" | "lte" | "gt" | "gte" | "eq"
-      value: MetricPrimitive
-    }
-  | { allOf: GateExpression[] }
-  | { anyOf: GateExpression[] }
-  | { not: GateExpression }
+export type { GateExpression } from "../contracts/model"
+import type { GateExpression, EvaluationPolicySpec } from "../contracts/model"
 
-export interface GatePolicy {
-  id: string
-  hard: boolean
-  expression: GateExpression
-  onUnknown: "fail" | "inconclusive" | "review"
-}
+export type GatePolicy = EvaluationPolicySpec["gates"][number]
 
 export interface EvaluatedGate {
   gateId: string

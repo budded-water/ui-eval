@@ -52,6 +52,7 @@ export type ScenarioCompileErrorCode =
   | "UNSUPPORTED_CAPABILITY"
   | "UNSUPPORTED_FEATURE_FLAGS"
   | "UNSUPPORTED_AUTH_SECRET_REFS"
+  | "INVALID_PUBLIC_STATE_AUTH"
   | "UNSUPPORTED_FIXTURES"
   | "UNSUPPORTED_NETWORK_PROFILE"
   | "INVALID_EXCLUDE"
@@ -594,8 +595,23 @@ async function resolveAuth(
   options: CompileScenarioOptions,
 ): Promise<WebResolvedScenarioPlan["auth"] | undefined> {
   if (!source.auth) return undefined
+  const auth = source.auth as typeof source.auth & {
+    mode?: "authenticated" | "public-state"
+  }
 
-  const reference = source.auth.storageStateRef
+  if (
+    auth.mode === "public-state" &&
+    (auth.secretRefs?.length ?? 0) > 0
+  ) {
+    throw compileError(
+      "INVALID_PUBLIC_STATE_AUTH",
+      source.id,
+      "Public storage state cannot declare auth.secretRefs.",
+      "auth.mode",
+    )
+  }
+
+  const reference = auth.storageStateRef
   const fileReference = project.value.storageStates?.[reference]
   if (!fileReference) {
     throw compileError(
@@ -626,9 +642,10 @@ async function resolveAuth(
   )
 
   return {
-    ...(source.auth.role ? { role: source.auth.role } : {}),
+    ...(auth.mode ? { mode: auth.mode } : {}),
+    ...(auth.role ? { role: auth.role } : {}),
     storageState,
-    ...(source.auth.secretRefs ? { secretRefs: [...source.auth.secretRefs] } : {}),
+    ...(auth.secretRefs ? { secretRefs: [...auth.secretRefs] } : {}),
   }
 }
 

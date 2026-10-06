@@ -17,6 +17,10 @@ UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular mono
 - Depend toward contracts and narrow interfaces.
 - Do not import candidate application code, aliases, fixtures, routes, business paths, or environment variables.
 - Keep capture, evaluation, policy, storage, reporting, and CLI concerns separated.
+- Every Agent terminal result has two synchronized projections: `summary.json`
+  is the canonical machine record and `summary.html` is the default human
+  handoff derived from that same result. Failure to publish either artifact
+  fails the command; never claim Agent completion with JSON alone.
 - Evaluators are deterministic and do not mutate candidate source.
 - Missing/corrupt/unsupported evidence never becomes pass.
 - Product, infrastructure, invalid-evidence, and review outcomes remain distinct.
@@ -28,6 +32,8 @@ UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular mono
 - Do not hand-edit generated schemas or maintain handwritten mirror types.
 - Use named canonical-digest exclusion profiles; never add broad exclusions to silence a mismatch.
 - Treat CLI exit codes, JSON stdout, evidence sensitivity, store format IDs, evaluator versions, and report status as public facts.
+- Treat default human report paths and Agent JSON/HTML synchronization as public
+  facts that must move with CLI output, docs, tests, and changelog.
 - Before claiming complete or tests passed, scan every other surface that repeats the changed fact.
 
 ## Security rules

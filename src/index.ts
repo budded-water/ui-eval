@@ -1,17 +1,40 @@
-export * from "./contracts/index"
-// The generic ScenarioSource contract exported above describes the forward
-// multi-platform envelope. The explicitly named exports below are the
-// authoring formats accepted by the currently implemented web CLI.
+// Default imports describe executable web behavior. Forward multi-platform,
+// design-binding and governance contracts require an explicit namespace.
+export * as forwardContracts from "./contracts/index"
+export { canonicalJson, canonicalDigest, canonicalSpecDigest, DigestExclusionProfiles } from "./contracts/canonical-json"
+export {
+  ArtifactRefSchema, CaptureBundleSchema, EvaluationPlanSchema,
+  EvaluationPolicySchema, EvaluationReportSchema, GeometryEvaluatorConfigSchema,
+  SealedRunManifestSchema, WebResolvedScenarioPlanSchema,
+} from "./contracts/schemas"
+export {
+  ContractValidationError, validateArtifactRef, validateCaptureBundle,
+  validateEvaluationPlan, validateEvaluationPolicy, validateEvaluationReport,
+  validateGeometryEvaluatorConfig, validateSealedRunManifest,
+  validateLayoutEvidencePayload, validateStylesEvidencePayload,
+} from "./contracts/validation"
+export type {
+  ArtifactRef, CaptureBundle, CaptureBundleSpec, CaptureCapability,
+  Digest, CoverageCounts, EvaluationPlan, EvaluationPolicy, EvaluationPolicySpec,
+  EvaluationReport, EvaluationReportSpec, Finding, GateExpression,
+  GeometryEvaluatorConfig, DesignTokenSet, LayoutEvidencePayload, StylesEvidencePayload,
+  PolicySource, SealedRunManifest, SourceRevision, WebResolvedScenarioPlan,
+  WebRuntimeLocator, WebScenarioStep, WebCheckpointSpec,
+} from "./contracts/model"
 export {
   ProjectConfigSchema,
   ProjectConfigError,
   WebScenarioSourceSchema,
+  WebPolicySourceSchema,
   assertProjectConfig,
   assertWebScenarioSource,
+  assertWebPolicySource,
   validateProjectConfig,
   validateWebScenarioSource,
+  validateWebPolicySource,
   type ProjectConfig,
   type WebScenarioSource,
+  type WebPolicySource,
 } from "./project/config"
 export {
   evaluateScenario,
@@ -25,6 +48,18 @@ export {
   type InitUiEvalProjectResult,
 } from "./cli/init"
 export { runDoctor, type DoctorOptions, type DoctorResult } from "./cli/doctor"
+export {
+  runAgentSuite,
+  type AgentRunResult,
+  type RunAgentOptions,
+} from "./agent/run"
+export {
+  renderAgentSummaryHtml,
+  writeAgentSummaryArtifacts,
+} from "./agent/report"
+export { AgentSuiteSchema, type AgentSuite } from "./agent/config"
+export { AgentRunResultSchema } from "./agent/model"
+export { IncompleteCleanupError } from "./runtime/cleanup"
 export {
   LocalArtifactStore,
   RunStore,

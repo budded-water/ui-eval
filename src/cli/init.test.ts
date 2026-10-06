@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
-import { loadProjectConfig, loadScenarioSource } from "../project/config"
+import { loadProjectConfig, loadScenarioSource, loadPolicySource } from "../project/config"
 import { initUiEvalProject } from "./init"
 
 const tempRoots: string[] = []
@@ -46,6 +46,7 @@ describe("initUiEvalProject", () => {
     )
     expect(scenario.value.target.entrypoint.path).toBe("/privacy")
     expect(scenario.value.auth).toBeUndefined()
+    expect(scenario.value.checkpoints[0].requiredChannels).toEqual(["screenshot", "console", "network", "crash"])
     expect(scenario.value.checkpoints[0].designTargetRef).toBeUndefined()
     expect(project.value.devServer).toMatchObject({
       command: "npm",
@@ -62,10 +63,10 @@ describe("initUiEvalProject", () => {
     expect(projectSource).not.toHaveProperty("$schema")
     expect(policySource).not.toHaveProperty("$schema")
     expect(scenarioSource).not.toHaveProperty("$schema")
-    expect(
-      (policySource.agentMutation as { protectedPathGlobs: string[] })
-        .protectedPathGlobs,
-    ).toEqual([
+    expect(policySource).toMatchObject({ profile: "web-default" })
+    expect(policySource).not.toHaveProperty("evaluators")
+    const expandedPolicy = await loadPolicySource(project, "policies/default.json")
+    expect(expandedPolicy.value.agentMutation.protectedPathGlobs).toEqual([
       "ui-eval/policies/**",
       "ui-eval/baselines/**",
       ".ui-eval/**",

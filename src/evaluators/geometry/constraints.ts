@@ -61,7 +61,7 @@ export interface ConstraintResult {
   /** Nodes carrying the property in a form this engine cannot compare. */
   readonly unnormalizableNodes: number
   readonly violations: readonly Violation[]
-  readonly invalidReason?: "no-match" | "unnormalizable-values"
+  readonly invalidReason?: "no-match" | "unnormalizable-values" | "missing-evidence" | "insufficient-peers"
 }
 
 function inScope(node: NormalizedNode, scope: ConstraintScope | undefined): boolean {
@@ -268,6 +268,13 @@ export function evaluateConstraint(
     }
 
     const violations: Violation[] = []
+    if (![...groups.values()].some((group) => group.length >= 2)) {
+      return {
+        ...settle(constraint, matched, unnormalizable, readings, []),
+        status: constraint.requireMatch === false ? "unsupported" : "invalid",
+        invalidReason: "insufficient-peers",
+      }
+    }
     for (const [identity, group] of groups) {
       if (group.length < 2) continue
       const numbers = group.map((reading) => numericOf(reading.value))

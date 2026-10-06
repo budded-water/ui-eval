@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { canonicalDigest } from "../contracts/canonical-json"
+import { CORE_EVALUATOR_VERSION, CORE_GATE_REQUIREMENTS } from "../contracts/core-policy"
 import type {
   ArtifactRef,
   Digest,
@@ -13,7 +14,7 @@ import {
   validateGeometryEvaluatorConfig,
 } from "../contracts/validation"
 
-export const PHASE_0A_EVALUATOR_VERSION = "0.1.0" as const
+export const PHASE_0A_EVALUATOR_VERSION = CORE_EVALUATOR_VERSION
 export const PHASE_0A_EVALUATOR_IDS = [
   "execution",
   "interaction",
@@ -405,11 +406,7 @@ function assertRequiredCoreDeclarations(policy: EvaluationPolicy): void {
 
 type PolicyGate = EvaluationPolicy["spec"]["gates"][number]
 
-const PHASE_0A_REQUIRED_CORE_GATES = [
-  { metric: "execution.valid", value: true },
-  { metric: "interaction.failedAssertions", value: 0 },
-  { metric: "runtime.criticalErrors", value: 0 },
-] as const
+const PHASE_0A_REQUIRED_CORE_GATES = CORE_GATE_REQUIREMENTS
 
 function isExactRequiredCoreGate(
   gate: PolicyGate,

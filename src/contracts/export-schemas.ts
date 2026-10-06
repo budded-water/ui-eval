@@ -2,10 +2,13 @@ import { mkdir, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import type { TSchema } from "@sinclair/typebox"
+import { AgentSuiteSchema } from "../agent/config"
+import { AgentRunResultSchema } from "../agent/model"
 
 import {
   ProjectConfigSchema,
   ScenarioSourceSchema as AuthoringScenarioSourceSchema,
+  WebPolicySourceSchema,
 } from "../project/config"
 import {
   CaptureBundleSchema,
@@ -15,7 +18,6 @@ import {
   EvaluationPlanSchema,
   EvaluationPolicySchema,
   EvaluationReportSchema,
-  PolicySourceSchema,
   ResolvedScenarioPlanSchema,
   ScenarioManifestSchema,
   SealedRunManifestSchema,
@@ -24,9 +26,11 @@ import {
 const DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
+  ["agent-suite.schema.json", AgentSuiteSchema],
+  ["agent-summary.schema.json", AgentRunResultSchema],
   ["project.schema.json", ProjectConfigSchema],
   ["scenario-source.schema.json", AuthoringScenarioSourceSchema],
-  ["policy-source.schema.json", PolicySourceSchema],
+  ["policy-source.schema.json", WebPolicySourceSchema],
   ["scenario-manifest.schema.json", ScenarioManifestSchema],
   ["resolved-scenario-plan.schema.json", ResolvedScenarioPlanSchema],
   ["sealed-run-manifest.schema.json", SealedRunManifestSchema],

@@ -2,7 +2,7 @@
 
 UI Eval is a local-first, evidence-first conformance harness for web user interfaces. It compiles reviewable project inputs into sealed execution plans, captures browser evidence with Playwright, applies deterministic policy gates, and writes a validated JSON result plus a static HTML view.
 
-The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service, a coding agent, or a general UI quality scorer.
+The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter.
 
 > **Repository status:** the source is publicly visible at [zw-befreed/ui-eval](https://github.com/zw-befreed/ui-eval) and remains `UNLICENSED`. Public visibility is not an open-source license and does not grant permission to use, copy, modify, or redistribute the code. No npm publication or support promise is configured.
 
@@ -20,8 +20,12 @@ The current implementation is deliberately narrow: a single-package TypeScript m
 - Project-scoped local content-addressed storage and atomically materialized
   per-run records. Local files are not write-once or tamper-proof.
 - Validated `report.json` as the machine result and a static `report.html` reading view.
+- Optional constrained `agent` loop with immutable findings, project checks,
+  mutation budgets, protected paths, plateau detection, and deterministic
+  reruns. Every terminal state emits canonical `summary.json` plus a default
+  human-readable `summary.html` acceptance dashboard.
 
-See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; typography, authoritative design sync, baselines, waivers, native apps, agent fixing, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config.
+See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; typography, authoritative design sync, baselines, waivers, native apps, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config. The constrained repair loop is documented in [Constrained Agent Loop](docs/agent.md).
 
 ## Requirements
 
@@ -50,6 +54,12 @@ bun run ui-eval init \
 ```
 
 Review the generated `ui-eval/project.json`, scenario, and policy before running them. The configured development-server command is trusted configuration and executes in the candidate project.
+
+New projects use a compact `web-default` policy profile. The loader expands its
+mandatory evaluators and hard gates before sealing the policy; the resulting
+`policy.json` remains fully auditable. The default smoke captures screenshot,
+console, network, and crash evidence. Request DOM, computed styles, layout, or
+trace explicitly when a scenario needs them.
 
 Check prerequisites and server ownership without evaluating a scenario:
 
@@ -110,6 +120,11 @@ Generated state belongs outside Git:
     report.html               # presentation view
     candidate.png             # only when safe to materialize
     reference.png / diff.png  # only for local image comparison
+  agent-runs/<agent-run-id>/
+    iteration-*.json          # immutable per-iteration assessment
+    repair-request-*.json     # only when a repair is requested
+    summary.json              # authoritative Agent terminal result
+    summary.html              # default human review entry point
 ```
 
 Sensitive evidence such as console, network, trace, and crash data remains in the content-addressed store and does not receive a plaintext run alias. `.ui-eval/` is a local working area, not a canonical source of project policy or scenarios, and it is not encrypted at rest.
@@ -143,11 +158,12 @@ The reference is explicitly `local-unprotected`. A changed image produces `needs
 
 ## Programmatic surface
 
-The package entry point exports shared contract types/validators, the active
-`ProjectConfigSchema` and `WebScenarioSourceSchema` authoring surfaces with
+The package entry point exports executable web contract types/validators, the active
+`ProjectConfigSchema`, `WebScenarioSourceSchema`, and `WebPolicySourceSchema` authoring surfaces with
 their structural validators, `evaluateScenario`, `initUiEvalProject`,
-`runDoctor`, and the local artifact/run stores. The generic multi-platform
-`ScenarioSource` contract is forward-facing and is not proof that the current
+`runDoctor`, Agent APIs, and the local artifact/run stores. Forward multi-platform,
+design-binding, and governance contracts are available through the explicit
+`forwardContracts` namespace. Its generic `ScenarioSource` contract is not proof that the current
 web CLI can execute native scenarios. This repository currently has no
 supported package distribution channel, so downstream code must not assume
 that the package can be installed from a registry.

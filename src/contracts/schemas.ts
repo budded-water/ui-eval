@@ -726,6 +726,15 @@ function sharedInteractionSteps(locator: TSchema, assertion: TSchema) {
       strict,
     ),
     Type.Object(
+      {
+        id: Type.String(nonEmpty),
+        action: Type.Literal("select"),
+        target: locator,
+        value: Type.String(),
+      },
+      strict,
+    ),
+    Type.Object(
       { id: Type.String(nonEmpty), action: Type.Literal("press"), key: Type.String(nonEmpty) },
       strict,
     ),
@@ -865,6 +874,9 @@ const ScenarioMatrixSchema = Type.Object(
 
 const ScenarioSourceAuthSchema = Type.Object(
   {
+    mode: Type.Optional(
+      Type.Union([Type.Literal("authenticated"), Type.Literal("public-state")]),
+    ),
     role: Type.Optional(Type.String(nonEmpty)),
     storageStateRef: Type.String(nonEmpty),
     secretRefs: Type.Optional(Type.Array(Type.String(nonEmpty), { uniqueItems: true })),
@@ -874,6 +886,9 @@ const ScenarioSourceAuthSchema = Type.Object(
 
 const ScenarioManifestAuthSchema = Type.Object(
   {
+    mode: Type.Optional(
+      Type.Union([Type.Literal("authenticated"), Type.Literal("public-state")]),
+    ),
     role: Type.Optional(Type.String(nonEmpty)),
     stateArtifact: Type.Optional(ArtifactRefSchema),
     secretRefs: Type.Optional(Type.Array(Type.String(nonEmpty), { uniqueItems: true })),
@@ -1040,6 +1055,9 @@ export const ScenarioManifestSchema = contractEnvelope(
 
 const ResolvedAuthSchema = Type.Object(
   {
+    mode: Type.Optional(
+      Type.Union([Type.Literal("authenticated"), Type.Literal("public-state")]),
+    ),
     role: Type.Optional(Type.String(nonEmpty)),
     storageState: ArtifactRefSchema,
     secretRefs: Type.Optional(Type.Array(Type.String(nonEmpty), { uniqueItems: true })),
@@ -1780,6 +1798,8 @@ export const EvaluationReportSpecSchema = Type.Object(
       Type.Literal("inconclusive"),
     ]),
     scores: Type.Optional(Type.Array(DimensionScoreSchema)),
+    // Raw evaluator measurements, including zero. Not calibrated quality scores.
+    metrics: Type.Optional(Type.Record(Type.String(nonEmpty), MatrixValueSchema)),
     coverage: CoverageReportSchema,
     gates: Type.Array(GateResultSchema),
     findings: Type.Array(FindingSchema),

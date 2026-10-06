@@ -28,9 +28,6 @@ import type {
   CaptureBundleSpec,
   CaptureCapability,
   ContractMetadata,
-  CoverageCounts,
-  LayoutEvidencePayload,
-  StylesEvidencePayload,
   EvaluationPlan,
   EvaluationPolicy,
   EvaluationReport,
@@ -45,9 +42,7 @@ import {
   validateCaptureBundle,
   validateEvaluationPlan,
   validateEvaluationReport,
-  validateLayoutEvidencePayload,
   validateSealedRunManifest,
-  validateStylesEvidencePayload,
 } from "../contracts/validation"
 import { createFinding, evaluateFunctionalEvidence } from "../evaluators/functional"
 import { evaluateGeometryEvidence } from "../evaluators/geometry/evaluator"
@@ -82,6 +77,12 @@ import {
 } from "../storage-local/artifact-store"
 import type { ArtifactRef as LocalArtifactRef } from "../storage-local/artifact-store"
 import { RunStore } from "../storage-local/run-store"
+import { reportCapabilities } from "../report-html/capabilities"
+import { coverageFor } from "./coverage"
+import { normalizedCandidateEvidenceDigest } from "./evidence-digest"
+export { normalizedCandidateEvidenceDigest } from "./evidence-digest"
+import { geometryCheckpointEvidence } from "./geometry-evidence"
+import { IncompleteCleanupError, hasIncompleteCleanup } from "../runtime/cleanup"
 import { assertCaptureContract } from "./capture-contract"
 import { ensureDevServer, type DevServerHandle } from "./dev-server"
 import {
@@ -104,6 +105,7 @@ import {
 const ACTOR = { type: "service", id: "ui-eval-cli" } as const
 const ORCHESTRATOR_VERSION = "0.1.0"
 const ZERO_DIGEST = `sha256:${"0".repeat(64)}` as const
+const CAPTURE_ABORT_GRACE_MS = 15_000
 
 export interface EvaluateScenarioOptions {
   projectRoot: string
@@ -141,6 +143,8 @@ export interface EvaluateScenarioResult {
 }
 
 export interface EvaluateScenarioDependencies {
+  /** Test seam for the bounded capture cleanup wait after cancellation. */
+  captureCleanupTimeoutMs?: number
   capture?: (
     plan: WebResolvedScenarioPlan,
     context: CaptureWebScenarioContext,
@@ -167,6 +171,64 @@ function throwIfEvaluationAborted(signal: AbortSignal | undefined): void {
   if (signal.reason instanceof Error) throw signal.reason
   throw Object.assign(new Error("UI evaluation was interrupted."), {
     code: "ABORTED",
+  })
+}
+
+function awaitWithEvaluationAbort<T>(
+  operation: Promise<T>,
+  signal: AbortSignal | undefined,
+  cleanupTimeoutMs: number,
+): Promise<T> {
+  if (!signal) return operation
+  const abortReason = () =>
+    signal.reason instanceof Error
+      ? signal.reason
+      : Object.assign(new Error("UI evaluation was interrupted."), {
+          code: "ABORTED",
+        })
+  const settleAbortGrace = async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let settled = false
+    let cleanupError: unknown
+    await Promise.race([
+      operation.then(
+        () => { settled = true },
+        (error: unknown) => { settled = true; cleanupError = error },
+      ),
+      new Promise<void>((settle) => {
+        timer = setTimeout(settle, cleanupTimeoutMs)
+      }),
+    ])
+    if (timer) clearTimeout(timer)
+    if (!settled) throw new IncompleteCleanupError("Capture cleanup did not settle after cancellation")
+    if (hasIncompleteCleanup(cleanupError)) throw cleanupError
+  }
+  if (signal.aborted) {
+    return settleAbortGrace().then(() => Promise.reject(abortReason()))
+  }
+  return new Promise<T>((resolve, reject) => {
+    let aborted = false
+    const onAbort = async () => {
+      aborted = true
+      signal.removeEventListener("abort", onAbort)
+      try {
+        await settleAbortGrace()
+        reject(abortReason())
+      } catch (error) {
+        reject(error)
+      }
+    }
+    signal.addEventListener("abort", onAbort, { once: true })
+    operation.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort)
+        if (!aborted) resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort)
+        if (!aborted) reject(error)
+      },
+    )
   })
 }
 
@@ -617,222 +679,6 @@ async function evaluateVisualEvidence(options: {
   }
 }
 
-function emptyCoverageCounts(): CoverageCounts {
-  return {
-    expected: 0,
-    evaluated: 0,
-    passed: 0,
-    failed: 0,
-    unsupported: 0,
-    invalid: 0,
-  }
-}
-
-function addCoverageCounts(
-  left: CoverageCounts,
-  right: CoverageCounts,
-): CoverageCounts {
-  return {
-    expected: left.expected + right.expected,
-    evaluated: left.evaluated + right.evaluated,
-    passed: left.passed + right.passed,
-    failed: left.failed + right.failed,
-    unsupported: left.unsupported + right.unsupported,
-    invalid: left.invalid + right.invalid,
-  }
-}
-
-function evidenceCoverageCounts(
-  records: ReturnType<CaptureBundleSpec["checkpoints"][number]["evidence"]["filter"]>,
-  mode: "evaluated" | "unsupported" | "visual-measured" | "visual-invalid",
-  visualChanged = false,
-  failedChannels: ReadonlySet<CaptureCapability> = new Set(),
-): CoverageCounts {
-  const counts = emptyCoverageCounts()
-  for (const [index, record] of records.entries()) {
-    counts.expected += 1
-    if (record.status === "missing" || record.status === "corrupt") {
-      counts.invalid += 1
-    } else if (record.status === "not-applicable") {
-      counts.unsupported += 1
-    } else if (mode === "evaluated") {
-      counts.evaluated += 1
-      if (failedChannels.has(record.channel)) counts.failed += 1
-      else counts.passed += 1
-    } else if (mode === "visual-measured" && index === 0) {
-      counts.evaluated += 1
-      if (visualChanged) counts.failed += 1
-      else counts.passed += 1
-    } else if (mode === "visual-invalid" && index === 0) {
-      counts.invalid += 1
-    } else {
-      counts.unsupported += 1
-    }
-  }
-  return counts
-}
-
-function interactionCoverageCounts(
-  capture: CaptureBundleSpec,
-): CoverageCounts {
-  const statuses = [
-    ...capture.stepResults.map(({ status }) => status),
-    ...capture.assertionResults.map(({ status }) => status),
-  ]
-  return {
-    expected: statuses.length,
-    evaluated: statuses.filter((status) =>
-      ["passed", "failed"].includes(status),
-    ).length,
-    passed: statuses.filter((status) => status === "passed").length,
-    failed: statuses.filter((status) => status === "failed").length,
-    unsupported: 0,
-    invalid: statuses.filter(
-      (status) =>
-        status === "skipped" ||
-        status === "not-executed" ||
-        status === "not-evaluated",
-    ).length,
-  }
-}
-
-function failedRuntimeChannels(
-  capture: CaptureBundleSpec,
-): ReadonlySet<CaptureCapability> {
-  const failed = new Set<CaptureCapability>()
-  for (const error of capture.executionErrors ?? []) {
-    if (error.origin !== "product") continue
-    if (
-      error.code.startsWith("same-origin-") ||
-      error.code.includes("main-document")
-    ) {
-      failed.add("network")
-    }
-    if (error.code.includes("page-error") || error.code.includes("page-crash")) {
-      failed.add("crash")
-    }
-  }
-  return failed
-}
-
-function coverageFor(
-  capture: CaptureBundleSpec,
-  visual: VisualEvidence | undefined,
-  geometryCoverage: CoverageCounts | undefined,
-): EvaluationReportSpec["coverage"] {
-  const interactionCounts = interactionCoverageCounts(capture)
-  const evidence = capture.checkpoints.flatMap((checkpoint) =>
-    checkpoint.evidence.filter((record) => record.required),
-  )
-  const channels = (values: readonly CaptureCapability[]) =>
-    evidence.filter((record) => values.includes(record.channel))
-  const runtimeCounts = evidenceCoverageCounts(
-    channels(["console", "network", "device-logs", "crash"]),
-    "evaluated",
-    false,
-    failedRuntimeChannels(capture),
-  )
-  const pixelRecords = channels(["screenshot", "element-screenshots", "video"])
-  const pixelMode = !visual
-    ? "unsupported"
-    : visual.comparison.status === "measured"
-      ? "visual-measured"
-      : "visual-invalid"
-  const pixelCounts = evidenceCoverageCounts(
-    pixelRecords,
-    pixelMode,
-    visual?.comparison.status === "measured" &&
-      visual.comparison.changedPixels > 0,
-  )
-  const structuredChannels = channels([
-    "dom",
-    "computed-styles",
-    "accessibility-tree",
-    "view-hierarchy",
-    "layout-metadata",
-  ])
-  const geometryCounts =
-    geometryCoverage ?? evidenceCoverageCounts(structuredChannels, "unsupported")
-  const performanceCounts = evidenceCoverageCounts(
-    channels(["trace", "performance"]),
-    "unsupported",
-  )
-  const byDimension = [
-    { dimension: "interaction" as const, counts: interactionCounts },
-    { dimension: "runtime" as const, counts: runtimeCounts },
-    { dimension: "pixel" as const, counts: pixelCounts },
-    { dimension: "geometry" as const, counts: geometryCounts },
-    { dimension: "performance" as const, counts: performanceCounts },
-  ].filter((entry) => entry.counts.expected > 0)
-  const total = byDimension.reduce(
-    (counts, entry) => addCoverageCounts(counts, entry.counts),
-    emptyCoverageCounts(),
-  )
-  return {
-    total,
-    byDimension,
-  }
-}
-
-/**
- * Hash only evidence that the active Phase 0A evaluators can observe. In
- * particular, trace ZIP metadata and CAS operational fields must not invalidate
- * an otherwise identical EvaluationKey.
- */
-export function normalizedCandidateEvidenceDigest(
-  capture: CaptureBundleSpec,
-  options: { includeScreenshot: boolean },
-): ArtifactRef["digest"] {
-  return canonicalDigest({
-    sourceRevision: capture.sourceRevision,
-    build: capture.build,
-    variant: capture.variant,
-    adapter: capture.adapter,
-    environment: capture.environment,
-    capabilities: [...capture.capabilities].sort(),
-    status: capture.status,
-    completeness: capture.completeness,
-    stepResults: capture.stepResults.map((result) => ({
-      stepId: result.stepId,
-      status: result.status,
-      origin: result.origin,
-      ...(result.errorCode ? { errorCode: result.errorCode } : {}),
-    })),
-    assertionResults: capture.assertionResults.map((result) => ({
-      assertionId: result.assertionId,
-      ...(result.stepId ? { stepId: result.stepId } : {}),
-      ...(result.checkpointId ? { checkpointId: result.checkpointId } : {}),
-      status: result.status,
-      origin: result.origin,
-      ...(result.expected ? { expected: result.expected } : {}),
-      ...(result.actual ? { actual: result.actual } : {}),
-    })),
-    checkpoints: capture.checkpoints.map((checkpoint) => ({
-      checkpointId: checkpoint.checkpointId,
-      renderSpace: checkpoint.renderSpace,
-      evidence: checkpoint.evidence.map((record) => ({
-        channel: record.channel,
-        required: record.required,
-        status: record.status,
-        ...(record.error ? { error: record.error } : {}),
-        ...(options.includeScreenshot &&
-        record.channel === "screenshot" &&
-        record.artifact
-          ? { artifactDigest: record.artifact.digest }
-          : {}),
-      })),
-    })),
-    executionErrors: (capture.executionErrors ?? []).map((error) => ({
-      origin: error.origin,
-      phase: error.phase,
-      code: error.code,
-      message: error.message,
-      retryable: error.retryable,
-      ...(error.stepId ? { stepId: error.stepId } : {}),
-    })),
-  })
-}
-
 function toEvaluationPlan(
   executionId: string,
   captureDigest: ArtifactRef["digest"],
@@ -1012,48 +858,6 @@ function runtimeEntries(
   return entries
 }
 
-function capabilityView(
-  executionOutcome: EvaluationReportSpec["executionOutcome"],
-  visual: VisualEvidence | undefined,
-): EvaluationReportView["capabilities"] {
-  const measured = executionOutcome === "valid" ? "measured" : "unknown"
-  return [
-    {
-      dimension: "Execution",
-      status: measured,
-      detail: "Route reachability and scenario-step execution.",
-    },
-    {
-      dimension: "Interaction / content",
-      status: measured,
-      detail: "Only explicit assertions declared by the scenario.",
-    },
-    {
-      dimension: "Runtime / network",
-      status: measured,
-      detail:
-        "Page errors and same-origin failures are blocking. Authenticated cross-origin egress is blocked; observed unauthenticated third-party failures are advisory.",
-    },
-    {
-      dimension: "Pixel change",
-      status: visual?.comparison.status === "measured" ? "measured" : "unknown",
-      detail: visual
-        ? "Local reference trust: local-unprotected; result requires review when changed."
-        : "No local same-size reference was supplied.",
-    },
-    {
-      dimension: "Geometry",
-      status: "unsupported",
-      detail: "Requires a structured design node tree; raster-only evidence is insufficient.",
-    },
-    {
-      dimension: "Typography",
-      status: "unsupported",
-      detail: "Requires structured typography spans and font provenance.",
-    },
-  ]
-}
-
 function statusWithVisual(
   current: ReportStatus,
   executionOutcome: EvaluationReportSpec["executionOutcome"],
@@ -1075,45 +879,6 @@ function gateResults(gates: readonly EvaluatedGate[]): EvaluationReportSpec["gat
     status,
     reason,
   }))
-}
-
-/**
- * Structured geometry evidence is read back from the immutable store rather
- * than from capture-time memory, so the evaluator sees exactly the bytes the
- * report references. A checkpoint without layout evidence is skipped, which the
- * constraint layer then reports as unknown rather than as compliant.
- */
-async function geometryCheckpointEvidence(
-  capture: CaptureBundleSpec,
-  artifactStore: LocalArtifactStore,
-): Promise<Array<{
-  checkpointId: string
-  layout: LayoutEvidencePayload
-  styles?: StylesEvidencePayload
-}>> {
-  const readJson = async (ref: ArtifactRef): Promise<unknown> =>
-    JSON.parse(
-      new TextDecoder().decode(await artifactStore.resolve(localArtifactRef(ref))),
-    )
-
-  const collected = []
-  for (const checkpoint of capture.checkpoints) {
-    const find = (channel: CaptureCapability) =>
-      checkpoint.evidence.find(
-        (record) => record.channel === channel && record.status === "captured",
-      )?.artifact
-    const layoutRef = find("layout-metadata")
-    if (!layoutRef) continue
-    const stylesRef = find("computed-styles")
-    collected.push({
-      checkpointId: checkpoint.checkpointId,
-      layout: validateLayoutEvidencePayload(await readJson(layoutRef)),
-      ...(stylesRef
-        ? { styles: validateStylesEvidencePayload(await readJson(stylesRef)) }
-        : {}),
-    })
-  }
-  return collected
 }
 
 async function evaluatePlan(options: {
@@ -1198,20 +963,22 @@ async function evaluatePlan(options: {
         .browserChannel
         ? { channel: options.rootOptions.browserChannel }
         : undefined
-      captureSpec = await (options.deps.capture ?? captureWebScenario)(
-        options.plan,
-        {
+      captureSpec = await awaitWithEvaluationAbort(
+        (options.deps.capture ?? captureWebScenario)(options.plan, {
           ...captureContext,
           artifactStore: options.artifactStore,
           ...(options.rootOptions.browserChannel
             ? { browserChannel: options.rootOptions.browserChannel }
             : {}),
           ...(browserLaunchOptions ? { browserLaunchOptions } : {}),
-        },
+        }),
+        options.rootOptions.signal,
+        options.deps.captureCleanupTimeoutMs ?? CAPTURE_ABORT_GRACE_MS,
       )
       options.fixtureSession?.verify()
       throwIfEvaluationAborted(options.rootOptions.signal)
     } catch (error) {
+      if (hasIncompleteCleanup(error)) throw error
       throwIfEvaluationAborted(options.rootOptions.signal)
       captureSpec = failedCapture(options.plan, captureContext, error)
     }
@@ -1270,6 +1037,7 @@ async function evaluatePlan(options: {
   })
   const normalizedEvidenceDigest = normalizedCandidateEvidenceDigest(captureSpec, {
     includeScreenshot: options.rootOptions.referencePath !== undefined,
+    includeGeometry: options.evaluatorRegistry.get("geometry") !== undefined,
   })
   let visualEvaluationError: string | undefined
   let visual: VisualEvidence | undefined
@@ -1336,7 +1104,8 @@ async function evaluatePlan(options: {
   const geometry = geometryEvaluator
     ? evaluateGeometryEvidence(
         geometryEvaluator.config,
-        await geometryCheckpointEvidence(captureSpec, options.artifactStore),
+        await geometryCheckpointEvidence(captureSpec, (ref) => options.artifactStore.resolve(localArtifactRef(ref))),
+        options.plan.checkpoints.map((checkpoint) => checkpoint.id),
       )
     : undefined
   const checkpointId = options.plan.checkpoints[0]?.id ?? "checkpoint"
@@ -1349,7 +1118,10 @@ async function evaluatePlan(options: {
   })
   const executionOutcome = visualEvaluationError
     ? "infra-error"
-    : functional.executionOutcome
+    : functional.executionOutcome === "valid" && functional.metrics["execution.valid"] === true &&
+      geometry && geometry.coverage.invalid + geometry.coverage.unsupported > 0 && geometry.coverage.failed === 0
+      ? "invalid-evidence"
+      : functional.executionOutcome
   const metrics: Record<string, MetricPrimitive | undefined> = {
     ...functional.metrics,
     ...(geometry?.metrics ?? {}),
@@ -1406,6 +1178,9 @@ async function evaluatePlan(options: {
   ]
   const evaluatorProvenance =
     options.evaluatorRegistry.provenanceFor(executedEvaluatorIds)
+  const measuredMetrics = Object.fromEntries(
+    Object.entries(metrics).filter((entry): entry is [string, MetricPrimitive] => entry[1] !== undefined),
+  )
   const reportSpec: EvaluationReportSpec = {
     evaluationKey: evaluationPlan.evaluationKey,
     inputs: {
@@ -1420,6 +1195,7 @@ async function evaluatePlan(options: {
     },
     executionOutcome,
     rawStatus,
+    metrics: measuredMetrics,
     coverage: coverageFor(captureSpec, visual, geometry?.coverage),
     gates: gateResults(evaluatedGates),
     findings,
@@ -1435,6 +1211,7 @@ async function evaluatePlan(options: {
     captureBundle,
     evaluatedGates,
     expectedExecutionOutcome: executionOutcome,
+    expectedMetrics: measuredMetrics,
     visualDecision: !visual
       ? { status: "none" }
       : visual.comparison.status === "unknown"
@@ -1496,7 +1273,7 @@ async function evaluatePlan(options: {
       { label: "Run manifest", value: runManifestDigest },
       { label: "Evaluation key", value: evaluationPlan.evaluationKey },
     ],
-    capabilities: capabilityView(executionOutcome, visual),
+    capabilities: reportCapabilities(reportSpec),
     gates: gateResults(evaluatedGates),
     findings: findings.map((finding) => ({
       fingerprint: finding.fingerprint,

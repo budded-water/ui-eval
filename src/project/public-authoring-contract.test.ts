@@ -9,10 +9,13 @@ import {
   ProjectConfigError,
   ProjectConfigSchema,
   WebScenarioSourceSchema,
+  WebPolicySourceSchema,
   assertProjectConfig,
   assertWebScenarioSource,
   validateProjectConfig,
   validateWebScenarioSource,
+  validateWebPolicySource,
+  forwardContracts,
   type ProjectConfig,
   type WebScenarioSource,
 } from "../index"
@@ -104,6 +107,16 @@ describe("public active authoring contracts", () => {
     expect(WebScenarioSourceSchema.$id).toBe(
       "https://uieval.io/source/scenario",
     )
+    expect(WebPolicySourceSchema.$id).toBe("https://uieval.io/source/web-policy")
+    expect(forwardContracts.ScenarioSourceSchema).not.toBe(WebScenarioSourceSchema)
+  })
+
+  it("validates compact policy authoring in parity with its generated schema", async () => {
+    const checkedIn = await checkedInValidator("policy-source.schema.json")
+    const minimal = { apiVersion: "uieval.io/v1alpha1", kind: "PolicySource", id: "default", revision: 1, profile: "web-default" }
+    for (const candidate of [minimal, { ...minimal, extra: true }, { ...minimal, profile: "unknown" }, { ...minimal, gates: [] }]) {
+      expect(validateWebPolicySource(structuredClone(candidate))).toBe(checkedIn(structuredClone(candidate)))
+    }
   })
 
   it("validates ProjectConfig in parity with the checked-in generated schema", async () => {

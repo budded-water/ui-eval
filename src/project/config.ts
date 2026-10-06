@@ -7,11 +7,12 @@ import { canonicalDigest } from "../contracts/canonical-json"
 import {
   CaptureCapabilitySchema,
   MatrixValueSchema,
-  PolicySourceSchema,
   WebCheckpointSpecSchema,
   WebScenarioStepSchema,
 } from "../contracts/schemas"
 import type { Digest, PolicySource } from "../contracts/model"
+import { WebPolicySourceSchema, expandWebPolicy, type WebPolicySource } from "./policy-profile"
+export { WebPolicySourceSchema, type WebPolicySource } from "./policy-profile"
 
 const identifierPattern = "^[A-Za-z0-9][A-Za-z0-9._-]*$"
 const projectRelativeReferencePattern = "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$"
@@ -205,6 +206,12 @@ export const WebScenarioSourceSchema = Type.Object(
     auth: Type.Optional(
       Type.Object(
         {
+          mode: Type.Optional(
+            Type.Union([
+              Type.Literal("authenticated"),
+              Type.Literal("public-state"),
+            ]),
+          ),
           role: Type.Optional(Type.String({ minLength: 1 })),
           storageStateRef: IdentifierSchema,
           secretRefs: Type.Optional(
@@ -326,7 +333,18 @@ const ajv = new Ajv2020({
 
 const projectConfigValidator = ajv.compile(ProjectConfigSchema)
 const scenarioSourceValidator = ajv.compile(WebScenarioSourceSchema)
-const policySourceValidator = ajv.compile(PolicySourceSchema)
+const policySourceValidator = ajv.compile(WebPolicySourceSchema)
+
+export function validateWebPolicySource(input: unknown): input is WebPolicySource {
+  return policySourceValidator(input) as boolean
+}
+
+export function assertWebPolicySource(input: unknown): WebPolicySource {
+  if (!validateWebPolicySource(input)) {
+    throw new ProjectConfigError({ code: "SCHEMA_INVALID", message: "Invalid web policy authoring document", details: formatValidationErrors(policySourceValidator.errors ?? []) })
+  }
+  return input
+}
 
 /**
  * Structurally validate a project authoring document against the same schema
@@ -445,11 +463,12 @@ export async function loadPolicySource(
     policyReference,
     "policy source",
   )
-  const value = await readValidatedDocument(
+  const authored = await readValidatedDocument<WebPolicySource>(
     policyPath,
     policySourceValidator,
     "policy source",
   )
+  const value = expandWebPolicy(authored)
   validatePolicySemantics(value, policyPath)
 
   return Object.freeze({

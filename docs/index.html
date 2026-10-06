@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="8534571b23e91796d8c315f00b3c2a575150ea35a72a77438c288fe87e338f44">
+  <meta name="source-sha256" content="a96de9ba2a620253c6dd1f278433d8f9e307ef07753cbe1f6c4cff5726f68dfb">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -52,13 +52,13 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 8534571b23e91796d8c315f00b3c2a575150ea35a72a77438c288fe87e338f44</footer>
+        <footer>Source set SHA-256: a96de9ba2a620253c6dd1f278433d8f9e307ef07753cbe1f6c4cff5726f68dfb</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
         <h1>Architecture</h1>
 <p>UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.</p>
-<p>This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, baseline governance, and agent-driven repair live in the <a href="roadmap.md">roadmap</a>, not in the current architecture.</p>
+<p>This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the <a href="roadmap.md">roadmap</a>, not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.</p>
 <h2>System boundary</h2>
 <p>UI Eval evaluates a candidate project but does not become part of that application&#39;s runtime:</p>
 <pre><code class="language-text">Candidate repository                         UI Eval process
@@ -124,8 +124,12 @@ candidate Git state ────────────────────
 <td>Restricted gate-expression evaluation and disposition calculation.</td>
 </tr>
 <tr>
+<td><code>src/runtime/</code></td>
+<td>Shared owned-process signaling and bounded argv command execution.</td>
+</tr>
+<tr>
 <td><code>src/orchestrator/</code></td>
-<td>End-to-end coordination, Git/source identity, candidate-server lifecycle, capture/report cross-binding, and evidence aliases.</td>
+<td>End-to-end coordination, Git/source identity, candidate-server lifecycle, capture/report cross-binding, and evidence aliases. Coverage, normalized digests, and geometry evidence loading are separate narrow modules.</td>
 </tr>
 <tr>
 <td><code>src/storage-local/</code></td>
@@ -133,7 +137,11 @@ candidate Git state ────────────────────
 </tr>
 <tr>
 <td><code>src/report-html/</code></td>
-<td>Escaped static HTML rendering from a validated report view.</td>
+<td>Escaped static HTML rendering; capability labels derive from canonical coverage and actual evaluator provenance.</td>
+</tr>
+<tr>
+<td><code>src/agent/</code></td>
+<td>Bounded suite orchestration, constrained repair requests, terminal decision model, and synchronized JSON/HTML Agent summary publication.</td>
 </tr>
 <tr>
 <td><code>src/design-adapters/</code></td>
@@ -141,7 +149,7 @@ candidate Git state ────────────────────
 </tr>
 <tr>
 <td><code>src/cli/</code></td>
-<td><code>init</code>, <code>doctor</code>, and <code>evaluate</code>; stdout/stderr discipline, exit mapping, and signal handling.</td>
+<td><code>init</code>, <code>doctor</code>, <code>evaluate</code>, and <code>agent</code>; stdout/stderr discipline, exit mapping, and signal handling.</td>
 </tr>
 <tr>
 <td><code>src/index.ts</code></td>
@@ -218,6 +226,18 @@ leave behind a finalized report whose disposition omits that failure.</p>
 when policy registers <code>geometry@0.1.0</code>.</li>
 </ul>
 <p>Execution, interaction, and runtime are mandatory and each requires an independent non-bypassable hard gate. Visual comparison is advisory. Geometry runs only when the policy registers its implemented version and sealed config. Unsupported optional evaluator entries remain visible as skipped; unsupported required entries stop before capture.</p>
+<p>New policy authoring uses the compact <code>web-default</code> profile. Its expansion
+shares core requirements with registry validation and emits a complete sealed
+policy. Existing full policy inputs remain accepted. Default smoke capture
+requests screenshot, console, network, and crash; structured channels and trace
+remain explicit scenario choices.</p>
+<p>Geometry local constraints count once per planned checkpoint. Missing or invalid
+structured payloads remain invalid work instead of disappearing from coverage.
+Equality constraints pool nodes across the checkpoints of one evaluation and
+require comparable peers; they do not aggregate variants or scenarios. A geometry
+gap without an observed product defect produces invalid-evidence/inconclusive.
+Normalized decision-evidence digests include layout/style artifacts when geometry
+runs. HTML capability labels derive from that report&#39;s coverage and provenance.</p>
 <p>The policy engine evaluates a restricted data AST rather than arbitrary code. Missing or unknown required inputs follow the gate&#39;s explicit <code>onUnknown</code> behavior and cannot silently become a pass.</p>
 <h3>8. Cross-bind and persist the report</h3>
 <p>The orchestrator builds an <code>EvaluationPlan</code> that binds candidate evidence, the materialized policy, evaluator versions/config digests, and an optional local reference. The report contract cross-checks the plan, capture, policy, findings, gates, visual disposition, and actual evaluator execution provenance.</p>
@@ -260,13 +280,32 @@ when policy registers <code>geometry@0.1.0</code>.</li>
 <h2>Programmatic boundary</h2>
 <p><code>src/index.ts</code> exports:</p>
 <ul>
-<li>contract schemas, derived types, canonicalization, and validators;</li>
+<li>executable web schemas, derived types, canonicalization, and validators;</li>
+<li>explicit <code>forwardContracts</code> namespace for forward multi-platform/design/governance contracts;</li>
 <li><code>evaluateScenario</code>;</li>
 <li><code>initUiEvalProject</code>;</li>
 <li><code>runDoctor</code>;</li>
+<li><code>runAgentSuite</code>, validated Agent result schemas, and summary rendering;</li>
 <li>the local artifact and run stores.</li>
 </ul>
 <p>Internal module paths are not a supported consumer API. The source repository is public, but the package is <code>UNLICENSED</code>, private in package metadata, and has no configured package distribution. This boundary supports source development and separately authorized local integration rather than a published SDK compatibility promise.</p>
+<h2>Constrained repair agent</h2>
+<p>The optional <code>agent</code> command composes immutable scenario evaluations with
+project-owned command checks and an argv-only repair adapter. The repair worker
+receives generated findings but cannot authorize acceptance: UI Eval reruns the
+original scenarios and checks, audits file hashes against allowed and protected
+prefixes, enforces budgets, and stops on repair-progress plateau. Acceptance
+remains a strict check/scenario/dimension decision; continuous progress never
+authorizes acceptance. Evidence reuse checks the source snapshot after project
+checks. Agent result types derive from their TypeBox source. Raw reports are never
+rewritten. See <a href="agent.md">Constrained Agent Loop</a>.</p>
+<p>Each terminal Agent state publishes <code>summary.json</code> as the canonical aggregate
+record and <code>summary.html</code> as its escaped human-readable projection. The HTML
+links only to artifacts contained by the candidate&#39;s <code>.ui-eval/</code> root and
+combines checks, acceptance dimensions, scenarios, visual evidence, and the
+iteration history. Publishing both is part of completion: a summary rendering
+or write failure causes the Agent command to fail rather than return an accepted
+result.</p>
 <h2>Explicit non-capabilities</h2>
 <p>The current architecture does not include:</p>
 <ul>
@@ -276,7 +315,7 @@ when policy registers <code>geometry@0.1.0</code>.</li>
 <li>multi-page scenarios, WebKit/Firefox, or native-app adapters;</li>
 <li>static, seed-script, or remote fixture providers; feature-flag,
 network-profile, or secret providers;</li>
-<li>MCP, automatic source repair, holdout isolation, a web console, or a service API.</li>
+<li>MCP, holdout isolation, a web console, or a service API.</li>
 </ul>
 <p>The schemas contain some forward-looking types for these areas. A schema declaration is not proof of executable support. The complete truthfulness boundary is maintained in <a href="limitations.md">Current limitations</a>.</p>
 
@@ -289,7 +328,7 @@ network-profile, or secret providers;</li>
 <h2>Truth hierarchy</h2>
 <p>The current repository has four related representations with distinct roles:</p>
 <ol>
-<li><code>src/contracts/schemas.ts</code> and the public authoring schemas in <code>src/project/config.ts</code> are the in-repository TypeBox authoring sources.</li>
+<li>TypeBox sources under <code>src/contracts/</code>, <code>src/project/</code>, and <code>src/agent/</code> define the wire and active authoring shapes.</li>
 <li><code>schemas/*.schema.json</code> are generated JSON Schema 2020-12 wire artifacts for the current checkout.</li>
 <li>TypeScript types are derived from TypeBox with <code>Static&lt;&gt;</code>; they must not be maintained as a second handwritten model.</li>
 <li>Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.</li>
@@ -370,7 +409,15 @@ EvaluationPlan + EvaluationPolicy
 </tr>
 <tr>
 <td><code>policy-source.schema.json</code></td>
-<td>Active human-authored evaluator and gate input.</td>
+<td>Active web authoring: compact <code>web-default</code> profile or existing full policy.</td>
+</tr>
+<tr>
+<td><code>agent-suite.schema.json</code></td>
+<td>Active Agent scenario/check/mutation configuration.</td>
+</tr>
+<tr>
+<td><code>agent-summary.schema.json</code></td>
+<td>Validated Agent terminal result; HTML is derived from the same value.</td>
 </tr>
 <tr>
 <td><code>resolved-scenario-plan.schema.json</code></td>
@@ -425,19 +472,34 @@ names:</p>
 <ul>
 <li><code>ProjectConfigSchema</code>, <code>validateProjectConfig</code>, and <code>assertProjectConfig</code>;</li>
 <li><code>WebScenarioSourceSchema</code>, <code>validateWebScenarioSource</code>, and
-<code>assertWebScenarioSource</code>.</li>
+<code>assertWebScenarioSource</code>;</li>
+<li><code>WebPolicySourceSchema</code>, <code>validateWebPolicySource</code>, and
+<code>assertWebPolicySource</code>.</li>
 </ul>
 <p>Those structural validators use the same TypeBox schemas that generate
-<code>project.schema.json</code> and <code>scenario-source.schema.json</code>. The generic
-<code>ScenarioSource</code> / <code>validateScenarioSource</code> contract exported by the shared
-contract layer is a forward multi-platform envelope; passing it does <strong>not</strong>
+<code>project.schema.json</code>, <code>scenario-source.schema.json</code>, and
+<code>policy-source.schema.json</code>. The generic
+<code>ScenarioSource</code> / <code>validateScenarioSource</code> contract under the explicit
+<code>forwardContracts</code> namespace is a forward multi-platform envelope; passing it does <strong>not</strong>
 mean the current CLI can execute that input.</p>
-<p>Structural validation is only the first boundary. <code>loadProjectConfig</code> and
-<code>loadScenarioSource</code> additionally enforce repository-aware semantic rules,
+<p>Structural validation is only the first boundary. <code>loadProjectConfig</code>,
+<code>loadScenarioSource</code>, and <code>loadPolicySource</code> additionally enforce repository-aware semantic rules,
 real-path containment, safe referenced files, and current capability support.
 Programmatic callers that intend to execute a run should use those loaders (or
 the high-level <code>evaluateScenario</code>) rather than treating structural validation as
 authorization to capture.</p>
+<p>This source revision narrows the root programmatic API to executable web
+contracts. Consumers of generic native/design/governance names should migrate
+to <code>forwardContracts</code>, for example
+<code>forwardContracts.validateScenarioSource(input)</code>. Their wire schemas remain
+available; changing the import does not add runtime support.</p>
+<p>The <code>web-default</code> profile accepts evaluator and gate additions. It expands
+mandatory core declarations plus advisory visual support and required-evidence
+coverage before semantic validation and CAS materialization. Additions cannot
+replace default IDs: duplicate IDs are rejected. Existing complete policies
+remain accepted. The loaded policy digest describes the expanded value, and
+the generated run&#39;s <code>policy.json</code> records every effective setting. A profile is
+an authoring convenience, not an alternate evaluation contract or repair scope.</p>
 <h2>Authoring ownership</h2>
 <p>Candidate repositories own these reviewed inputs:</p>
 <ul>
@@ -539,10 +601,18 @@ Evaluation identity
 <li>coverage counts, including unsupported and invalid work;</li>
 <li>hard/soft gate results and unknown handling;</li>
 <li>immutable findings with stable fingerprints;</li>
+<li>optional <code>metrics</code>, containing raw evaluator values, including zero-valued
+measurements, rather than calibrated quality scores;</li>
 <li>actual evaluator execution provenance.</li>
 </ul>
 <p>Configured or skipped evaluators are not reported as executed. Visual findings from a local reference identify the exact checkpoint, candidate screenshot digest, and reference digest. A reference path by itself is not sufficient identity.</p>
 <p>The current runtime does not produce waiver-adjusted dispositions or baseline decisions. Any future governance layer must append decisions without rewriting this raw report.</p>
+<p>Current runs seal their evaluator metrics into the report spec and bind them to
+the values used for gates. <code>visual.changedPixelRatio</code> is present for a measured
+comparison, including identical pixels, and absent when comparison is unknown.
+Reports without <code>metrics</code> remain structurally readable; absence is not proof of
+a zero result. The additional field extends the current alpha contract; readers
+using older strict schemas need the updated source revision to read new output.</p>
 <h2>Change discipline</h2>
 <p>A contract change is incomplete unless all affected surfaces move together:</p>
 <ol>
@@ -662,6 +732,10 @@ host network policy for authoritative CI.</p>
 <li>the first request from a popup or additional page.</li>
 </ul>
 <p>A direct external top-level navigation is aborted before dispatch to the destination. The escape is retained as a candidate product failure; the external page is never captured as Candidate evidence.</p>
+<p>An asynchronous navigation triggered by keyboard input may be observed during
+the following checkpoint rather than during the input step. Either attribution
+fails the capture and prevents checkpoint evidence; no external dispatch is
+authorized by a passed input step.</p>
 <p>The current contract supports exactly one declared browser <code>Page</code>. Any additional page fails capture closed:</p>
 <ul>
 <li>a same-origin or otherwise non-external popup is a runner <code>unsupported-popup-created</code> error;</li>
@@ -675,7 +749,12 @@ host network policy for authoritative CI.</p>
 <li>leading-dot and foreign cookie domains are rejected;</li>
 <li>every local-storage origin must exactly match Candidate scheme, host, and port.</li>
 </ul>
-<p>When a plan carries auth state:</p>
+<p>Storage state defaults to <code>mode: authenticated</code>. A scenario may explicitly use
+<code>mode: public-state</code> for origin-scoped, non-secret preferences such as locale or
+market selection. Public state cannot declare secret references and does not
+activate authenticated egress denial; its cookie and local-storage origins are
+still scoped exactly to the Candidate.</p>
+<p>When a plan carries authenticated state:</p>
 <ul>
 <li>service workers are blocked;</li>
 <li>all foreign HTTP(S) requests and WebSockets are denied at the browser-context boundary;</li>
@@ -683,6 +762,11 @@ host network policy for authoritative CI.</p>
 </ul>
 <p>Legitimate third-party dependencies for an authenticated scenario must be provided through a same-origin proxy or deterministic fixture. The current implementation does not provide a third-party allowlist.</p>
 <p>This containment covers the controlled Playwright browser context only. It does not isolate DNS, the browser process, the development server, package hooks, or other host processes. Authoritative CI should add container and network policy appropriate to the project.</p>
+<p>Chrome is launched with its built-in Local/Private Network Access checks
+disabled so an intercepted loopback Candidate can use development transports
+such as Next.js HMR. UI Eval&#39;s own top-level origin guard, popup rejection, and
+authenticated egress routing remain active; the browser flag is not an OS or
+network sandbox exception.</p>
 <h2>Evidence minimization and redaction</h2>
 <p>Current evidence controls include:</p>
 <ul>
@@ -711,10 +795,15 @@ font-status predicate directly; it does not add a second unbounded
 <code>document.fonts.ready</code> wait. The same bound is installed as both Playwright&#39;s
 action and navigation timeout before the first candidate navigation, and on
 the response preflight used by the origin guard.</p>
-<p>Before normal browser-context shutdown, the adapter drains installed HTTP route
-handlers so an in-flight origin preflight cannot race response disposal against
-context closure. Abort cleanup removes the same routes with close-race errors
-ignored, then closes only the owned context and browser.</p>
+<p>Before normal browser-context shutdown, the adapter gives installed HTTP route
+handlers a bounded drain window, then closes the owned context. This prevents
+long-lived development-server RSC/HMR requests from blocking finalization while
+still allowing an in-flight origin preflight to settle before context closure.
+Abort cleanup removes the same routes with close-race errors ignored, then
+closes only the owned context and browser.
+Context and browser close must both complete successfully within their bounded
+waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
+and blocks the Agent; successful route teardown alone is not proof of closure.</p>
 <p>Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.</p>
 <h2>CAS sensitivity and aliases</h2>
 <p>The adapter&#39;s <code>ArtifactRef.sensitivity</code> is an input hint, not an authority. The presentation boundary applies an exhaustive minimum by evidence channel:</p>
@@ -744,6 +833,21 @@ ignored, then closes only the owned context and browser.</p>
 </ul>
 <p>Missing or corrupt evidence does not become green. A high visual similarity cannot offset an explicit functional failure.</p>
 <h2>Signal and cleanup behavior</h2>
+<p>Agent checks and repair commands share owned-process signaling with the server
+runner. POSIX commands start in their own process group; Windows termination
+uses the owned process tree. Command timeouts escalate from <code>SIGTERM</code> to
+<code>SIGKILL</code> with bounded waits and cannot accept a late zero exit. Cancellation
+propagates after cleanup. Ordinary stdout/stderr is bounded during collection;
+Git metadata has a larger finite bound and fails instead of silently truncating.
+These commands remain trusted executable input, and this is not a sandbox for
+descendants that create another process group.</p>
+<p>Planned geometry work remains in coverage when structured evidence is absent
+or invalid. Without an observed product defect, an indecisive geometry result
+cannot produce an overall pass. Agent evidence reuse rechecks the source
+snapshot after checks, and repair requests bind file-content snapshots.
+Snapshots include executable mode and symlink targets without following links;
+Git path parsing preserves literal filenames, and unreadable files fail the
+audit instead of silently disappearing.</p>
 <p>The first <code>SIGINT</code> or <code>SIGTERM</code> aborts browser/server work cooperatively. UI Eval waits only for a bounded cleanup window; a second signal or deadline expiry forces the conventional exit code. Final reports are withheld until cleanup succeeds, although bounded intermediate evidence may remain in the run directory for diagnosis. This bounds CI shutdown but cannot guarantee that a malicious descendant process has not escaped the owned process group. Use stronger process isolation for hostile candidates.</p>
 <h2>Explicit non-guarantees</h2>
 <p>UI Eval currently does not provide:</p>
@@ -881,6 +985,23 @@ bunx playwright install chromium
 <li>CSS only when the candidate deliberately owns that selector.</li>
 </ol>
 <p>Each checkpoint must name its required channels. A screenshot alone does not prove interactions or runtime health.</p>
+<p><code>init</code> starts with screenshot, console, network, and crash channels. Geometry
+requires <code>layout-metadata</code>; also add <code>computed-styles</code> for style or text
+constraints to the checkpoint&#39;s required channels. DOM and trace are opt-in
+diagnostic evidence. Selecting geometry without usable structured evidence
+produces an inconclusive result.</p>
+<p>The generated default policy is a compact authoring profile:</p>
+<pre><code class="language-json">{
+  &quot;apiVersion&quot;: &quot;uieval.io/v1alpha1&quot;,
+  &quot;kind&quot;: &quot;PolicySource&quot;,
+  &quot;id&quot;: &quot;default&quot;,
+  &quot;revision&quot;: 1,
+  &quot;profile&quot;: &quot;web-default&quot;
+}
+</code></pre>
+<p>Add project-specific <code>evaluators</code> and <code>gates</code> when needed. Profile additions
+cannot replace core/default IDs. Existing full policies remain usable, and the
+run&#39;s <code>policy.json</code> always contains the complete expanded and sealed policy.</p>
 <p>The current executable authoring target is web-only. The only executable
 fixture provider is the bounded loopback <code>mock-server</code>; feature flags, network
 profiles, secret references, other fixture providers, and app locators remain
@@ -1044,6 +1165,12 @@ version.</p>
   --project-root /absolute/path/to/candidate
 </code></pre>
 <p>The command performs validation, compilation, source sealing, server startup/reuse, capture, evaluation, policy gates, cleanup, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. <code>report.json</code> and <code>report.html</code> are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant.</p>
+<p>Programmatic cancellation and browser shutdown retain a distinct
+<code>IncompleteCleanupError</code> (<code>OWNED_RESOURCE_CLEANUP_INCOMPLETE</code>) when owned
+resources cannot be confirmed closed. Treat that error as a blocked job rather
+than retrying in the same process. Raw evaluator values live in canonical report
+<code>spec.metrics</code>; a measured <code>visual.changedPixelRatio</code> of zero is preserved even
+when no visual finding exists. Reference acceptance checks every matrix variant.</p>
 <p>Text output prints disposition and report paths. JSON mode reserves stdout for one machine payload and writes progress to stderr:</p>
 <pre><code class="language-bash">bun run ui-eval evaluate account-desktop \
   --project-root /absolute/path/to/candidate \
@@ -1206,8 +1333,8 @@ as scales the stylesheet still does not declare.</p>
 </tr>
 <tr>
 <td>Visual</td>
-<td>Same-size PNG raw changed-pixel comparison.</td>
-<td>A difference is <code>needs-review</code>; no calibrated pass/fail threshold exists.</td>
+<td>Same-size PNG raw changed-pixel comparison. Agent suites may declare a scenario-specific maximum changed-pixel ratio.</td>
+<td>A raw-pixel threshold is a project acceptance ceiling, not a calibrated perceptual or design-conformance score.</td>
 </tr>
 <tr>
 <td>Design</td>
@@ -1217,7 +1344,7 @@ as scales the stylesheet still does not declare.</p>
 <tr>
 <td>Geometry/typography</td>
 <td>Constraint evaluation over structured web evidence, when a policy registers <code>geometry@0.1.0</code>.</td>
-<td>Runs only from DOM/CSSOM evidence and never from raster pixels. Tolerances are policy inputs and are not calibrated against a labeled corpus, so a passing geometry gate is not a calibrated score. Padding, margin, and gap are not captured, so spacing is only observable through box rectangles. <code>box.overflowRight</code> measures a node against its containing element but does not inspect that element&#39;s clipping or scrolling behavior, so an intentional horizontal scroll container can be reported as a violation.</td>
+<td>Runs only from DOM/CSSOM evidence and never from raster pixels. Tolerances are policy inputs and are not calibrated against a labeled corpus, so a passing geometry gate is not a calibrated score. Padding, margin, and gap are not captured, so spacing is only observable through box rectangles. <code>box.overflowRight</code> measures a node against its nearest box-generating ancestor (skipping <code>display: contents</code>) but does not inspect that ancestor&#39;s clipping or scrolling behavior, so an intentional horizontal scroll container can be reported as a violation.</td>
 </tr>
 <tr>
 <td>Accessibility</td>
@@ -1241,8 +1368,8 @@ as scales the stylesheet still does not declare.</p>
 </tr>
 <tr>
 <td>Agents</td>
-<td>None.</td>
-<td>No MCP, fix task, protected patch workspace, mutation enforcement, or auto-rerun loop.</td>
+<td>Optional bounded local repair loop over immutable evaluator reports.</td>
+<td>Command adapters, path prefixes, file-count budgets, plateau, and iteration limits are enforced; there is no separate protected patch workspace, holdout service, MCP service, or OS security boundary.</td>
 </tr>
 <tr>
 <td>Service surface</td>
@@ -1264,7 +1391,7 @@ as scales the stylesheet still does not declare.</p>
 <li>is bound to the selected checkpoint and candidate artifact digest;</li>
 <li>is marked <code>local-unprotected</code>.</li>
 </ul>
-<p>Equal pixels can support a pass only when all required execution, interaction, runtime, and evidence gates also pass. Changed pixels require review. Corrupt, ambiguous, missing, escaped, or mismatched evidence is inconclusive.</p>
+<p>Equal pixels can support a pass only when all required execution, interaction, runtime, and evidence gates also pass. Changed pixels require review unless an agent suite predeclares a project-specific maximum changed-pixel ratio. Every variant needs its own explicit ratio in report <code>metrics</code>, including zero; a missing finding is not proof of identical pixels. Crossing that ceiling fails the suite; staying below it does not prove design conformance. Corrupt, ambiguous, missing, escaped, or mismatched evidence is inconclusive and cannot be covered by another variant&#39;s measured result.</p>
 <p>There is no current support for calibrated tolerances, approved masks, dynamic-region governance, perceptual scoring, responsive metamorphic rules, or protected baselines.</p>
 <h2>Declared but non-executable scenario state</h2>
 <p>The authoring and shared contract schemas reserve fields for future providers. The current runtime fails closed rather than ignoring requested state:</p>
@@ -1278,6 +1405,18 @@ fixture sets containing only that provider are executable);</li>
 </ul>
 <p>Playwright storage state is supported under the exact-origin restrictions in the <a href="security-model.md">Security model</a>. There is no runtime secret injection provider.</p>
 <h2>Policy restrictions</h2>
+<p>New authoring can use <code>profile: &quot;web-default&quot;</code>; the loader expands the core
+evaluators and hard gates before sealing. Existing complete policies remain
+accepted. This profile cannot replace default IDs or enable forward policy
+features. The root library API exposes executable web contracts; forward
+contracts require the explicit <code>forwardContracts</code> namespace.</p>
+<p>Default smoke capture requests only screenshot, console, network, and crash.
+Geometry requires explicitly requested layout evidence, plus computed styles
+when a selected constraint reads style/text properties. Local constraints count
+every planned checkpoint, including missing/invalid inputs. Equality compares
+stable identities across checkpoints of one evaluation and requires comparable
+peers; comparison across variants or scenarios remains unsupported. Unusable
+geometry evidence without an observed product defect is invalid/inconclusive.</p>
 <p>The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:</p>
 <ul>
 <li>missing or optionalized execution/interaction/runtime core evaluators;</li>
@@ -1289,7 +1428,12 @@ fixture sets containing only that provider are executable);</li>
 <li>non-zero evaluator weights.</li>
 </ul>
 <p>Optional unsupported evaluators remain visible as skipped. They do not contribute coverage or provenance as though they ran.</p>
-<p><code>agentMutation</code> fields can be preserved in policy contracts, but no agent or patch validator currently enforces them. They are not a security boundary.</p>
+<p>Policy <code>agentMutation</code> fields remain forward contract data. The executable agent uses the stricter mutation scope declared by its <code>AgentSuite</code>, hashes tracked and untracked source files before and after each repair, and blocks protected, out-of-scope, or over-budget mutations. This validation is a repository audit control, not an operating-system security boundary or separate patch workspace.</p>
+<p>Agent acceptance score remains the fraction of required dimensions that pass.
+Plateau uses a separate continuous check/scenario progress measurement, and
+source snapshots are compared after checks before cached evidence can be reused.
+Command collection retains bounded output and bounded owned-process cleanup;
+descendants that escape the group still require OS/container isolation.</p>
 <h2>Evidence and privacy limits</h2>
 <p>UI Eval bounds and redacts structured evidence, but:</p>
 <ul>
@@ -1328,9 +1472,17 @@ running; authoritative CI still needs OS/container isolation.</p>
 <p>CI that requires a real security boundary must add least-privilege containers, network policy, filesystem isolation, and short-lived credentials.</p>
 <h2>Determinism limits</h2>
 <p>UI Eval fixes or records viewport, DPR, locale, timezone, browser/driver, OS/architecture, and font identity. It applies the largest declared checkpoint timeout to browser actions, navigation, and origin-guard response preflights, and waits for configured font, image, application-readiness, and stable-frame signals within the checkpoint timeout. It cannot make arbitrary applications deterministic, and authoritative runners still need an outer job deadline for browser or operating-system failure modes.</p>
-<p>Normal context shutdown waits for installed HTTP route handlers to drain. Abort
-cleanup instead removes routes with close-race errors ignored so cancellation
-does not manufacture an unhandled response-disposal failure.</p>
+<p>Normal context shutdown gives installed HTTP route handlers a bounded drain
+window. Long-lived development-server RSC/HMR requests are then torn down with
+the owned browser context. Abort cleanup instead removes routes with close-race
+errors ignored so cancellation
+does not manufacture an unhandled response-disposal failure.
+Context and browser close still require successful completion. A close failure
+or expired capture cancellation grace raises <code>OWNED_RESOURCE_CLEANUP_INCOMPLETE</code>
+and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
+is not proof of resource cleanup. This fail-closed result cannot itself force an
+unresponsive browser transport or escaped process to terminate; stronger OS
+isolation and an outer job deadline remain necessary for those failure modes.</p>
 <p>Potential sources of variation remain:</p>
 <ul>
 <li>remote data and assets not fixture-backed;</li>
@@ -1360,7 +1512,7 @@ does not manufacture an unhandled response-disposal failure.</p>
 <li>a secure browser or operating-system sandbox;</li>
 <li>a DLP system;</li>
 <li>a protected holdout evaluator;</li>
-<li>an autonomous fixing agent;</li>
+<li>an unconstrained or security-isolated autonomous fixing agent;</li>
 <li>a shared team platform or SaaS;</li>
 <li>native mobile support;</li>
 <li>an open-source project;</li>
@@ -1396,10 +1548,12 @@ does not manufacture an unhandled response-disposal failure.</p>
   capture-playwright/    browser adapter and evidence collection
   evaluators/            implemented evaluator registry
   policy-engine/         deterministic gate AST
+  runtime/               shared owned-process and bounded command primitives
   orchestrator/          pipeline, identity, server, cross-binding
   storage-local/         CAS and run store
   report-html/           static report view
   cli/                   commands, output, exits, signals
+  agent/                 suite loader, pure assessment, bounded loop and reports
   index.ts               supported programmatic exports
 schemas/                 generated JSON Schema artifacts
 docs/                    Markdown source documentation
@@ -1811,6 +1965,7 @@ consider a hosted multi-project platform
 </ul>
 <h2>Milestone 4: Constrained repair integration</h2>
 <p>Goal: let an external coding agent consume findings and verify scoped changes without owning evaluation truth.</p>
+<p>Status: partially implemented. The local CLI now supports bounded check/evaluate/repair/rerun loops with immutable reports, predeclared thresholds, repository mutation auditing, iteration budgets, score deltas, plateau detection, and stop conditions. A separate writable patch workspace, read-isolated holdouts, an MCP service, reviewer governance, and calibrated maintenance metrics remain planned.</p>
 <p>Candidate scope:</p>
 <ul>
 <li>stable CLI/API or MCP read/run/report interface;</li>
@@ -1990,7 +2145,7 @@ token set is therefore sealed inside the evaluator config rather than loaded
 from a pinned design revision; see docs/limitations.md.</li>
 </ul>
 <h2>Context</h2>
-<p>The current <code>DesignContractSpec</code> accepts exactly one capability, <code>rendered-image</code>, and one source kind, <code>image</code>. Geometry and typography are unsupported: <code>dom</code>, <code>computed-styles</code>, and <code>layout-metadata</code> are captured and stored, but every geometry-dimension record is counted as <code>unsupported</code> in coverage.</p>
+<p>At the time of this decision, <code>DesignContractSpec</code> accepted exactly one capability, <code>rendered-image</code>, and one source kind, <code>image</code>. Geometry and typography were unsupported: <code>dom</code>, <code>computed-styles</code>, and <code>layout-metadata</code> were captured and stored, but every geometry-dimension record was counted as <code>unsupported</code> in coverage.</p>
 <p>Two forces now push against that shape.</p>
 <p><strong>Design sources vary per project.</strong> Candidate projects do not share a design origin. One project&#39;s authoritative values live in Figma variables; another&#39;s live in a Tailwind <code>@theme</code> block; another&#39;s live in a framework theme object that was hand-transcribed from a design file. A contract that encodes one origin&#39;s field names makes every other origin a schema fork.</p>
 <p><strong>Platforms vary per project.</strong> Web evidence is DOM plus CSSOM in CSS pixels. Native evidence is a view hierarchy in points or density-independent pixels. A contract that encodes CSS property names cannot describe a native target without pretending native apps have a CSSOM, which Milestone 5 explicitly forbids.</p>
@@ -2107,7 +2262,16 @@ Engine           form        five constraint primitives, unaware of any design s
 <p><code>value-in-range</code> and <code>ratio</code> share one expectation shape and differ only in the
 unit and in how many properties the evaluator reads, so the token set carries one
 <code>ranges</code> collection rather than two near-identical ones.</p>
-<p><code>cross-node-equal</code> requires no design source at all. It groups by <code>uiId</code>, <code>testId</code>, or role plus accessible name — identities the layout and styles payloads already carry — and compares across checkpoints, matrix variants, and scenarios.</p>
+<p><code>cross-node-equal</code> requires no design source at all. It groups by <code>uiId</code>, <code>testId</code>,
+or role plus accessible name — identities the layout and styles payloads already
+carry. The current evaluator pools the checkpoints within one evaluation and
+requires at least one comparable peer group. Cross-variant and cross-scenario
+aggregation remains planned; a single observation cannot prove equality.</p>
+<p>Coverage is planned before reading evidence. Local constraints count once per
+planned checkpoint; equality constraints count once per evaluation. Missing
+checkpoints prevent a successful comparison, while observed violations remain
+defects. HTML capability labels derive from actual evaluator provenance and
+canonical coverage rather than a separate capability list.</p>
 <p>Every constraint declares <code>requireMatch</code>, defaulting to <code>true</code>. A constraint whose scope matches zero nodes is invalid, not vacuously passing. Silent zero-match is the standard way a conformance suite decays into a green run that asserts nothing.</p>
 <h3>Failure, unknown, and infrastructure semantics</h3>
 <table>

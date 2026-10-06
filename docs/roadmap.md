@@ -102,6 +102,8 @@ Exit evidence:
 
 Goal: let an external coding agent consume findings and verify scoped changes without owning evaluation truth.
 
+Status: partially implemented. The local CLI now supports bounded check/evaluate/repair/rerun loops with immutable reports, predeclared thresholds, repository mutation auditing, iteration budgets, score deltas, plateau detection, and stop conditions. A separate writable patch workspace, read-isolated holdouts, an MCP service, reviewer governance, and calibrated maintenance metrics remain planned.
+
 Candidate scope:
 
 - stable CLI/API or MCP read/run/report interface;

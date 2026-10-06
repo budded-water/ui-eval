@@ -66,10 +66,12 @@ import {
 } from "./evidence"
 import { webLocator } from "./locator"
 import { stabilizePage } from "./stabilize"
+import { IncompleteCleanupError } from "../runtime/cleanup"
 
 export const PLAYWRIGHT_CAPTURE_ADAPTER_ID = "uieval.playwright.chromium"
 export const PLAYWRIGHT_CAPTURE_ADAPTER_VERSION = "0.1.0"
 export const PLAYWRIGHT_CAPTURE_ABORTED_CODE = "capture-aborted"
+export const PLAYWRIGHT_RESOURCE_CLOSE_TIMEOUT_MS = 5_000
 
 const SECURITY_BOUNDARY_FAILURE_CODES = new Set([
   "auth-cross-origin-egress-blocked",
@@ -77,6 +79,44 @@ const SECURITY_BOUNDARY_FAILURE_CODES = new Set([
   "candidate-response-preflight-failed",
   "unsupported-popup-created",
 ])
+
+async function settleResourceClose(
+  operation: Promise<unknown> | undefined,
+  timeoutMs: number,
+): Promise<boolean> {
+  if (!operation) return true
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const settled = await Promise.race([
+    operation.then(
+      () => true,
+      () => false,
+    ),
+    new Promise<false>((resolve) => {
+      timer = setTimeout(() => resolve(false), timeoutMs)
+    }),
+  ])
+  if (timer) clearTimeout(timer)
+  return settled
+}
+
+export async function closePlaywrightResources(
+  browserContext:
+    | Pick<BrowserContext, "unrouteAll" | "close">
+    | undefined,
+  browser: Pick<Browser, "close"> | undefined,
+  timeoutMs = PLAYWRIGHT_RESOURCE_CLOSE_TIMEOUT_MS,
+): Promise<void> {
+  const operationTimeoutMs = Math.max(1, Math.floor(timeoutMs / 3))
+  await settleResourceClose(
+    browserContext?.unrouteAll({ behavior: "ignoreErrors" }),
+    operationTimeoutMs,
+  )
+  const contextClosed = await settleResourceClose(browserContext?.close(), operationTimeoutMs)
+  const browserClosed = await settleResourceClose(browser?.close(), operationTimeoutMs)
+  if (!contextClosed || !browserClosed) {
+    throw new IncompleteCleanupError("Owned browser cleanup did not settle successfully")
+  }
+}
 
 const playwrightDriverVersion = (
   createRequire(import.meta.url)("playwright/package.json") as {
@@ -123,7 +163,7 @@ type ExecutableWebStep =
   | (Omit<Extract<WebScenarioStep, { action: "tap" }>, "target"> & {
       target: WebRuntimeLocator
     })
-  | (Omit<Extract<WebScenarioStep, { action: "fill" }>, "target"> & {
+  | (Omit<Extract<WebScenarioStep, { action: "fill" | "select" }>, "target"> & {
       target: WebRuntimeLocator
     })
   | (Omit<Extract<WebScenarioStep, { action: "waitFor" }>, "target"> & {
@@ -1390,7 +1430,7 @@ function stepOperation(
   step: ExecutableWebStep,
 ): Parameters<typeof classifyStepFailure>[1] {
   if (step.action === "goto") return "navigation"
-  if (["tap", "fill", "waitFor"].includes(step.action)) return "locator"
+  if (["tap", "fill", "select", "waitFor"].includes(step.action)) return "locator"
   if (step.action === "assert") return "assertion"
   return "driver"
 }
@@ -1427,6 +1467,12 @@ async function executeStep(
         break
       case "fill":
         await webLocator(state.page, step.target).fill(step.value)
+        throwIfAborted(state.context.signal)
+        assertCandidateOrigin(state)
+        assertCurrentMainDocument(state, phase, step.id)
+        break
+      case "select":
+        await webLocator(state.page, step.target).selectOption(step.value)
         throwIfAborted(state.context.signal)
         assertCandidateOrigin(state)
         assertCurrentMainDocument(state, phase, step.id)
@@ -1983,30 +2029,36 @@ export async function captureWebScenario(
     browser = undefined
     const closing = (async () => {
       // Remove route handlers before closing the context so in-flight origin
-      // preflights cannot surface close-race errors. Playwright does not
-      // guarantee that concurrent context.close/browser.close calls are
-      // race-free, so serialize them and share the resulting work with the
-      // finalizer.
-      await ownedContext
-        ?.unrouteAll({ behavior: "ignoreErrors" })
-        .catch(() => undefined)
-      await ownedContext?.close().catch(() => undefined)
-      await ownedBrowser?.close().catch(() => undefined)
+      // preflights cannot surface close-race errors. Each phase is bounded so
+      // an unresponsive Chrome transport cannot retain the evaluator forever.
+      await closePlaywrightResources(
+        ownedContext,
+        ownedBrowser,
+        PLAYWRIGHT_RESOURCE_CLOSE_TIMEOUT_MS,
+      )
     })()
     pendingBrowserClosures.push(closing)
+    // Abort starts cleanup before the finalizer awaits it. Observe rejection
+    // immediately, while retaining the rejecting promise for the finalizer.
+    void closing.catch(() => undefined)
     return closing
   }
   const closeOnAbort = () => {
-    void closeOwnedBrowserResources()
+    void closeOwnedBrowserResources().catch(() => undefined)
   }
   context.signal?.addEventListener("abort", closeOnAbort, { once: true })
 
   try {
     try {
       throwIfAborted(context.signal)
+      const configuredLaunchOptions = context.browserLaunchOptions ?? {}
       browser = await chromium.launch({
         headless: true,
-        ...context.browserLaunchOptions,
+        ...configuredLaunchOptions,
+        args: [
+          ...(configuredLaunchOptions.args ?? []),
+          "--disable-features=LocalNetworkAccessChecks,PrivateNetworkAccessChecks",
+        ],
       })
       throwIfAborted(context.signal)
     } catch (error) {
@@ -2081,6 +2133,8 @@ export async function captureWebScenario(
     page.setDefaultNavigationTimeout(operationTimeout)
 
     const candidateOrigin = new URL(plan.target.entrypoint.baseUrl).origin
+    const restrictAuthenticatedEgress =
+      plan.auth !== undefined && plan.auth.mode !== "public-state"
     const runtimeEvidence = createRuntimeEvidenceCollector(page, candidateOrigin)
     state = {
       page,
@@ -2121,7 +2175,7 @@ export async function captureWebScenario(
         await candidateRouteResponse(route, state!, true)
         return
       }
-      if (plan.auth) {
+      if (restrictAuthenticatedEgress) {
         if (requestedOrigin !== candidateOrigin) {
           state!.blockedAuthEgressOrigin = requestedOrigin
           await route.abort()
@@ -2132,25 +2186,23 @@ export async function captureWebScenario(
       }
       await route.continue()
     })
-    await browserContext.routeWebSocket("**/*", async (webSocket) => {
-      if (!plan.auth) {
+    if (restrictAuthenticatedEgress) {
+      await browserContext.routeWebSocket("**/*", async (webSocket) => {
+        const url = new URL(webSocket.url())
+        if (url.protocol === "ws:") url.protocol = "http:"
+        if (url.protocol === "wss:") url.protocol = "https:"
+        const requestedOrigin = safeOrigin(url.toString()) ?? "non-http(s)"
+        if (requestedOrigin !== candidateOrigin) {
+          state!.blockedAuthEgressOrigin = requestedOrigin
+          await webSocket.close({
+            code: 1008,
+            reason: "UI Eval blocks authenticated cross-origin egress",
+          })
+          return
+        }
         webSocket.connectToServer()
-        return
-      }
-      const url = new URL(webSocket.url())
-      if (url.protocol === "ws:") url.protocol = "http:"
-      if (url.protocol === "wss:") url.protocol = "https:"
-      const requestedOrigin = safeOrigin(url.toString()) ?? "non-http(s)"
-      if (requestedOrigin !== candidateOrigin) {
-        state!.blockedAuthEgressOrigin = requestedOrigin
-        await webSocket.close({
-          code: 1008,
-          reason: "UI Eval blocks authenticated cross-origin egress",
-        })
-        return
-      }
-      webSocket.connectToServer()
-    })
+      })
+    }
     page.on("response", (response) => {
       const request = response.request()
       if (
@@ -2253,14 +2305,35 @@ export async function captureWebScenario(
       tracingStarted,
     )
     tracingStarted = false
-    // Close the context before serializing the contract. This drains Page
-    // events and ends candidate timers, eliminating a finalization window in
-    // which an undeclared popup could be created after the last boundary check.
-    await browserContext.unrouteAll({ behavior: "wait" })
-    await browserContext.close()
-    browserContext = undefined
+    // Close the context before serializing the contract. Give route handlers a
+    // bounded opportunity to drain, then tear them down with the context.
+    // Development RSC/HMR requests may otherwise remain live forever after all
+    // scenario work has completed. The final origin assertion above and owned
+    // context close below remain the security boundary for late page activity.
+    let routesDrained = false
+    let drainTimer: ReturnType<typeof setTimeout> | undefined
+    const drainRoutes = browserContext
+      .unrouteAll({ behavior: "wait" })
+      .then(() => {
+        routesDrained = true
+      })
+    await Promise.race([
+      drainRoutes,
+      new Promise<void>((resolve) => {
+        drainTimer = setTimeout(resolve, 2_000)
+      }),
+    ])
+    if (drainTimer) clearTimeout(drainTimer)
+    if (!routesDrained) {
+      await settleResourceClose(
+        browserContext.unrouteAll({ behavior: "ignoreErrors" }),
+        1_000,
+      )
+    }
+    const browserVersion = browser.version()
+    await closeOwnedBrowserResources()
     throwIfAborted(context.signal)
-    return assembleBundle(state, stepResults, browser.version())
+    return assembleBundle(state, stepResults, browserVersion)
   } catch (error) {
     if (!state) {
       return failedBundle(

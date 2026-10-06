@@ -2,7 +2,7 @@
 
 UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.
 
-This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, baseline governance, and agent-driven repair live in the [roadmap](roadmap.md), not in the current architecture.
+This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the [roadmap](roadmap.md), not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.
 
 ## System boundary
 
@@ -49,11 +49,13 @@ All modules ship from one package and use relative internal imports. The directo
 | `src/normalize/` | Platform- and source-neutral value normalization (sRGB color, logical-pixel length) shared by design producers and evidence normalizers. |
 | `src/evaluators/` | Registry for the implemented evaluator set plus functional/runtime, advisory visual, and optional geometry evaluation. `geometry/` holds the normalized property space and the five constraint kinds used by `geometry@0.1.0`. |
 | `src/policy-engine/` | Restricted gate-expression evaluation and disposition calculation. |
-| `src/orchestrator/` | End-to-end coordination, Git/source identity, candidate-server lifecycle, capture/report cross-binding, and evidence aliases. |
+| `src/runtime/` | Shared owned-process signaling and bounded argv command execution. |
+| `src/orchestrator/` | End-to-end coordination, Git/source identity, candidate-server lifecycle, capture/report cross-binding, and evidence aliases. Coverage, normalized digests, and geometry evidence loading are separate narrow modules. |
 | `src/storage-local/` | Project-scoped content-addressed artifacts, sensitivity metadata, atomic run storage, and path/symlink containment. |
-| `src/report-html/` | Escaped static HTML rendering from a validated report view. |
+| `src/report-html/` | Escaped static HTML rendering; capability labels derive from canonical coverage and actual evaluator provenance. |
+| `src/agent/` | Bounded suite orchestration, constrained repair requests, terminal decision model, and synchronized JSON/HTML Agent summary publication. |
 | `src/design-adapters/` | Reference producers that read declarative design sources into a normalized token set, plus an offline sealed-token drift guard. Not on the evaluation path and never imported by an evaluator. |
-| `src/cli/` | `init`, `doctor`, and `evaluate`; stdout/stderr discipline, exit mapping, and signal handling. |
+| `src/cli/` | `init`, `doctor`, `evaluate`, and `agent`; stdout/stderr discipline, exit mapping, and signal handling. |
 | `src/index.ts` | Supported programmatic exports. |
 
 The dependency intent is inward toward contracts and narrow interfaces:
@@ -155,6 +157,20 @@ The implemented registry recognizes these evaluator IDs:
 
 Execution, interaction, and runtime are mandatory and each requires an independent non-bypassable hard gate. Visual comparison is advisory. Geometry runs only when the policy registers its implemented version and sealed config. Unsupported optional evaluator entries remain visible as skipped; unsupported required entries stop before capture.
 
+New policy authoring uses the compact `web-default` profile. Its expansion
+shares core requirements with registry validation and emits a complete sealed
+policy. Existing full policy inputs remain accepted. Default smoke capture
+requests screenshot, console, network, and crash; structured channels and trace
+remain explicit scenario choices.
+
+Geometry local constraints count once per planned checkpoint. Missing or invalid
+structured payloads remain invalid work instead of disappearing from coverage.
+Equality constraints pool nodes across the checkpoints of one evaluation and
+require comparable peers; they do not aggregate variants or scenarios. A geometry
+gap without an observed product defect produces invalid-evidence/inconclusive.
+Normalized decision-evidence digests include layout/style artifacts when geometry
+runs. HTML capability labels derive from that report's coverage and provenance.
+
 The policy engine evaluates a restricted data AST rather than arbitrary code. Missing or unknown required inputs follow the gate's explicit `onUnknown` behavior and cannot silently become a pass.
 
 ### 8. Cross-bind and persist the report
@@ -197,13 +213,35 @@ Product failures can remain definitive when the browser directly observed an ass
 
 `src/index.ts` exports:
 
-- contract schemas, derived types, canonicalization, and validators;
+- executable web schemas, derived types, canonicalization, and validators;
+- explicit `forwardContracts` namespace for forward multi-platform/design/governance contracts;
 - `evaluateScenario`;
 - `initUiEvalProject`;
 - `runDoctor`;
+- `runAgentSuite`, validated Agent result schemas, and summary rendering;
 - the local artifact and run stores.
 
 Internal module paths are not a supported consumer API. The source repository is public, but the package is `UNLICENSED`, private in package metadata, and has no configured package distribution. This boundary supports source development and separately authorized local integration rather than a published SDK compatibility promise.
+
+## Constrained repair agent
+
+The optional `agent` command composes immutable scenario evaluations with
+project-owned command checks and an argv-only repair adapter. The repair worker
+receives generated findings but cannot authorize acceptance: UI Eval reruns the
+original scenarios and checks, audits file hashes against allowed and protected
+prefixes, enforces budgets, and stops on repair-progress plateau. Acceptance
+remains a strict check/scenario/dimension decision; continuous progress never
+authorizes acceptance. Evidence reuse checks the source snapshot after project
+checks. Agent result types derive from their TypeBox source. Raw reports are never
+rewritten. See [Constrained Agent Loop](agent.md).
+
+Each terminal Agent state publishes `summary.json` as the canonical aggregate
+record and `summary.html` as its escaped human-readable projection. The HTML
+links only to artifacts contained by the candidate's `.ui-eval/` root and
+combines checks, acceptance dimensions, scenarios, visual evidence, and the
+iteration history. Publishing both is part of completion: a summary rendering
+or write failure causes the Agent command to fail rather than return an accepted
+result.
 
 ## Explicit non-capabilities
 
@@ -215,6 +253,6 @@ The current architecture does not include:
 - multi-page scenarios, WebKit/Firefox, or native-app adapters;
 - static, seed-script, or remote fixture providers; feature-flag,
   network-profile, or secret providers;
-- MCP, automatic source repair, holdout isolation, a web console, or a service API.
+- MCP, holdout isolation, a web console, or a service API.
 
 The schemas contain some forward-looking types for these areas. A schema declaration is not proof of executable support. The complete truthfulness boundary is maintained in [Current limitations](limitations.md).

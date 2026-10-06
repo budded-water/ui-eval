@@ -27,6 +27,7 @@
     "dist",
     "schemas",
     "docs/adr",
+    "docs/agent.md",
     "docs/architecture.md",
     "docs/contracts.md",
     "docs/development.md",

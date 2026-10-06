@@ -35,10 +35,12 @@ src/
   capture-playwright/    browser adapter and evidence collection
   evaluators/            implemented evaluator registry
   policy-engine/         deterministic gate AST
+  runtime/               shared owned-process and bounded command primitives
   orchestrator/          pipeline, identity, server, cross-binding
   storage-local/         CAS and run store
   report-html/           static report view
   cli/                   commands, output, exits, signals
+  agent/                 suite loader, pure assessment, bounded loop and reports
   index.ts               supported programmatic exports
 schemas/                 generated JSON Schema artifacts
 docs/                    Markdown source documentation

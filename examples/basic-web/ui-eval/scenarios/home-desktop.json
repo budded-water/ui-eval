@@ -5,7 +5,10 @@
   "revision": 1,
   "name": "Basic Web home desktop smoke",
   "visibility": "agent-visible",
-  "tags": ["example", "smoke"],
+  "tags": [
+    "example",
+    "smoke"
+  ],
   "owner": "ui-eval",
   "target": {
     "platform": "web",
@@ -24,18 +27,20 @@
   },
   "requiredCapabilities": [
     "screenshot",
-    "dom",
-    "computed-styles",
-    "layout-metadata",
     "console",
     "network",
-    "trace",
     "crash"
   ],
   "matrix": {
-    "deviceProfiles": ["desktop-chromium"],
-    "locales": ["en"],
-    "themes": ["light"]
+    "deviceProfiles": [
+      "desktop-chromium"
+    ],
+    "locales": [
+      "en"
+    ],
+    "themes": [
+      "light"
+    ]
   },
   "steps": [
     {
@@ -80,12 +85,8 @@
       "id": "ready",
       "requiredChannels": [
         "screenshot",
-        "dom",
-        "computed-styles",
-        "layout-metadata",
         "console",
         "network",
-        "trace",
         "crash"
       ],
       "captureScope": "full-page",

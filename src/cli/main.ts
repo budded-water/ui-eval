@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util"
 import packageJson from "../../package.json" with { type: "json" }
 
+import { runAgentSuite, type AgentRunResult } from "../agent/run"
 import { evaluateScenario, type EvaluateScenarioResult } from "../orchestrator/evaluate"
 import { runDoctor, type DoctorResult } from "./doctor"
 import { evaluationExitCode } from "./exit-code"
@@ -22,6 +23,8 @@ Usage:
   ui-eval init --route /page --scenario page-desktop --yes
   ui-eval evaluate <scenario> [--policy default] [--reference path.png]
                               [--browser-channel chrome] [--format text|json]
+  ui-eval agent <suite> [--repair] [--browser-channel chrome]
+                        [--format text|json]
   ui-eval doctor [--browser-channel chrome] [--format text|json]
 
 Exit codes:
@@ -42,6 +45,7 @@ export interface CliIo {
 export interface CliDependencies {
   init?: typeof initUiEvalProject
   evaluate?: typeof evaluateScenario
+  agent?: typeof runAgentSuite
   doctor?: typeof runDoctor
 }
 
@@ -162,6 +166,53 @@ function aggregateEvaluationExitCode(result: EvaluateScenarioResult): number {
   if (codes.includes(1)) return 1
   if (codes.includes(3)) return 3
   return 0
+}
+
+async function agentCommand(
+  args: string[],
+  io: CliIo,
+  deps: CliDependencies,
+  runOptions: CliRunOptions,
+): Promise<number> {
+  throwIfInterrupted(runOptions.signal)
+  const parsed = parseArgs({
+    args,
+    allowPositionals: true,
+    strict: true,
+    options: {
+      repair: { type: "boolean", default: false },
+      "browser-channel": { type: "string" },
+      "project-root": { type: "string" },
+      format: { type: "string", default: "text" },
+    },
+  })
+  if (parsed.positionals.length !== 1) {
+    throw new Error("agent requires exactly one suite id or path")
+  }
+  const format = formatOption(parsed.values.format)
+  const result: AgentRunResult = await (deps.agent ?? runAgentSuite)({
+    projectRoot: parsed.values["project-root"] ?? io.cwd,
+    suite: parsed.positionals[0],
+    repair: parsed.values.repair,
+    ...(parsed.values["browser-channel"]
+      ? { browserChannel: parsed.values["browser-channel"] }
+      : {}),
+    ...(runOptions.signal ? { signal: runOptions.signal } : {}),
+    onProgress: (message) => io.stderr(`[ui-eval-agent] ${line(message)}`),
+  })
+  throwIfInterrupted(runOptions.signal)
+  if (format === "json") emitJson(io, result)
+  else {
+    io.stdout(
+      `${result.status.toUpperCase()} ${result.suiteId}\n  ${result.reason}\n  HTML: ${result.summaryHtmlPath}\n  JSON: ${result.summaryPath}\n`,
+    )
+    for (const iteration of result.iterations) {
+      io.stdout(
+        `  iteration ${iteration.iteration}: score=${iteration.score.toFixed(6)} accepted=${String(iteration.accepted)}\n`,
+      )
+    }
+  }
+  return result.accepted ? 0 : 1
 }
 
 async function initCommand(
@@ -323,6 +374,7 @@ export async function runCli(
     if (command === "evaluate") {
       return await evaluateCommand(args, io, deps, runOptions)
     }
+    if (command === "agent") return await agentCommand(args, io, deps, runOptions)
     if (command === "doctor") return await doctorCommand(args, io, deps, runOptions)
     throw new Error(`Unknown command: ${command}`)
   } catch (error) {

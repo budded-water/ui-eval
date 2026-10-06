@@ -118,13 +118,69 @@ export function normalizeWebEvidence(
     (styles?.nodes ?? []).map((node) => [node.nodeId, node]),
   )
   const rectByNodeId = new Map(layout.nodes.map((node) => [node.nodeId, node.rect]))
+  const parentByNodeId = new Map(
+    layout.nodes.map((node) => [node.nodeId, node.parentNodeId]),
+  )
+
+  const nearestBoxParentId = (nodeId: string | undefined): string | undefined => {
+    let parentNodeId = nodeId
+    const visitedParentIds = new Set<string>()
+    while (parentNodeId !== undefined) {
+      if (visitedParentIds.has(parentNodeId)) return undefined
+      visitedParentIds.add(parentNodeId)
+      const display = styleByNodeId
+        .get(parentNodeId)
+        ?.computedStyle.display?.trim()
+        .toLowerCase()
+      if (display !== "contents") return parentNodeId
+      parentNodeId = parentByNodeId.get(parentNodeId)
+    }
+    return undefined
+  }
+
+  const positionedContainingBlockId = (
+    nodeId: string | undefined,
+  ): string | undefined => {
+    let ancestorId = nodeId
+    const visitedAncestorIds = new Set<string>()
+    while (ancestorId !== undefined) {
+      if (visitedAncestorIds.has(ancestorId)) return undefined
+      visitedAncestorIds.add(ancestorId)
+      const style = styleByNodeId.get(ancestorId)?.computedStyle
+      const display = style?.display?.trim().toLowerCase()
+      const position = style?.position?.trim().toLowerCase()
+      if (display !== "contents" && position && position !== "static") {
+        return ancestorId
+      }
+      ancestorId = parentByNodeId.get(ancestorId)
+    }
+    return undefined
+  }
 
   return layout.nodes.map((node) => {
-    // Absent on a root node, which has no containing element to overflow.
+    // Overflow is relative to the CSS containing block, not necessarily the
+    // immediate DOM parent. Positioned elements are the important distinction:
+    // an absolute child may legitimately span a padded DOM parent because its
+    // containing block is a positioned ancestor further up the tree.
+    const position = styleByNodeId
+      .get(node.nodeId)
+      ?.computedStyle.position?.trim()
+      .toLowerCase()
+    const containingBlockId =
+      position === "absolute"
+        ? positionedContainingBlockId(node.parentNodeId)
+        : nearestBoxParentId(node.parentNodeId)
     const parentRect =
-      node.parentNodeId === undefined
-        ? undefined
-        : rectByNodeId.get(node.parentNodeId)
+      position === "fixed"
+        ? {
+            x: 0,
+            y: 0,
+            width: layout.renderSpace.logicalWidth,
+            height: layout.renderSpace.logicalHeight,
+          }
+        : containingBlockId === undefined
+          ? undefined
+          : rectByNodeId.get(containingBlockId)
     const overflowRight =
       parentRect === undefined
         ? undefined

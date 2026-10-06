@@ -12,14 +12,14 @@ This page is part of the product contract. A schema field or future-facing type 
 | Browser | Playwright Chromium, with an optional installed Chrome channel. | WebKit, Firefox, cross-OS renderer profiles, and device farms are not supported. |
 | Page model | Exactly one declared browser page. | Any popup/additional page fails capture closed, including same-origin popups. |
 | Core evaluation | Execution, interaction, and runtime deterministic gates. | All three evaluators and independent hard gates are mandatory. |
-| Visual | Same-size PNG raw changed-pixel comparison. | A difference is `needs-review`; no calibrated pass/fail threshold exists. |
+| Visual | Same-size PNG raw changed-pixel comparison. Agent suites may declare a scenario-specific maximum changed-pixel ratio. | A raw-pixel threshold is a project acceptance ceiling, not a calibrated perceptual or design-conformance score. |
 | Design | Token sets only, sealed inside the geometry evaluator config. | No online design sync, pinned design revision, `DesignContract` loading path, or design-node to runtime-node mapping. A token set is bound by policy, not by a design revision. |
-| Geometry/typography | Constraint evaluation over structured web evidence, when a policy registers `geometry@0.1.0`. | Runs only from DOM/CSSOM evidence and never from raster pixels. Tolerances are policy inputs and are not calibrated against a labeled corpus, so a passing geometry gate is not a calibrated score. Padding, margin, and gap are not captured, so spacing is only observable through box rectangles. `box.overflowRight` measures a node against its containing element but does not inspect that element's clipping or scrolling behavior, so an intentional horizontal scroll container can be reported as a violation. |
+| Geometry/typography | Constraint evaluation over structured web evidence, when a policy registers `geometry@0.1.0`. | Runs only from DOM/CSSOM evidence and never from raster pixels. Tolerances are policy inputs and are not calibrated against a labeled corpus, so a passing geometry gate is not a calibrated score. Padding, margin, and gap are not captured, so spacing is only observable through box rectangles. `box.overflowRight` measures a node against its nearest box-generating ancestor (skipping `display: contents`) but does not inspect that ancestor's clipping or scrolling behavior, so an intentional horizontal scroll container can be reported as a violation. |
 | Accessibility | Evidence capability is declared in shared contracts, but no current evaluator/gate is implemented. | Do not claim an accessibility result. |
 | Repeatability | One attempt. | No flake agreement or multi-attempt gate is executed. |
 | Storage | Local filesystem CAS and run store. | No shared service, encryption at rest, RBAC, or managed retention. |
 | Governance | Raw report only. | No baseline promotion, waiver, reviewer role, or append-only decision ledger. |
-| Agents | None. | No MCP, fix task, protected patch workspace, mutation enforcement, or auto-rerun loop. |
+| Agents | Optional bounded local repair loop over immutable evaluator reports. | Command adapters, path prefixes, file-count budgets, plateau, and iteration limits are enforced; there is no separate protected patch workspace, holdout service, MCP service, or OS security boundary. |
 | Service surface | CLI and local programmatic API. | No hosted API, queue, web console, or multi-tenant control plane. |
 | Distribution | Public source repository; private, unpublished package. | Source visibility is not an open-source license, registry distribution, or compatibility/support promise. |
 
@@ -33,7 +33,7 @@ A local reference:
 - is bound to the selected checkpoint and candidate artifact digest;
 - is marked `local-unprotected`.
 
-Equal pixels can support a pass only when all required execution, interaction, runtime, and evidence gates also pass. Changed pixels require review. Corrupt, ambiguous, missing, escaped, or mismatched evidence is inconclusive.
+Equal pixels can support a pass only when all required execution, interaction, runtime, and evidence gates also pass. Changed pixels require review unless an agent suite predeclares a project-specific maximum changed-pixel ratio. Every variant needs its own explicit ratio in report `metrics`, including zero; a missing finding is not proof of identical pixels. Crossing that ceiling fails the suite; staying below it does not prove design conformance. Corrupt, ambiguous, missing, escaped, or mismatched evidence is inconclusive and cannot be covered by another variant's measured result.
 
 There is no current support for calibrated tolerances, approved masks, dynamic-region governance, perceptual scoring, responsive metamorphic rules, or protected baselines.
 
@@ -52,6 +52,20 @@ Playwright storage state is supported under the exact-origin restrictions in the
 
 ## Policy restrictions
 
+New authoring can use `profile: "web-default"`; the loader expands the core
+evaluators and hard gates before sealing. Existing complete policies remain
+accepted. This profile cannot replace default IDs or enable forward policy
+features. The root library API exposes executable web contracts; forward
+contracts require the explicit `forwardContracts` namespace.
+
+Default smoke capture requests only screenshot, console, network, and crash.
+Geometry requires explicitly requested layout evidence, plus computed styles
+when a selected constraint reads style/text properties. Local constraints count
+every planned checkpoint, including missing/invalid inputs. Equality compares
+stable identities across checkpoints of one evaluation and requires comparable
+peers; comparison across variants or scenarios remains unsupported. Unusable
+geometry evidence without an observed product defect is invalid/inconclusive.
+
 The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:
 
 - missing or optionalized execution/interaction/runtime core evaluators;
@@ -64,7 +78,13 @@ The current evaluator registry accepts only the implemented evaluator set and ex
 
 Optional unsupported evaluators remain visible as skipped. They do not contribute coverage or provenance as though they ran.
 
-`agentMutation` fields can be preserved in policy contracts, but no agent or patch validator currently enforces them. They are not a security boundary.
+Policy `agentMutation` fields remain forward contract data. The executable agent uses the stricter mutation scope declared by its `AgentSuite`, hashes tracked and untracked source files before and after each repair, and blocks protected, out-of-scope, or over-budget mutations. This validation is a repository audit control, not an operating-system security boundary or separate patch workspace.
+
+Agent acceptance score remains the fraction of required dimensions that pass.
+Plateau uses a separate continuous check/scenario progress measurement, and
+source snapshots are compared after checks before cached evidence can be reused.
+Command collection retains bounded output and bounded owned-process cleanup;
+descendants that escape the group still require OS/container isolation.
 
 ## Evidence and privacy limits
 
@@ -112,9 +132,17 @@ CI that requires a real security boundary must add least-privilege containers, n
 
 UI Eval fixes or records viewport, DPR, locale, timezone, browser/driver, OS/architecture, and font identity. It applies the largest declared checkpoint timeout to browser actions, navigation, and origin-guard response preflights, and waits for configured font, image, application-readiness, and stable-frame signals within the checkpoint timeout. It cannot make arbitrary applications deterministic, and authoritative runners still need an outer job deadline for browser or operating-system failure modes.
 
-Normal context shutdown waits for installed HTTP route handlers to drain. Abort
-cleanup instead removes routes with close-race errors ignored so cancellation
+Normal context shutdown gives installed HTTP route handlers a bounded drain
+window. Long-lived development-server RSC/HMR requests are then torn down with
+the owned browser context. Abort cleanup instead removes routes with close-race
+errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
+Context and browser close still require successful completion. A close failure
+or expired capture cancellation grace raises `OWNED_RESOURCE_CLEANUP_INCOMPLETE`
+and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
+is not proof of resource cleanup. This fail-closed result cannot itself force an
+unresponsive browser transport or escaped process to terminate; stronger OS
+isolation and an outer job deadline remain necessary for those failure modes.
 
 Potential sources of variation remain:
 
@@ -154,7 +182,7 @@ Do not describe the current implementation as:
 - a secure browser or operating-system sandbox;
 - a DLP system;
 - a protected holdout evaluator;
-- an autonomous fixing agent;
+- an unconstrained or security-isolated autonomous fixing agent;
 - a shared team platform or SaaS;
 - native mobile support;
 - an open-source project;

@@ -14,6 +14,11 @@ export const DISABLE_MOTION_CSS = `
   transition-delay: 0s !important;
   transition-duration: 0s !important;
 }
+/* Framework development chrome is runner noise, not candidate UI. Next.js
+   injects this portal only in development and may repaint it between frames. */
+nextjs-portal {
+  display: none !important;
+}
 `
 
 export interface StabilizationResult {
@@ -45,10 +50,22 @@ async function waitForFonts(page: Page, timeout: number): Promise<void> {
   )
 }
 
+export function imageRequestSettled(
+  image: Pick<HTMLImageElement, "complete" | "currentSrc">,
+): boolean {
+  // Native lazy images outside the capture viewport may not receive a
+  // currentSrc until the browser decides to request them. Waiting for those
+  // images deadlocks viewport capture on long responsive pages. Once a request
+  // exists, `complete` still covers both successful and failed loads.
+  return image.currentSrc === "" || image.complete
+}
+
 async function waitForImages(page: Page, timeout: number): Promise<void> {
   await page.waitForFunction(
     () =>
-      Array.from(document.images).every((image) => image.complete),
+      Array.from(document.images).every(
+        (image) => image.currentSrc === "" || image.complete,
+      ),
     undefined,
     { timeout },
   )

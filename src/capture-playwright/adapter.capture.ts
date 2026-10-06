@@ -18,7 +18,7 @@ import type {
 import { CaptureBundleSpecSchema } from "../contracts/schemas"
 import { assertSchema } from "../contracts/validation"
 import { LocalArtifactStore } from "../storage-local/artifact-store"
-import { captureWebScenario } from "./adapter"
+import { captureWebScenario, closePlaywrightResources } from "./adapter"
 
 const browserInstalled = existsSync(chromium.executablePath())
 const browserRequired = process.env.UI_EVAL_REQUIRE_BROWSER === "1"
@@ -106,6 +106,20 @@ function minimalPlan(options: {
 }
 
 describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
+  it("confirms owned context and browser shutdown before reporting cleanup success", async () => {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+      await page.setContent("<p>Synthetic lifecycle fixture</p>")
+      await closePlaywrightResources(context, browser)
+      expect(browser.isConnected()).toBe(false)
+      expect(page.isClosed()).toBe(true)
+    } finally {
+      await browser.close()
+    }
+  })
+
   let server: Server | undefined
   let baseUrl: string
   let artifactRoot: string | undefined
@@ -256,12 +270,17 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
             <main data-ui-id="pilot">
               <h1 data-ui-id="title">Pilot</h1>
               <label>Name <input data-testid="name" /></label>
+              <label>Category <select data-testid="category"><option value="all">All</option><option value="residential">Residential</option></select></label>
+              <output data-ui-id="selection">all</output>
               <button type="button">Update</button>
             </main>
             <script>
               window.__UI_EVAL_READY__ = false
               document.querySelector('button').addEventListener('click', () => {
                 document.querySelector('[data-ui-id="title"]').textContent = 'Updated'
+              })
+              document.querySelector('[data-testid="category"]').addEventListener('change', event => {
+                document.querySelector('[data-ui-id="selection"]').textContent = event.target.value
               })
               fetch('/api/fail').finally(() => { window.__UI_EVAL_READY__ = true })
             </script>
@@ -291,6 +310,7 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
     signal?: AbortSignal,
     storageState?: { cookies: unknown[]; origins: unknown[] },
     onTracePut?: () => Promise<void> | void,
+    storageMode?: "authenticated" | "public-state",
   ) {
     const executionDigest = canonicalDigest({ captureGuard: true }) as `sha256:${string}`
     const artifactStore = new LocalArtifactStore(
@@ -303,7 +323,10 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
       const storageStateRef = await artifactStore.putJson(storageState, {
         sensitivity: "sensitive",
       })
-      plan.auth = { storageState: storageStateRef }
+      plan.auth = {
+        storageState: storageStateRef,
+        ...(storageMode ? { mode: storageMode } : {}),
+      }
       plan.planDigest = canonicalDigest(plan, {
         exclusions: DigestExclusionProfiles.resolvedScenarioPlan,
       })
@@ -398,6 +421,22 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
       ],
       steps: [
         {
+          id: "select-category",
+          action: "select",
+          target: { platform: "web", by: "testId", value: "category" },
+          value: "residential",
+        },
+        {
+          id: "selected-category",
+          action: "assert",
+          assertion: {
+            id: "selection-text",
+            kind: "text",
+            target: { platform: "web", by: "uiId", value: "selection" },
+            expected: "residential",
+          },
+        },
+        {
           id: "fill-name",
           action: "fill",
           target: { platform: "web", by: "testId", value: "name" },
@@ -487,6 +526,7 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
     expect(bundle.assertionResults).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ assertionId: "title-text", status: "passed" }),
+        expect.objectContaining({ assertionId: "selection-text", status: "passed" }),
         expect.objectContaining({ assertionId: "no-crash", status: "passed" }),
       ]),
     )
@@ -729,21 +769,13 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
 
     expect(bundle.status).toBe("failed")
     expect(bundle.completeness.capturedRequired).toBe(0)
-    expect(bundle.stepResults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          stepId: "leave",
-          status: "failed",
-          origin: "product",
-          errorCode: "candidate-origin-escaped",
-        }),
-        expect.objectContaining({
-          stepId: "capture",
-          status: "not-executed",
-          errorCode: "candidate-origin-escaped",
-        }),
-      ]),
-    )
+    // Keyboard input can return before its asynchronous navigation request.
+    // The boundary must reject the action or the following checkpoint and
+    // retain no evidence, regardless of protocol event ordering.
+    expect(bundle.stepResults).toContainEqual(expect.objectContaining({
+      status: "failed", origin: "product", errorCode: "candidate-origin-escaped",
+    }))
+    expect(bundle.stepResults.find((step) => step.stepId === "capture")?.status).not.toBe("passed")
     expect(externalRequests).toBe(0)
   }, 30_000)
 
@@ -894,7 +926,19 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
     externalRequests = 0
     const candidateOrigin = new URL(baseUrl).origin
     const bundle = await captureGuardPlan(
-      minimalPlan({ baseUrl, path: "/external-fetch" }),
+      minimalPlan({
+        baseUrl,
+        path: "/external-fetch",
+        steps: [
+          {
+            id: "ready",
+            action: "waitFor",
+            condition: "app-ready",
+            timeoutMs: 5_000,
+          },
+          { id: "capture", action: "checkpoint", checkpointId: "page" },
+        ],
+      }),
       undefined,
       {
         cookies: [
@@ -942,6 +986,51 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
       ]),
     )
     expect(externalRequests).toBe(0)
+  }, 30_000)
+
+  it("allows explicitly public origin-scoped state to load public dependencies", async () => {
+    externalRequests = 0
+    const bundle = await captureGuardPlan(
+      minimalPlan({
+        baseUrl,
+        path: "/external-fetch",
+        steps: [
+          {
+            id: "ready",
+            action: "waitFor",
+            condition: "app-ready",
+            timeoutMs: 5_000,
+          },
+          { id: "capture", action: "checkpoint", checkpointId: "page" },
+        ],
+      }),
+      undefined,
+      {
+        cookies: [
+          {
+            name: "market_country",
+            value: "CHN",
+            domain: new URL(baseUrl).hostname,
+            path: "/",
+            expires: -1,
+            httpOnly: false,
+            secure: false,
+            sameSite: "Lax",
+          },
+        ],
+        origins: [],
+      },
+      undefined,
+      "public-state",
+    )
+
+    expect(bundle.status).toBe("completed")
+    expect(externalRequests).toBe(1)
+    expect(bundle.executionErrors).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "auth-cross-origin-egress-blocked" }),
+      ]),
+    )
   }, 30_000)
 
   it("aborts a live navigation and returns only after owned browser resources close", async () => {

@@ -158,94 +158,7 @@ function policyTemplate(): unknown {
     kind: "PolicySource",
     id: "phase-0a-default",
     revision: 1,
-    evaluators: [
-      {
-        id: "execution",
-        version: "0.1.0",
-        config: {},
-        required: true,
-        weight: 0,
-      },
-      {
-        id: "interaction",
-        version: "0.1.0",
-        config: {},
-        required: true,
-        weight: 0,
-      },
-      {
-        id: "runtime",
-        version: "0.1.0",
-        config: {
-          sameOrigin5xxIsCritical: true,
-          consoleErrorIsAdvisory: true,
-        },
-        required: true,
-        weight: 0,
-      },
-      {
-        id: "visual",
-        version: "0.1.0",
-        config: { mode: "advisory" },
-        required: false,
-        weight: 0,
-      },
-    ],
-    tolerances: [],
-    gates: [
-      {
-        id: "execution-valid",
-        hard: true,
-        expression: {
-          metric: "execution.valid",
-          operator: "eq",
-          value: true,
-        },
-        onUnknown: "fail",
-      },
-      {
-        id: "interaction-assertions",
-        hard: true,
-        expression: {
-          metric: "interaction.failedAssertions",
-          operator: "eq",
-          value: 0,
-        },
-        onUnknown: "fail",
-      },
-      {
-        id: "runtime-critical-errors",
-        hard: true,
-        expression: {
-          metric: "runtime.criticalErrors",
-          operator: "eq",
-          value: 0,
-        },
-        onUnknown: "fail",
-      },
-      {
-        id: "required-evidence-coverage",
-        hard: true,
-        expression: {
-          metric: "coverage.requiredRatio",
-          operator: "gte",
-          value: 1,
-        },
-        onUnknown: "inconclusive",
-      },
-    ],
-    repeatability: { attempts: 1, requiredAgreement: 1 },
-    dynamicRegions: [],
-    agentMutation: {
-      allowedPathGlobs: ["src/**", "app/**", "components/**", "lib/**"],
-      protectedPathGlobs: [
-        "ui-eval/policies/**",
-        "ui-eval/baselines/**",
-        ".ui-eval/**",
-      ],
-      maxChangedFiles: 12,
-      maxChangedLines: 800,
-    },
+    profile: "web-default",
   }
 }
 
@@ -269,12 +182,8 @@ function scenarioTemplate(route: string, scenarioId: string): unknown {
     },
     requiredCapabilities: [
       "screenshot",
-      "dom",
-      "computed-styles",
-      "layout-metadata",
       "console",
       "network",
-      "trace",
       "crash",
     ],
     matrix: {
@@ -298,12 +207,8 @@ function scenarioTemplate(route: string, scenarioId: string): unknown {
         id: "ready",
         requiredChannels: [
           "screenshot",
-          "dom",
-          "computed-styles",
-          "layout-metadata",
           "console",
           "network",
-          "trace",
           "crash",
         ],
         captureScope: "full-page",

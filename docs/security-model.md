@@ -119,6 +119,11 @@ Every resolved web plan seals one Candidate origin. Browser-context interception
 
 A direct external top-level navigation is aborted before dispatch to the destination. The escape is retained as a candidate product failure; the external page is never captured as Candidate evidence.
 
+An asynchronous navigation triggered by keyboard input may be observed during
+the following checkpoint rather than during the input step. Either attribution
+fails the capture and prevents checkpoint evidence; no external dispatch is
+authorized by a passed input step.
+
 The current contract supports exactly one declared browser `Page`. Any additional page fails capture closed:
 
 - a same-origin or otherwise non-external popup is a runner `unsupported-popup-created` error;
@@ -134,7 +139,13 @@ Storage state is supported only after exact Candidate scoping:
 - leading-dot and foreign cookie domains are rejected;
 - every local-storage origin must exactly match Candidate scheme, host, and port.
 
-When a plan carries auth state:
+Storage state defaults to `mode: authenticated`. A scenario may explicitly use
+`mode: public-state` for origin-scoped, non-secret preferences such as locale or
+market selection. Public state cannot declare secret references and does not
+activate authenticated egress denial; its cookie and local-storage origins are
+still scoped exactly to the Candidate.
+
+When a plan carries authenticated state:
 
 - service workers are blocked;
 - all foreign HTTP(S) requests and WebSockets are denied at the browser-context boundary;
@@ -143,6 +154,12 @@ When a plan carries auth state:
 Legitimate third-party dependencies for an authenticated scenario must be provided through a same-origin proxy or deterministic fixture. The current implementation does not provide a third-party allowlist.
 
 This containment covers the controlled Playwright browser context only. It does not isolate DNS, the browser process, the development server, package hooks, or other host processes. Authoritative CI should add container and network policy appropriate to the project.
+
+Chrome is launched with its built-in Local/Private Network Access checks
+disabled so an intercepted loopback Candidate can use development transports
+such as Next.js HMR. UI Eval's own top-level origin guard, popup rejection, and
+authenticated egress routing remain active; the browser flag is not an OS or
+network sandbox exception.
 
 ## Evidence minimization and redaction
 
@@ -176,10 +193,15 @@ font-status predicate directly; it does not add a second unbounded
 action and navigation timeout before the first candidate navigation, and on
 the response preflight used by the origin guard.
 
-Before normal browser-context shutdown, the adapter drains installed HTTP route
-handlers so an in-flight origin preflight cannot race response disposal against
-context closure. Abort cleanup removes the same routes with close-race errors
-ignored, then closes only the owned context and browser.
+Before normal browser-context shutdown, the adapter gives installed HTTP route
+handlers a bounded drain window, then closes the owned context. This prevents
+long-lived development-server RSC/HMR requests from blocking finalization while
+still allowing an in-flight origin preflight to settle before context closure.
+Abort cleanup removes the same routes with close-race errors ignored, then
+closes only the owned context and browser.
+Context and browser close must both complete successfully within their bounded
+waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
+and blocks the Agent; successful route teardown alone is not proof of closure.
 
 Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.
 
@@ -216,6 +238,23 @@ Security-sensitive status is cross-bound across the pipeline:
 Missing or corrupt evidence does not become green. A high visual similarity cannot offset an explicit functional failure.
 
 ## Signal and cleanup behavior
+
+Agent checks and repair commands share owned-process signaling with the server
+runner. POSIX commands start in their own process group; Windows termination
+uses the owned process tree. Command timeouts escalate from `SIGTERM` to
+`SIGKILL` with bounded waits and cannot accept a late zero exit. Cancellation
+propagates after cleanup. Ordinary stdout/stderr is bounded during collection;
+Git metadata has a larger finite bound and fails instead of silently truncating.
+These commands remain trusted executable input, and this is not a sandbox for
+descendants that create another process group.
+
+Planned geometry work remains in coverage when structured evidence is absent
+or invalid. Without an observed product defect, an indecisive geometry result
+cannot produce an overall pass. Agent evidence reuse rechecks the source
+snapshot after checks, and repair requests bind file-content snapshots.
+Snapshots include executable mode and symlink targets without following links;
+Git path parsing preserves literal filenames, and unreadable files fail the
+audit instead of silently disappearing.
 
 The first `SIGINT` or `SIGTERM` aborts browser/server work cooperatively. UI Eval waits only for a bounded cleanup window; a second signal or deadline expiry forces the conventional exit code. Final reports are withheld until cleanup succeeds, although bounded intermediate evidence may remain in the run directory for diagnosis. This bounds CI shutdown but cannot guarantee that a malicious descendant process has not escaped the owned process group. Use stronger process isolation for hostile candidates.
 

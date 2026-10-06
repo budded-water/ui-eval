@@ -348,6 +348,12 @@ function finding(input: ReportContractInput): Finding {
 }
 
 describe("assertReportContract", () => {
+  it("rejects metrics that disagree with evaluator measurements", () => {
+    const input = fixture()
+    input.expectedMetrics = { "visual.changedPixelRatio": 0 }
+    input.reportSpec.metrics = { "visual.changedPixelRatio": 0.5 }
+    expect(reportContractIssues(input)).toContainEqual(expect.objectContaining({ path: "/metrics", code: "value-mismatch" }))
+  })
   it("accepts an exact binding independent of gate and provenance order", () => {
     const input = fixture()
     input.reportSpec.gates.reverse()

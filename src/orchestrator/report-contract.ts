@@ -30,6 +30,7 @@ export interface ReportContractInput {
   captureBundle: CaptureBundle
   evaluatedGates: readonly EvaluatedGate[]
   expectedExecutionOutcome: EvaluationReportSpec["executionOutcome"]
+  expectedMetrics?: EvaluationReportSpec["metrics"]
   visualDecision: ReportVisualDecision
   expectedEvaluatorProvenance: readonly EvaluatorProvenance[]
   /** ResolvedScenarioPlan is intentionally not part of EvaluationPlan in v1alpha1. */
@@ -632,6 +633,7 @@ export function reportContractIssues(
   )
   provenanceBindingIssues(input, issues)
   findingBindingIssues(input, issues)
+  valueIssue(issues, "/metrics", "report metrics", input.reportSpec.metrics, input.expectedMetrics)
   return issues
 }
 

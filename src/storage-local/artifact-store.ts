@@ -3,6 +3,7 @@ import { lstat, readFile, realpath, stat } from "node:fs/promises"
 import { join, resolve } from "node:path"
 
 import { canonicalJson } from "../contracts/canonical-json"
+import type { ArtifactRef as ContractArtifactRef } from "../contracts/model"
 import {
   assertPathContained,
   assertSafeSegment,
@@ -18,20 +19,8 @@ export type ArtifactSensitivity = "public" | "internal" | "sensitive"
 // must not poison or silently downgrade newly sealed policy/evidence artifacts.
 export const DEFAULT_LOCAL_ARTIFACT_STORE_ID = "local-cas-v2"
 
-/**
- * Structural subset of the wire contract. Keeping this local avoids coupling the
- * storage adapter to generated contract code while remaining assignable to it.
- */
-export interface ArtifactRef {
-  id: string
-  projectId: string
-  storeId: string
-  digest: Sha256Digest
-  mediaType: string
-  sizeBytes: number
-  sensitivity: ArtifactSensitivity
-  redaction?: { applied: boolean; policyId?: string }
-}
+/** Derived wire shape with the digest narrowed after runtime verification. */
+export type ArtifactRef = Omit<ContractArtifactRef, "digest"> & { digest: Sha256Digest }
 
 export interface ArtifactPutOptions {
   mediaType?: string
