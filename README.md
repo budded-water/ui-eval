@@ -4,7 +4,7 @@ UI Eval is a local-first, evidence-first conformance harness for web user interf
 
 The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter.
 
-> **Repository status:** the source is publicly visible at [zw-befreed/ui-eval](https://github.com/zw-befreed/ui-eval) and remains `UNLICENSED`. Public visibility is not an open-source license and does not grant permission to use, copy, modify, or redistribute the code. No npm publication or support promise is configured.
+> **Repository status:** the source is publicly visible at [budded-water/ui-eval](https://github.com/budded-water/ui-eval) and remains `UNLICENSED`. Public visibility is not an open-source license and does not grant permission to use, copy, modify, or redistribute the code. No npm publication or support promise is configured.
 
 ## What works today
 

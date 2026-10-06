@@ -1,6 +1,6 @@
 # Project Integration
 
-UI Eval currently integrates from a local checkout of the public source repository at `https://github.com/zw-befreed/ui-eval`. The package remains private in package metadata, `UNLICENSED`, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout's Bun scripts at a candidate project with `--project-root`.
+UI Eval currently integrates from a local checkout of the public source repository at `https://github.com/budded-water/ui-eval`. The package remains private in package metadata, `UNLICENSED`, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout's Bun scripts at a candidate project with `--project-root`.
 
 ## Integration boundary
 

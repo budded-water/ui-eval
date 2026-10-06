@@ -10,7 +10,7 @@ No released version is supported. Security fixes are evaluated against the curre
 
 Do not disclose a suspected vulnerability in a public issue, public chat, sample project, test fixture, or ordinary log attachment.
 
-Use [GitHub Private Vulnerability Reporting](https://github.com/zw-befreed/ui-eval/security/advisories/new). If that private form is unavailable, stop testing and contact the repository owner without sending exploit details or sensitive artifacts through a public channel.
+Use [GitHub Private Vulnerability Reporting](https://github.com/budded-water/ui-eval/security/advisories/new). If that private form is unavailable, stop testing and contact the repository owner without sending exploit details or sensitive artifacts through a public channel.
 
 Include only the minimum information needed to reproduce and assess the issue:
 

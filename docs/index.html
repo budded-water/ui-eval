@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="a96de9ba2a620253c6dd1f278433d8f9e307ef07753cbe1f6c4cff5726f68dfb">
+  <meta name="source-sha256" content="2da7ec8215e30fc0d480810db1fa277fe69be4c519bd27dce2682f2c895605a1">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -52,7 +52,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: a96de9ba2a620253c6dd1f278433d8f9e307ef07753cbe1f6c4cff5726f68dfb</footer>
+        <footer>Source set SHA-256: 2da7ec8215e30fc0d480810db1fa277fe69be4c519bd27dce2682f2c895605a1</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -889,7 +889,7 @@ audit instead of silently disappearing.</p>
 <section id="integration" class="document">
         <div class="source"><span>Integration</span><code>docs/integration.md</code></div>
         <h1>Project Integration</h1>
-<p>UI Eval currently integrates from a local checkout of the public source repository at <code>https://github.com/zw-befreed/ui-eval</code>. The package remains private in package metadata, <code>UNLICENSED</code>, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout&#39;s Bun scripts at a candidate project with <code>--project-root</code>.</p>
+<p>UI Eval currently integrates from a local checkout of the public source repository at <code>https://github.com/budded-water/ui-eval</code>. The package remains private in package metadata, <code>UNLICENSED</code>, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout&#39;s Bun scripts at a candidate project with <code>--project-root</code>.</p>
 <h2>Integration boundary</h2>
 <p>A candidate repository should retain only project-owned inputs and a generated working directory:</p>
 <pre><code class="language-text">candidate/
@@ -1730,13 +1730,13 @@ bun run build
 <section id="release" class="document">
         <div class="source"><span>Release</span><code>docs/release.md</code></div>
         <h1>Release Process</h1>
-<p>UI Eval&#39;s source repository is public at <code>https://github.com/zw-befreed/ui-eval</code>. The package remains private and <code>UNLICENSED</code>; no registry publication, release artifact, signing, provenance, or support policy is established.</p>
+<p>UI Eval&#39;s source repository is public at <code>https://github.com/budded-water/ui-eval</code>. The package remains private and <code>UNLICENSED</code>; no registry publication, release artifact, signing, provenance, or support policy is established.</p>
 <p>Accordingly, this document defines a package release-readiness gate and the decisions required before any future artifact distribution. Public source hosting is not authorization to publish a package or release.</p>
 <h2>Current distribution status</h2>
 <ul>
 <li><code>package.json</code> is private.</li>
 <li>The license is <code>UNLICENSED</code>.</li>
-<li>The public source remote is <code>https://github.com/zw-befreed/ui-eval</code>.</li>
+<li>The public source remote is <code>https://github.com/budded-water/ui-eval</code>.</li>
 <li>No public registry package or download URL is documented.</li>
 <li>No release-tagging or immutable-artifact convention is configured.</li>
 <li>GitHub Private Vulnerability Reporting is enabled for security intake.</li>
@@ -2057,7 +2057,7 @@ consider a hosted multi-project platform
 <h2>Context</h2>
 <p>UI Eval needs stable boundaries between contracts, project loading, scenario compilation, browser capture, deterministic evaluation, policy gates, storage, reporting, and CLI behavior. It also needs to run locally against independent candidate repositories without importing their application code.</p>
 <p>Those boundaries do not currently require separately published packages, services, queues, databases, or deployment units. Splitting them prematurely would introduce version coordination, distribution, network failure, and operational complexity before the contract and evaluator semantics have a compatibility history.</p>
-<p>The source repository is public at <code>https://github.com/zw-befreed/ui-eval</code>, but it remains <code>UNLICENSED</code> and has no package publication configured. The current execution path is one local Node.js process plus the candidate server and Playwright browser processes it owns or controls.</p>
+<p>The source repository is public at <code>https://github.com/budded-water/ui-eval</code>, but it remains <code>UNLICENSED</code> and has no package publication configured. The current execution path is one local Node.js process plus the candidate server and Playwright browser processes it owns or controls.</p>
 <h2>Decision</h2>
 <p>Maintain UI Eval as a standalone, single-package TypeScript modular monolith.</p>
 <p>Logical components remain explicit source modules:</p>

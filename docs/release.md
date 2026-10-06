@@ -1,6 +1,6 @@
 # Release Process
 
-UI Eval's source repository is public at `https://github.com/zw-befreed/ui-eval`. The package remains private and `UNLICENSED`; no registry publication, release artifact, signing, provenance, or support policy is established.
+UI Eval's source repository is public at `https://github.com/budded-water/ui-eval`. The package remains private and `UNLICENSED`; no registry publication, release artifact, signing, provenance, or support policy is established.
 
 Accordingly, this document defines a package release-readiness gate and the decisions required before any future artifact distribution. Public source hosting is not authorization to publish a package or release.
 
@@ -8,7 +8,7 @@ Accordingly, this document defines a package release-readiness gate and the deci
 
 - `package.json` is private.
 - The license is `UNLICENSED`.
-- The public source remote is `https://github.com/zw-befreed/ui-eval`.
+- The public source remote is `https://github.com/budded-water/ui-eval`.
 - No public registry package or download URL is documented.
 - No release-tagging or immutable-artifact convention is configured.
 - GitHub Private Vulnerability Reporting is enabled for security intake.

@@ -9,7 +9,7 @@ UI Eval needs stable boundaries between contracts, project loading, scenario com
 
 Those boundaries do not currently require separately published packages, services, queues, databases, or deployment units. Splitting them prematurely would introduce version coordination, distribution, network failure, and operational complexity before the contract and evaluator semantics have a compatibility history.
 
-The source repository is public at `https://github.com/zw-befreed/ui-eval`, but it remains `UNLICENSED` and has no package publication configured. The current execution path is one local Node.js process plus the candidate server and Playwright browser processes it owns or controls.
+The source repository is public at `https://github.com/budded-water/ui-eval`, but it remains `UNLICENSED` and has no package publication configured. The current execution path is one local Node.js process plus the candidate server and Playwright browser processes it owns or controls.
 
 ## Decision
 

@@ -27,7 +27,7 @@ The source repository is public, but the project has no package release or confi
   output includes both paths, and failure to publish the human report fails the
   Agent command closed.
 
-- Public source hosting at `https://github.com/zw-befreed/ui-eval` with GitHub
+- Public source hosting at `https://github.com/budded-water/ui-eval` with GitHub
   Private Vulnerability Reporting enabled; the project remains `UNLICENSED`,
   unpublished as a package, and without a support promise.
 - Standalone `init`, `doctor`, and `evaluate` CLI with a buildable package bin
@@ -80,6 +80,10 @@ The source repository is public, but the project has no package release or confi
   `configPath` mechanism. A policy that does not register it is unaffected.
 
 ### Changed
+
+- Canonical source hosting now uses the `budded-water/ui-eval` personal public
+  repository. Repository metadata, documentation, and the private security
+  reporting link point to the same destination.
 
 - New `init` and example smoke scenarios request screenshot, console, network,
   and crash by default. DOM, computed styles, layout, and trace remain explicit

@@ -2,7 +2,7 @@
 
 ## Scope
 
-UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular monolith hosted at `https://github.com/zw-befreed/ui-eval`. Public visibility does not make it open source or authorize package publication. Do not describe it as an open-source project, a published package, or supported beyond the exact source revision in use.
+UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular monolith hosted at `https://github.com/budded-water/ui-eval`. Public visibility does not make it open source or authorize package publication. Do not describe it as an open-source project, a published package, or supported beyond the exact source revision in use.
 
 ## Before implementation
 
