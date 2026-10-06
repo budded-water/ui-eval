@@ -348,6 +348,17 @@ function finding(input: ReportContractInput): Finding {
 }
 
 describe("assertReportContract", () => {
+  it("rejects target and deployment provenance that disagree with orchestration", () => {
+    const input = fixture()
+    input.expectedExecutionTarget = { profileId: "local", mode: "local", baseUrl: "http://localhost:3000/" }
+    input.reportSpec.inputs.executionTarget = { ...input.expectedExecutionTarget, profileId: "other" }
+    input.expectedDeploymentVerification = { status: "unverified" }
+    input.reportSpec.provenance.deploymentVerification = { status: "verified" }
+    expect(reportContractIssues(input)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "/inputs/executionTarget", code: "value-mismatch" }),
+      expect.objectContaining({ path: "/provenance/deploymentVerification", code: "value-mismatch" }),
+    ]))
+  })
   it("rejects metrics that disagree with evaluator measurements", () => {
     const input = fixture()
     input.expectedMetrics = { "visual.changedPixelRatio": 0 }

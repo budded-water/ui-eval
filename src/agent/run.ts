@@ -9,6 +9,9 @@ import { runCommand as defaultRunCommand } from "../runtime/command"
 import { listChangedFiles as defaultListChangedFiles, snapshotSourceFiles as defaultSnapshotFiles } from "./source-state"
 import { assessScenario, assessDimensions, repairProgress } from "./assessment"
 import { loadAgentSuite, type AgentSuite } from "./config"
+import { selectAgentScenarios } from "./selection"
+import { loadProjectConfig } from "../project/config"
+import { resolveExecutionProfile } from "../project/execution-profile"
 import { writeAgentSummaryArtifacts } from "./report"
 
 import { assertSchema } from "../contracts/validation"
@@ -17,6 +20,9 @@ import type { AgentCheckResult, AgentScenarioResult, AgentIteration, AgentRunRes
 export type { AgentCheckResult, AgentScenarioResult, AgentDimensionResult, AgentIteration, AgentRunResult, AgentStatus } from "./model"
 
 export interface RunAgentOptions {
+  executionProfile?: string
+  additionalScenarios?: readonly string[]
+  fullScope?: boolean
   projectRoot: string
   suite: string
   browserChannel?: string
@@ -101,7 +107,20 @@ export async function runAgentSuite(
   dependencies: RunAgentDependencies = {},
 ): Promise<AgentRunResult> {
   const loaded = await loadAgentSuite(options.projectRoot, options.suite)
-  const suite = loaded.value
+  if (loaded.value.executionProfile && options.executionProfile && loaded.value.executionProfile !== options.executionProfile) {
+    throw new Error("Cannot override the suite's declared execution profile")
+  }
+  const profileId = loaded.value.executionProfile ?? options.executionProfile
+  const suite = { ...loaded.value, scenarios: selectAgentScenarios(loaded.value, options.additionalScenarios, options.fullScope) }
+  let remote = false
+  if (profileId) {
+    const project = await loadProjectConfig({ projectRoot: loaded.projectRoot })
+    if (resolveExecutionProfile(project.value, profileId)?.config.mode === "remote") {
+      remote = true
+      if (options.repair === true) throw new Error("Remote evaluation does not authorize product repair")
+      options = { ...options, repair: false }
+    }
+  }
   const evaluate = dependencies.evaluate ?? evaluateScenario
   const runCommand = dependencies.runCommand ?? defaultRunCommand
   const listChangedFiles = dependencies.listChangedFiles ?? defaultListChangedFiles
@@ -162,6 +181,7 @@ export async function runAgentSuite(
         const evaluateOptions: EvaluateScenarioOptions = {
           projectRoot: loaded.projectRoot,
           scenario: scenario.id,
+          ...(profileId ? { executionProfile: profileId } : {}),
           ...(scenario.policy ? { policy: scenario.policy } : {}),
           ...(scenario.reference ? { referencePath: scenario.reference } : {}),
           ...(options.browserChannel ? { browserChannel: options.browserChannel } : {}),
@@ -292,7 +312,7 @@ export async function runAgentSuite(
 
     if (infrastructureFailure) {
       reusableScenarios = new Map(
-        scenarios
+        (remote ? [] : scenarios)
           .filter((scenario) => scenario.accepted)
           .map((scenario) => [
             scenario.id,
@@ -377,6 +397,8 @@ export async function runAgentSuite(
 
   const result: AgentRunResult = {
     suiteId: suite.id,
+    scope: { requiredScenarioIds: loaded.value.scenarios.map(({ id }) => id), selectedScenarioIds: suite.scenarios.map(({ id }) => id),
+      ...(profileId ? { executionProfile: profileId } : {}) },
     status,
     accepted: status === "accepted",
     iterations,

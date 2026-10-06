@@ -92,7 +92,7 @@ function summaryMetrics(result: AgentRunResult): string {
       <article class="metric"><span>Dimensions</span><strong>${passedDimensions}/${dimensions.length}</strong></article>
       <article class="metric"><span>Scenarios</span><strong>${acceptedScenarios}/${totalScenarios}</strong></article>
       <article class="metric"><span>Iterations</span><strong>${result.iterations.length}</strong></article>
-    </section>`
+    </section>${result.scope ? `<p>Scope: ${escapeHtml(result.scope.executionProfile ?? "legacy local")} · Required scenarios: ${escapeHtml(result.scope.requiredScenarioIds.join(", "))} · Selected scenarios: ${escapeHtml(result.scope.selectedScenarioIds.join(", "))}. Acceptance applies to this declared scope.</p>` : ""}`
 }
 
 function dimensionsSection(result: AgentRunResult): string {

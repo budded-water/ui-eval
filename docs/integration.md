@@ -4,6 +4,11 @@ UI Eval currently integrates from a local checkout of the public source reposito
 
 ## Integration boundary
 
+For separate local iteration and preview/staging integration, use reviewed
+[execution profiles and suites](execution-profiles.md). Remote execution requires
+a clean checkout and matching version endpoints; a reachable URL alone is not
+proof that the intended frontend/backend revisions are deployed.
+
 A candidate repository should retain only project-owned inputs and a generated working directory:
 
 ```text

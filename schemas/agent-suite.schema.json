@@ -29,6 +29,12 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
       "type": "string"
     },
+    "executionProfile": {
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "type": "string"
+    },
     "revision": {
       "minimum": 1,
       "type": "integer"
@@ -107,6 +113,57 @@
     },
     "scenarios": {
       "minItems": 1,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "dimensions",
+          "timeoutMs"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "type": "string"
+          },
+          "policy": {
+            "minLength": 1,
+            "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/).+$",
+            "type": "string"
+          },
+          "reference": {
+            "minLength": 1,
+            "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/).+$",
+            "type": "string"
+          },
+          "maxChangedPixelRatio": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "dimensions": {
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "timeoutMs": {
+            "minimum": 1000,
+            "maximum": 600000,
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "optionalScenarios": {
       "type": "array",
       "items": {
         "additionalProperties": false,

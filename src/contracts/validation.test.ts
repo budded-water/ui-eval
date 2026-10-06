@@ -280,6 +280,17 @@ describe("Phase 0A contracts", () => {
       exclusions: DigestExclusionProfiles.sealedRunManifest,
     })
     expect(validateSealedRunManifest(runManifest)).toEqual(runManifest)
+    const remoteManifest = { ...runManifest, executionTarget: { profileId: "preview", mode: "remote",
+      baseUrl: "https://preview.example.invalid/", frontendIdentityUrl: "https://preview.example.invalid/version",
+      frontend: { revision: sourceRevision.commitSha },
+    } }
+    remoteManifest.captureKey = canonicalDigest(remoteManifest, { exclusions: DigestExclusionProfiles.sealedRunManifest })
+    expect(validateSealedRunManifest(remoteManifest)).toEqual(remoteManifest)
+    const alteredTarget = structuredClone(remoteManifest)
+    alteredTarget.executionTarget.frontend.revision = "other"
+    expect(() => validateSealedRunManifest(alteredTarget)).toThrow(/captureKey/)
+    alteredTarget.captureKey = canonicalDigest(alteredTarget, { exclusions: DigestExclusionProfiles.sealedRunManifest })
+    expect(() => validateSealedRunManifest(alteredTarget)).toThrow(/checked-out revision/)
 
     const capturedEvidence = checkpoint.requiredChannels.map((channel, index) => ({
       channel,
@@ -466,6 +477,31 @@ describe("Phase 0A contracts", () => {
     }
     const roundTripped = JSON.parse(JSON.stringify(report))
     expect(validateEvaluationReport(roundTripped)).toEqual(report)
+
+    const remote = { ...report, spec: { ...report.spec,
+      inputs: { ...report.spec.inputs, sourceRevision: { ...sourceRevision, dirtyTree: false }, executionTarget: {
+        profileId: "preview", mode: "remote", baseUrl: "https://preview.example.invalid/", frontendIdentityUrl: "https://preview.example.invalid/version",
+        frontend: { revision: sourceRevision.commitSha }, backend: { revision: "api-v2" }, backendIdentityUrl: "https://api.example.invalid/version",
+      } },
+      provenance: { ...report.spec.provenance, deploymentVerification: { status: "verified",
+        frontend: { schemaVersion: "uieval.deployment/v1alpha1", revision: sourceRevision.commitSha },
+        backend: { schemaVersion: "uieval.deployment/v1alpha1", revision: "api-v2" },
+      } },
+    } }
+    remote.metadata = { ...metadata, specDigest: canonicalDigest(remote.spec) }
+    expect(validateEvaluationReport(JSON.parse(JSON.stringify(remote)))).toEqual(remote)
+    for (const mutate of [
+      (copy: typeof remote) => { copy.spec.provenance.deploymentVerification.status = "unverified" },
+      (copy: typeof remote) => { copy.spec.provenance.deploymentVerification.backend.revision = "other" },
+      (copy: typeof remote) => { copy.spec.inputs.executionTarget.frontend.revision = "other" },
+      (copy: typeof remote) => { copy.spec.inputs.sourceRevision.dirtyTree = true },
+      (copy: typeof remote) => { copy.spec.inputs.executionTarget.backendIdentityUrl = "" },
+    ]) {
+      const copy = structuredClone(remote)
+      mutate(copy)
+      copy.metadata.specDigest = canonicalDigest(copy.spec)
+      expect(() => validateEvaluationReport(copy)).toThrow()
+    }
 
     const measuredReport = { ...report, spec: { ...report.spec, metrics: { "visual.changedPixelRatio": 0 } } }
     measuredReport.metadata = { ...metadata, specDigest: canonicalDigest(measuredReport.spec) }

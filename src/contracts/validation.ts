@@ -659,7 +659,7 @@ function semanticIssues(schema: TSchema, value: unknown): ContractValidationIssu
   }
   if (schema === SealedRunManifestSchema) {
     const manifest = value as SealedRunManifest
-    return digestMatchIssue(
+    const issues = digestMatchIssue(
       "/captureKey",
       manifest.captureKey,
       canonicalDigest(manifest, {
@@ -667,6 +667,16 @@ function semanticIssues(schema: TSchema, value: unknown): ContractValidationIssu
       }),
       "captureKey",
     )
+    const target = manifest.executionTarget
+    if (target?.mode === "remote") {
+      if (target.frontend.revision !== manifest.sourceRevision.commitSha) {
+        issues.push(semanticIssue("/executionTarget/frontend/revision", "deploymentSourceMismatch", "remote frontend must match the checked-out revision"))
+      }
+      if (Boolean(target.backend) !== Boolean(target.backendIdentityUrl)) {
+        issues.push(semanticIssue("/executionTarget", "deploymentEndpointMismatch", "backend expectations and endpoint must be declared together"))
+      }
+    }
+    return issues
   }
   if (schema === CaptureBundleSchema) {
     const bundle = value as CaptureBundle
@@ -725,6 +735,32 @@ function semanticIssues(schema: TSchema, value: unknown): ContractValidationIssu
       "gateId",
     )
     const pixelRatio = report.spec.metrics?.["visual.changedPixelRatio"]
+    const target = report.spec.inputs.executionTarget
+    const verification = report.spec.provenance.deploymentVerification
+    if (verification && target?.mode !== "remote") {
+      issues.push(semanticIssue("/spec/provenance/deploymentVerification", "unexpectedDeploymentVerification", "deployment verification requires a remote execution target"))
+    }
+    if (target?.mode === "remote") {
+      if (Boolean(target.backend) !== Boolean(target.backendIdentityUrl)) {
+        issues.push(semanticIssue("/spec/inputs/executionTarget", "deploymentEndpointMismatch", "backend expectations and endpoint must be declared together"))
+      }
+      if (target.frontend.revision !== report.spec.inputs.sourceRevision.commitSha ||
+        (report.spec.executionOutcome === "valid" && report.spec.inputs.sourceRevision.dirtyTree)) {
+        issues.push(semanticIssue("/spec/inputs/executionTarget", "deploymentSourceMismatch", "remote frontend must match the clean checked-out revision"))
+      }
+      if (report.spec.executionOutcome === "valid" && verification?.status !== "verified") {
+        issues.push(semanticIssue("/spec/provenance/deploymentVerification", "unverifiedDeployment", "valid remote evidence requires verified deployment identities"))
+      }
+      if (verification?.status === "verified") {
+        for (const role of ["frontend", "backend"] as const) {
+          const expected = target[role]
+          const actual = verification[role]
+          if ((!expected && actual) || (expected && (!actual || Object.entries(expected).some(([key, value]) => actual[key as keyof typeof actual] !== value)))) {
+            issues.push(semanticIssue(`/spec/provenance/deploymentVerification/${role}`, "deploymentIdentityMismatch", "observed deployment identity must match the execution target"))
+          }
+        }
+      }
+    }
     if (pixelRatio !== undefined &&
       (typeof pixelRatio !== "number" || !Number.isFinite(pixelRatio) || pixelRatio < 0 || pixelRatio > 1)) {
       issues.push(semanticIssue(

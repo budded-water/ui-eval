@@ -15,6 +15,7 @@ bun install
 bunx playwright install chromium
 bun run ui-eval doctor --project-root examples/basic-web
 bun run ui-eval evaluate home-desktop --project-root examples/basic-web
+bun run ui-eval evaluate home-desktop --execution-profile local --project-root examples/basic-web
 ```
 
 The configured server runs `node server.mjs` on `127.0.0.1:3210`. Keep that port

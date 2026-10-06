@@ -332,6 +332,73 @@ const deps = {
 } satisfies Parameters<typeof evaluateScenario>[1]
 
 describe("evaluateScenario", () => {
+  async function remoteProject(root: string) {
+    const path = join(root, "ui-eval/project.json")
+    const config = JSON.parse(await readFile(path, "utf8"))
+    config.baseUrls.preview = "https://preview.example.invalid"
+    config.baseUrls.api = "https://api.example.invalid"
+    config.executionProfiles = { preview: { mode: "remote", baseUrlRef: "preview", readinessTimeoutMs: 10,
+      frontend: { identityPath: "/version" }, backend: { baseUrlRef: "api", identityPath: "/version", expected: { revision: "api-v2", apiContractVersion: "v2" } },
+    } }
+    await writeFile(path, JSON.stringify(config))
+  }
+  const deployed = (url: string | URL | Request) => Response.json({ schemaVersion: "uieval.deployment/v1alpha1",
+    ...(String(url).includes("api.") ? { revision: "api-v2", apiContractVersion: "v2" } : { revision: "abc123" }) })
+
+  it("captures a remote target without touching local servers and binds identities into both reports", async () => {
+    const projectRoot = await project()
+    await remoteProject(projectRoot)
+    const ensureServer = vi.fn(deps.ensureServer)
+    const deploymentFetch = vi.fn<typeof fetch>(async (url) => deployed(url))
+    const capture = vi.fn(successfulCapture)
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop", executionProfile: "preview" }, { ...deps, ensureServer, deploymentFetch, capture })
+    expect(ensureServer).not.toHaveBeenCalled()
+    expect(deploymentFetch).toHaveBeenCalledTimes(4)
+    expect(capture.mock.calls[0]?.[0].target).toEqual(expect.objectContaining({ entrypoint: expect.objectContaining({ baseUrl: "https://preview.example.invalid/" }) }))
+    const run = result.runs[0]
+    expect(run.executionOutcome).toBe("valid")
+    expect(run.report.spec.inputs.executionTarget?.mode).toBe("remote")
+    expect(run.report.spec.provenance.deploymentVerification?.status).toBe("verified")
+    const manifest = JSON.parse(await readFile(join(projectRoot, ".ui-eval/runs/run-test/run-manifest.json"), "utf8"))
+    expect(manifest.executionTarget).toEqual(run.report.spec.inputs.executionTarget)
+    const html = await readFile(run.htmlPath, "utf8")
+    expect(html).toContain("Deployment verification")
+    expect(html).toContain("--execution-profile preview")
+  })
+  it.each(["before", "after"])("rejects deployment drift %s capture as infrastructure failure", async (when) => {
+    const projectRoot = await project()
+    await remoteProject(projectRoot)
+    let captured = false
+    const capture = vi.fn(async (plan, context) => { captured = true; return successfulCapture(plan, context) })
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop", executionProfile: "preview" }, {
+      ...deps, capture,
+      deploymentFetch: async (url) => when === "before" || captured ? Response.json({ schemaVersion: "uieval.deployment/v1alpha1", revision: "wrong" }) : deployed(url),
+    })
+    expect(result.runs[0].executionOutcome).toBe("infra-error")
+    expect(result.runs[0].rawStatus).toBe("inconclusive")
+    expect(result.runs[0].report.spec.provenance.deploymentVerification?.status).toBe("unverified")
+    expect(capture).toHaveBeenCalledTimes(when === "before" ? 0 : 1)
+  })
+  it("rejects remote mock fixtures before either lifecycle starts", async () => {
+    const projectRoot = await projectWithMockFixture()
+    await remoteProject(projectRoot)
+    const startFixtures = vi.fn()
+    const ensureServer = vi.fn()
+    await expect(evaluateScenario({ projectRoot, scenario: "privacy-desktop", executionProfile: "preview" }, { ...deps, startFixtures, ensureServer })).rejects.toThrow("local mock-server fixtures")
+    expect(startFixtures).not.toHaveBeenCalled()
+    expect(ensureServer).not.toHaveBeenCalled()
+  })
+  it("does not label pre-capture verification as complete when capture throws", async () => {
+    const projectRoot = await project()
+    await remoteProject(projectRoot)
+    const deploymentFetch = vi.fn<typeof fetch>(async (url) => deployed(url))
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop", executionProfile: "preview" }, {
+      ...deps, deploymentFetch, capture: async () => { throw new Error("synthetic capture failure") },
+    })
+    expect(deploymentFetch).toHaveBeenCalledTimes(2)
+    expect(result.runs[0].executionOutcome).toBe("infra-error")
+    expect(result.runs[0].report.spec.provenance.deploymentVerification?.status).toBe("unverified")
+  })
   it.each(["valid", "absent", "corrupt"] as const)("binds geometry %s evidence to JSON and HTML", async (evidenceState) => {
     const projectRoot = await project()
     await writeFile(join(projectRoot, "ui-eval/policies/default.json"), JSON.stringify({

@@ -38,6 +38,10 @@ const AgentIterationSchema = Type.Object({
 }, strict)
 export const AgentRunResultSchema = Type.Object({
   suiteId: text, status: AgentStatusSchema, accepted: Type.Boolean(),
+  scope: Type.Optional(Type.Object({ executionProfile: Type.Optional(text),
+    requiredScenarioIds: Type.Array(text, { minItems: 1, uniqueItems: true }),
+    selectedScenarioIds: Type.Array(text, { minItems: 1, uniqueItems: true }),
+  }, strict)),
   iterations: Type.Array(AgentIterationSchema), summaryPath: text, summaryHtmlPath: text,
   generatedAt: Type.String({ format: "date-time" }), reason: text,
 }, strict)

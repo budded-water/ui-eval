@@ -8,6 +8,7 @@ import { runAgentSuite } from "./run"
 import { initUiEvalProject } from "../cli/init"
 import { evaluateScenario } from "../orchestrator/evaluate"
 import { IncompleteCleanupError } from "../runtime/cleanup"
+import type { AgentSuite } from "./config"
 
 const roots: string[] = []
 
@@ -95,6 +96,67 @@ function inconclusiveEvaluation(): EvaluateScenarioResult {
 }
 
 describe("runAgentSuite", () => {
+  async function updateSuite(root: string, update: (suite: AgentSuite) => void) {
+    const path = join(root, "ui-eval/agents/rentals.json")
+    const suite = JSON.parse(await readFile(path, "utf8"))
+    update(suite)
+    await writeFile(path, JSON.stringify(suite))
+  }
+  const scopeDeps = { runCommand: async () => ({ exitCode: 0, stdout: "", stderr: "" }),
+    listChangedFiles: async () => [], snapshotFiles: async () => new Map<string, string>() }
+  it("preserves the mandatory floor, adds only declared scenarios and publishes selected scope", async () => {
+    const projectRoot = await project()
+    await updateSuite(projectRoot, (suite) => { suite.optionalScenarios = [{ ...suite.scenarios[0], id: "details" }] })
+    const evaluate = vi.fn(async () => evaluation())
+    const result = await runAgentSuite({ projectRoot, suite: "rentals", additionalScenarios: ["details", "details"] }, { ...scopeDeps, evaluate })
+    expect(result.accepted).toBe(true)
+    expect(evaluate.mock.calls).toHaveLength(2)
+    expect(result.scope).toEqual({ requiredScenarioIds: ["rentals-list"], selectedScenarioIds: ["rentals-list", "details"] })
+    const machine = JSON.parse(await readFile(result.summaryPath, "utf8"))
+    expect(machine.scope).toEqual(result.scope)
+    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("details")
+  })
+  it("requires every selected optional scenario to pass", async () => {
+    const projectRoot = await project()
+    await updateSuite(projectRoot, (suite) => { suite.optionalScenarios = [{ ...suite.scenarios[0], id: "details" }] })
+    const result = await runAgentSuite({ projectRoot, suite: "rentals", fullScope: true, repair: false }, { ...scopeDeps,
+      evaluate: async (options) => options.scenario === "details" ? { ...evaluation(), runs: [{ ...evaluation().runs[0], rawStatus: "fail" }] } : evaluation(),
+    })
+    expect(result.accepted).toBe(false)
+    expect(result.scope?.selectedScenarioIds).toEqual(["rentals-list", "details"])
+  })
+  it("rejects undeclared suggestions, duplicate scope IDs and profile overrides before execution", async () => {
+    const projectRoot = await project()
+    const evaluate = vi.fn()
+    await expect(runAgentSuite({ projectRoot, suite: "rentals", additionalScenarios: ["unknown"] }, { evaluate })).rejects.toThrow("Undeclared")
+    await updateSuite(projectRoot, (suite) => { suite.executionProfile = "preview" })
+    await expect(runAgentSuite({ projectRoot, suite: "rentals", executionProfile: "local" }, { evaluate })).rejects.toThrow("Cannot override")
+    await updateSuite(projectRoot, (suite) => { suite.optionalScenarios = suite.scenarios })
+    await expect(runAgentSuite({ projectRoot, suite: "rentals" }, { evaluate })).rejects.toThrow("unique IDs")
+    expect(evaluate).not.toHaveBeenCalled()
+  })
+  it("disables remote repairs and re-captures accepted scenarios during infrastructure retries", async () => {
+    const projectRoot = await project({ repair: true })
+    await initUiEvalProject({ projectRoot, route: "/", scenarioId: "rentals-list" })
+    await updateSuite(projectRoot, (suite) => {
+      suite.executionProfile = "preview"
+      suite.scenarios.push({ ...suite.scenarios[0], id: "details" })
+    })
+    const path = join(projectRoot, "ui-eval/project.json")
+    const config = JSON.parse(await readFile(path, "utf8"))
+    config.baseUrls.preview = "https://preview.example.invalid"
+    config.executionProfiles = { preview: { mode: "remote", baseUrlRef: "preview", frontend: { identityPath: "/version" }, readinessTimeoutMs: 1000 } }
+    await writeFile(path, JSON.stringify(config))
+    const evaluate = vi.fn(async (options) => options.scenario === "details" ? inconclusiveEvaluation() : evaluation())
+    const runCommand = vi.fn(scopeDeps.runCommand)
+    await expect(runAgentSuite({ projectRoot, suite: "rentals", repair: true }, { ...scopeDeps, evaluate, runCommand })).rejects.toThrow("does not authorize product repair")
+    const result = await runAgentSuite({ projectRoot, suite: "rentals" }, { ...scopeDeps, evaluate, runCommand })
+    expect(result.accepted).toBe(false)
+    expect(evaluate).toHaveBeenCalledTimes(6)
+    expect(runCommand).toHaveBeenCalledTimes(3)
+    expect(evaluate.mock.calls.every(([options]) => options.executionProfile === "preview")).toBe(true)
+    expect(result.iterations.every((iteration) => iteration.scenarios.every((scenario) => scenario.reusedFromIteration === undefined))).toBe(true)
+  })
   it.each([false, true])("blocks explicit cleanup failure without repair (aggregate: %s)", async (aggregate) => {
     const root = await project({ repair: true })
     const runCommand = vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" }))

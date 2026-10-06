@@ -4,6 +4,7 @@ export * as forwardContracts from "./contracts/index"
 export { canonicalJson, canonicalDigest, canonicalSpecDigest, DigestExclusionProfiles } from "./contracts/canonical-json"
 export {
   ArtifactRefSchema, CaptureBundleSchema, EvaluationPlanSchema,
+  DeploymentIdentitySchema, DeploymentVerificationSchema, ExecutionTargetSchema,
   EvaluationPolicySchema, EvaluationReportSchema, GeometryEvaluatorConfigSchema,
   SealedRunManifestSchema, WebResolvedScenarioPlanSchema,
 } from "./contracts/schemas"
@@ -20,6 +21,7 @@ export type {
   GeometryEvaluatorConfig, DesignTokenSet, LayoutEvidencePayload, StylesEvidencePayload,
   PolicySource, SealedRunManifest, SourceRevision, WebResolvedScenarioPlan,
   WebRuntimeLocator, WebScenarioStep, WebCheckpointSpec,
+  DeploymentIdentity, DeploymentVerification, ExecutionTarget,
 } from "./contracts/model"
 export {
   ProjectConfigSchema,
@@ -60,6 +62,8 @@ export {
 export { AgentSuiteSchema, type AgentSuite } from "./agent/config"
 export { AgentRunResultSchema } from "./agent/model"
 export { IncompleteCleanupError } from "./runtime/cleanup"
+export { ExecutionProfileSchema, resolveExecutionProfile, type ExecutionProfile } from "./project/execution-profile"
+export { selectAgentScenarios } from "./agent/selection"
 export {
   LocalArtifactStore,
   RunStore,

@@ -13,6 +13,7 @@ import {
 import type { Digest, PolicySource } from "../contracts/model"
 import { WebPolicySourceSchema, expandWebPolicy, type WebPolicySource } from "./policy-profile"
 export { WebPolicySourceSchema, type WebPolicySource } from "./policy-profile"
+import { ExecutionProfileSchema, resolveExecutionProfile } from "./execution-profile"
 
 const identifierPattern = "^[A-Za-z0-9][A-Za-z0-9._-]*$"
 const projectRelativeReferencePattern = "^(?![A-Za-z][A-Za-z0-9+.-]*:).+$"
@@ -143,6 +144,7 @@ export const ProjectConfigSchema = Type.Object(
       minItems: 1,
       uniqueItems: true,
     }),
+    executionProfiles: Type.Optional(Type.Record(IdentifierSchema, ExecutionProfileSchema)),
   },
   {
     additionalProperties: false,
@@ -416,12 +418,13 @@ export async function loadProjectConfig(
     reference: options.configPath ?? "ui-eval/project.json",
     label: "project config",
   })
-  const value = await readValidatedDocument(
+  const value = await readValidatedDocument<ProjectConfig>(
     configPath,
     projectConfigValidator,
     "project config",
   )
   await validateProjectSemantics(value, configPath, projectRoot)
+  for (const name of Object.keys(value.executionProfiles ?? {})) resolveExecutionProfile(value, name)
 
   return Object.freeze({
     value: deepFreeze(value),

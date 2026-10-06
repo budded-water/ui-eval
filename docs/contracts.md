@@ -64,6 +64,7 @@ EvaluationPlan + EvaluationPolicy
 | Schema | Current role |
 | --- | --- |
 | `project.schema.json` | Active human-authored project/server/device/default/capability configuration. |
+| `deployment-identity.schema.json` | Active bounded metadata checked against the selected remote profile. |
 | `scenario-source.schema.json` | Active human-authored web scenario input. |
 | `policy-source.schema.json` | Active web authoring: compact `web-default` profile or existing full policy. |
 | `agent-suite.schema.json` | Active Agent scenario/check/mutation configuration. |

@@ -38,6 +38,8 @@ export interface ArtifactMaterializer {
 }
 
 export interface CompileScenarioOptions {
+  /** Trusted execution profile target; the resolved URL remains sealed in the plan. */
+  baseUrlOverride?: string
   /** The concrete adapter capabilities, if narrower than project defaults. */
   availableCapabilities?: readonly CaptureCapability[]
   artifactMaterializer?: ArtifactMaterializer
@@ -136,7 +138,7 @@ export async function compileScenario(
     : canonicalDigest(sourceInput)
 
   assertPhase0ASupportedScenarioInputs(source, project)
-  const baseUrl = resolveBaseUrl(source, project)
+  const baseUrl = options.baseUrlOverride ?? resolveBaseUrl(source, project)
   validateScenarioSemantics(source, baseUrl)
   validateMatrixReferences(source, project)
 

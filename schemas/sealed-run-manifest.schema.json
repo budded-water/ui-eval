@@ -16,6 +16,128 @@
       "minLength": 1,
       "type": "string"
     },
+    "executionTarget": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "profileId",
+            "mode",
+            "baseUrl"
+          ],
+          "properties": {
+            "profileId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "mode": {
+              "const": "local",
+              "type": "string"
+            },
+            "baseUrl": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "profileId",
+            "mode",
+            "baseUrl",
+            "frontendIdentityUrl",
+            "frontend"
+          ],
+          "properties": {
+            "profileId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "mode": {
+              "const": "remote",
+              "type": "string"
+            },
+            "baseUrl": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "frontendIdentityUrl": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "backendIdentityUrl": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "frontend": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "revision"
+              ],
+              "properties": {
+                "revision": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                },
+                "apiContractVersion": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                },
+                "featureFlagsDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "dataRevision": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "backend": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "revision"
+              ],
+              "properties": {
+                "revision": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                },
+                "apiContractVersion": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                },
+                "featureFlagsDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "dataRevision": {
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[A-Za-z0-9._-]+$",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
     "scenarioPlanDigest": {
       "pattern": "^sha256:[a-f0-9]{64}$",
       "type": "string"
