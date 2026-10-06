@@ -218,24 +218,33 @@ describe("runAgentSuite", () => {
     const suite = JSON.parse(await readFile(suitePath, "utf8"))
     suite.scenarios[0].timeoutMs = 1_000
     await writeFile(suitePath, JSON.stringify(suite))
-    const capture = vi.fn(() => new Promise<never>(() => {}))
-    const runCommand = vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" }))
-    const result = await runAgentSuite({ projectRoot: root, suite: "rentals", repair: true }, {
-      evaluate: (options) => evaluateScenario(options, {
-        capture, captureCleanupTimeoutMs: 10,
-        ensureServer: async () => ({ url: "http://127.0.0.1:3000", reused: true, stop: async () => {} }),
-        sourceRevision: async () => ({ repository: "test", commitSha: "abc123", dirtyTree: false }),
-      }),
-      runCommand, listChangedFiles: async () => [], snapshotFiles: async () => new Map(),
-      scenarioCleanupTimeoutMs: 100,
+    const deadline = new AbortController()
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal)
+    // Exercise cancellation while capture owns resources, independent of cold
+    // schema/compiler startup time on a slower CI worker.
+    const capture = vi.fn(() => {
+      queueMicrotask(() => deadline.abort(new Error("synthetic deadline")))
+      return new Promise<never>(() => {})
     })
-    expect(result.status).toBe("blocked")
-    expect(result.reason).toContain("cleanup did not settle")
-    expect(result.iterations).toHaveLength(1)
-    expect(capture).toHaveBeenCalledOnce()
-    expect(runCommand).toHaveBeenCalledOnce()
-    expect(JSON.parse(await readFile(result.summaryPath, "utf8")).accepted).toBe(false)
-    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("Blocked")
+    const runCommand = vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" }))
+    try {
+      const result = await runAgentSuite({ projectRoot: root, suite: "rentals", repair: true }, {
+        evaluate: (options) => evaluateScenario(options, {
+          capture, captureCleanupTimeoutMs: 10,
+          ensureServer: async () => ({ url: "http://127.0.0.1:3000", reused: true, stop: async () => {} }),
+          sourceRevision: async () => ({ repository: "test", commitSha: "abc123", dirtyTree: false }),
+        }),
+        runCommand, listChangedFiles: async () => [], snapshotFiles: async () => new Map(),
+        scenarioCleanupTimeoutMs: 100,
+      })
+      expect(result.status).toBe("blocked")
+      expect(result.reason).toContain("cleanup did not settle")
+      expect(result.iterations).toHaveLength(1)
+      expect(capture).toHaveBeenCalledOnce()
+      expect(runCommand).toHaveBeenCalledOnce()
+      expect(JSON.parse(await readFile(result.summaryPath, "utf8")).accepted).toBe(false)
+      expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("Blocked")
+    } finally { timeout.mockRestore() }
   })
 
   it("treats an empty evaluation result as missing infrastructure evidence", async () => {
