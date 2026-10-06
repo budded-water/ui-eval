@@ -13,6 +13,7 @@ import {
 import {
   CaptureBundleSchema,
   DesignContractSchema,
+  DeploymentIdentitySchema,
   GeometryEvaluatorConfigSchema,
   MockServerFixtureConfigSchema,
   EvaluationPlanSchema,
@@ -26,6 +27,7 @@ import {
 const DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
+  ["deployment-identity.schema.json", DeploymentIdentitySchema],
   ["agent-suite.schema.json", AgentSuiteSchema],
   ["agent-summary.schema.json", AgentRunResultSchema],
   ["project.schema.json", ProjectConfigSchema],

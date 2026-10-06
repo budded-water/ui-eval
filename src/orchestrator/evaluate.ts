@@ -36,6 +36,8 @@ import type {
   MetricValue,
   SourceRevision,
   SealedRunManifest,
+  ExecutionTarget,
+  DeploymentVerification,
   WebResolvedScenarioPlan,
 } from "../contracts/model"
 import {
@@ -83,6 +85,8 @@ import { normalizedCandidateEvidenceDigest } from "./evidence-digest"
 export { normalizedCandidateEvidenceDigest } from "./evidence-digest"
 import { geometryCheckpointEvidence } from "./geometry-evidence"
 import { IncompleteCleanupError, hasIncompleteCleanup } from "../runtime/cleanup"
+import { resolveExecutionProfile } from "../project/execution-profile"
+import { executionTarget, verifyRemoteDeployment } from "./remote-target"
 import { assertCaptureContract } from "./capture-contract"
 import { ensureDevServer, type DevServerHandle } from "./dev-server"
 import {
@@ -108,6 +112,7 @@ const ZERO_DIGEST = `sha256:${"0".repeat(64)}` as const
 const CAPTURE_ABORT_GRACE_MS = 15_000
 
 export interface EvaluateScenarioOptions {
+  executionProfile?: string
   projectRoot: string
   scenario: string
   policy?: string
@@ -143,6 +148,7 @@ export interface EvaluateScenarioResult {
 }
 
 export interface EvaluateScenarioDependencies {
+  deploymentFetch?: typeof fetch
   /** Test seam for the bounded capture cleanup wait after cancellation. */
   captureCleanupTimeoutMs?: number
   capture?: (
@@ -315,6 +321,7 @@ function reproductionCommand(options: EvaluateScenarioOptions): string {
   return [
     "ui-eval evaluate",
     shellArgument(options.scenario),
+    ...(options.executionProfile ? ["--execution-profile", shellArgument(options.executionProfile)] : []),
     ...(options.policy ? ["--policy", shellArgument(options.policy)] : []),
     ...(options.referencePath
       ? ["--reference", shellArgument(options.referencePath)]
@@ -892,6 +899,9 @@ async function evaluatePlan(options: {
   runStore: RunStore
   serverError?: unknown
   fixtureSession?: MockServerSession
+  executionTarget?: ExecutionTarget
+  verifyDeployment?: () => Promise<DeploymentVerification>
+  deploymentVerification?: DeploymentVerification
   deps: EvaluateScenarioDependencies
 }): Promise<EvaluationRunDraft> {
   throwIfEvaluationAborted(options.rootOptions.signal)
@@ -910,6 +920,7 @@ async function evaluatePlan(options: {
   )
   const manifestBase = {
     executionId,
+    ...(options.executionTarget ? { executionTarget: options.executionTarget } : {}),
     scenarioPlanDigest: options.plan.planDigest,
     sourceRevision: options.sourceRevision,
     build,
@@ -976,10 +987,20 @@ async function evaluatePlan(options: {
         options.deps.captureCleanupTimeoutMs ?? CAPTURE_ABORT_GRACE_MS,
       )
       options.fixtureSession?.verify()
+      if (options.verifyDeployment) {
+        try {
+          options.deploymentVerification = await options.verifyDeployment()
+        } catch (error) {
+          throwIfEvaluationAborted(options.rootOptions.signal)
+          options.deploymentVerification = { status: "unverified" }
+          captureSpec = failedCapture(options.plan, captureContext, error)
+        }
+      }
       throwIfEvaluationAborted(options.rootOptions.signal)
     } catch (error) {
       if (hasIncompleteCleanup(error)) throw error
       throwIfEvaluationAborted(options.rootOptions.signal)
+      if (options.verifyDeployment) options.deploymentVerification = { status: "unverified" }
       captureSpec = failedCapture(options.plan, captureContext, error)
     }
   }
@@ -1192,6 +1213,7 @@ async function evaluatePlan(options: {
         ? { localReferenceDigest: visual.inputDigest }
         : {}),
       sourceRevision: options.sourceRevision,
+      ...(options.executionTarget ? { executionTarget: options.executionTarget } : {}),
     },
     executionOutcome,
     rawStatus,
@@ -1201,6 +1223,7 @@ async function evaluatePlan(options: {
     findings,
     provenance: {
       orchestratorVersion: ORCHESTRATOR_VERSION,
+      ...(options.deploymentVerification ? { deploymentVerification: options.deploymentVerification } : {}),
       evaluators: evaluatorProvenance,
     },
   }
@@ -1212,6 +1235,8 @@ async function evaluatePlan(options: {
     evaluatedGates,
     expectedExecutionOutcome: executionOutcome,
     expectedMetrics: measuredMetrics,
+    expectedExecutionTarget: options.executionTarget,
+    expectedDeploymentVerification: options.deploymentVerification,
     visualDecision: !visual
       ? { status: "none" }
       : visual.comparison.status === "unknown"
@@ -1252,6 +1277,8 @@ async function evaluatePlan(options: {
     rawStatus,
     reproductionCommand: reproductionCommand(options.rootOptions),
     provenance: [
+      ...(options.executionTarget ? [{ label: "Execution profile", value: `${options.executionTarget.profileId} · ${options.executionTarget.mode} · ${options.executionTarget.baseUrl}` }] : []),
+      ...(options.deploymentVerification ? [{ label: "Deployment verification", value: options.deploymentVerification.status }] : []),
       {
         label: "Source revision",
         value: `${options.sourceRevision.repository}@${options.sourceRevision.commitSha}${
@@ -1357,6 +1384,7 @@ export async function evaluateScenario(
 ): Promise<EvaluateScenarioResult> {
   throwIfEvaluationAborted(options.signal)
   const project = await loadProjectConfig({ projectRoot: options.projectRoot })
+  const profile = resolveExecutionProfile(project.value, options.executionProfile)
   throwIfEvaluationAborted(options.signal)
   const [scenarioSource, policySource] = await Promise.all([
     loadScenarioSource(project, sourceReference(options.scenario)),
@@ -1376,6 +1404,7 @@ export async function evaluateScenario(
     compileScenario(scenarioSource, project, {
       artifactMaterializer: artifactStore,
       availableCapabilities: PLAYWRIGHT_CAPTURE_CAPABILITIES,
+      ...(profile ? { baseUrlOverride: profile.baseUrl } : {}),
     }),
     materializePolicy(policySource, project, {
       artifactMaterializer: artifactStore,
@@ -1384,6 +1413,10 @@ export async function evaluateScenario(
     (deps.sourceRevision ?? collectSourceRevision)(project.projectRoot),
   ])
   throwIfEvaluationAborted(options.signal)
+  const target = executionTarget(profile, sourceRevision)
+  if (profile?.config.mode === "remote" && plans.some((plan) => plan.fixtures.length > 0)) {
+    throw new Error("Remote execution profiles cannot use local mock-server fixtures")
+  }
   const evaluatorRegistry = await loadPhase0AEvaluatorRegistry(policy, {
     artifactResolver: {
       resolve: (ref) => artifactStore.resolve(localArtifactRef(ref)),
@@ -1409,6 +1442,7 @@ export async function evaluateScenario(
     let server: DevServerHandle | undefined
     let fixtureSession: MockServerSession | undefined
     let serverError: unknown
+    let deploymentVerification: DeploymentVerification | undefined
     let run: EvaluationRunDraft | undefined
     let operationError: unknown
     try {
@@ -1428,7 +1462,13 @@ export async function evaluateScenario(
           )
           throwIfEvaluationAborted(options.signal)
         }
-        server = await (deps.ensureServer ?? ensureDevServer)(
+        if (profile?.config.mode === "remote" && target) {
+          deploymentVerification = { status: "unverified" }
+          deploymentVerification = await verifyRemoteDeployment(profile, target, sourceRevision, {
+            signal: options.signal, fetchImpl: deps.deploymentFetch,
+          })
+          server = { url: profile.baseUrl, reused: true, stop: async () => {} }
+        } else server = await (deps.ensureServer ?? ensureDevServer)(
           project.value.devServer,
           {
             projectRoot: project.projectRoot,
@@ -1455,6 +1495,11 @@ export async function evaluateScenario(
         policy,
         evaluatorRegistry,
         sourceRevision,
+        ...(target ? { executionTarget: target } : {}),
+        ...(deploymentVerification ? { deploymentVerification } : {}),
+        ...(profile?.config.mode === "remote" && target ? { verifyDeployment: () => verifyRemoteDeployment(profile, target, sourceRevision, {
+          signal: options.signal, fetchImpl: deps.deploymentFetch, waitForReady: false,
+        }) } : {}),
         artifactStore,
         runStore,
         ...(serverError ? { serverError } : {}),

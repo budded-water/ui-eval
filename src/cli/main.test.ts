@@ -89,6 +89,25 @@ function deferred<T>() {
 }
 
 describe("runCli", () => {
+  it("forwards an execution profile to evaluation without changing stdout or exit semantics", async () => {
+    const stream = output()
+    const evaluate = vi.fn(async () => result("infra-error", "inconclusive"))
+    expect(await runCli(["evaluate", "terms-desktop", "--execution-profile", "preview", "--format", "json"], stream.io, { evaluate })).toBe(2)
+    expect(evaluate).toHaveBeenCalledWith(expect.objectContaining({ executionProfile: "preview" }))
+    expect(JSON.parse(stream.stdout.join(""))).toEqual(result("infra-error", "inconclusive"))
+  })
+  it("forwards profile, additional scope and full-scope fallback to the Agent", async () => {
+    const stream = output()
+    const agent = vi.fn(async () => { throw new Error("sentinel") })
+    await runCli(["agent", "smoke", "--execution-profile", "local", "--additional-scenario", "details", "--additional-scenario", "mobile", "--full-scope"], stream.io, { agent })
+    expect(agent).toHaveBeenCalledWith(expect.objectContaining({ executionProfile: "local", additionalScenarios: ["details", "mobile"], fullScope: true }))
+  })
+  it("forwards profiles to doctor", async () => {
+    const stream = output()
+    const doctor = vi.fn(async () => ({ ok: true, checks: [] }))
+    expect(await runCli(["doctor", "--execution-profile", "preview"], stream.io, { doctor })).toBe(0)
+    expect(doctor).toHaveBeenCalledWith(expect.objectContaining({ executionProfile: "preview" }))
+  })
   it("documents the installed ui-eval binary without a package-manager wrapper", async () => {
     const stream = output()
 

@@ -13,6 +13,9 @@
   "baseUrls": {
     "local": "http://127.0.0.1:3210"
   },
+  "executionProfiles": {
+    "local": { "mode": "local", "baseUrlRef": "local" }
+  },
   "deviceProfiles": {
     "desktop-chromium": {
       "viewport": {

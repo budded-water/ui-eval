@@ -40,6 +40,38 @@
     "accepted": {
       "type": "boolean"
     },
+    "scope": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "requiredScenarioIds",
+        "selectedScenarioIds"
+      ],
+      "properties": {
+        "executionProfile": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "requiredScenarioIds": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "selectedScenarioIds": {
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      }
+    },
     "iterations": {
       "type": "array",
       "items": {

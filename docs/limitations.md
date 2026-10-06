@@ -21,6 +21,8 @@ This page is part of the product contract. A schema field or future-facing type 
 | Governance | Raw report only. | No baseline promotion, waiver, reviewer role, or append-only decision ledger. |
 | Agents | Optional bounded local repair loop over immutable evaluator reports. | Command adapters, path prefixes, file-count budgets, plateau, and iteration limits are enforced; there is no separate protected patch workspace, holdout service, MCP service, or OS security boundary. |
 | Service surface | CLI and local programmatic API. | No hosted API, queue, web console, or multi-tenant control plane. |
+| Execution profiles | Local server lifecycle or remote pre/post deployment metadata checks. | No deployment scheduler, signed attestation or environment lock. Metadata does not prove the browser used the declared backend, nor that versions remained constant throughout capture. |
+| Scope decisions | Mandatory Agent floor plus declared optional scenarios; append-only suggestions and full-pool fallback. | No built-in model or automatic change-impact classification. Acceptance covers recorded scope only; local acceptance cannot establish remote readiness. |
 | Distribution | Public source repository; private, unpublished package. | Source visibility is not an open-source license, registry distribution, or compatibility/support promise. |
 
 ## Visual truthfulness

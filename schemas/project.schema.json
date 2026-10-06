@@ -372,6 +372,150 @@
           }
         ]
       }
+    },
+    "executionProfiles": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "mode",
+                "baseUrlRef"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "local",
+                  "type": "string"
+                },
+                "baseUrlRef": {
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "mode",
+                "baseUrlRef",
+                "frontend",
+                "readinessTimeoutMs"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "remote",
+                  "type": "string"
+                },
+                "baseUrlRef": {
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                  "type": "string"
+                },
+                "frontend": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "identityPath"
+                  ],
+                  "properties": {
+                    "identityPath": {
+                      "minLength": 1,
+                      "maxLength": 512,
+                      "pattern": "^/(?!/)[^\\\\?#]*$",
+                      "type": "string"
+                    },
+                    "expected": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "apiContractVersion": {
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z0-9._-]+$",
+                          "type": "string"
+                        },
+                        "featureFlagsDigest": {
+                          "pattern": "^sha256:[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "dataRevision": {
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z0-9._-]+$",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "backend": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "baseUrlRef",
+                    "identityPath",
+                    "expected"
+                  ],
+                  "properties": {
+                    "baseUrlRef": {
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                      "type": "string"
+                    },
+                    "identityPath": {
+                      "minLength": 1,
+                      "maxLength": 512,
+                      "pattern": "^/(?!/)[^\\\\?#]*$",
+                      "type": "string"
+                    },
+                    "expected": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "revision"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z0-9._-]+$",
+                          "type": "string"
+                        },
+                        "apiContractVersion": {
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z0-9._-]+$",
+                          "type": "string"
+                        },
+                        "featureFlagsDigest": {
+                          "pattern": "^sha256:[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "dataRevision": {
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z0-9._-]+$",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "readinessTimeoutMs": {
+                  "minimum": 1,
+                  "maximum": 60000,
+                  "type": "integer"
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }

@@ -11,6 +11,7 @@ const documents = [
   ["contracts", "Contracts", "docs/contracts.md"],
   ["security", "Security model", "docs/security-model.md"],
   ["integration", "Integration", "docs/integration.md"],
+  ["execution-profiles", "Local and remote evaluation", "docs/execution-profiles.md"],
   ["limitations", "Limitations", "docs/limitations.md"],
   ["development", "Development", "docs/development.md"],
   ["release", "Release", "docs/release.md"],
@@ -25,6 +26,7 @@ const documents = [
     "ADR 0002: design constraint contract",
     "docs/adr/0002-design-constraint-contract.md",
   ],
+  ["adr-0003", "ADR 0003: execution profiles and bounded scope", "docs/adr/0003-execution-profiles-and-bounded-scope.md"],
 ]
 
 const sources = await Promise.all(

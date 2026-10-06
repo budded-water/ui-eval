@@ -54,6 +54,27 @@ After validation and digest recomputation, the orchestrator treats these as trus
 
 Trust is earned through validation and cross-binding, not because an object has a familiar TypeScript type.
 
+## Remote deployment metadata
+
+Execution profile URLs and version expectations are trusted configuration;
+identity responses are untrusted. Explicit credential-free HTTP(S) endpoints
+are resolved against reviewed base URL references, reject escaping paths and
+redirects, and never receive browser storage state. Each body is bounded to
+64 KiB, each verification has a deadline of at most 60 seconds, and failed
+parallel requests are cancelled between readiness attempts. Raw response bodies
+are not retained or echoed. Only structurally validated, matching expected
+fields enter report provenance.
+
+The clean checkout and configured expectations are separate from served
+metadata, which the candidate deployment pipeline must keep synchronized.
+Pre/post verification is an endpoint assertion, not artifact attestation or
+environment isolation. It grants no additional browser egress authority and
+does not prove which backend the frontend uses. Remote mode refuses local mock
+fixtures and never owns the candidate server. Its Agent cannot invoke product
+repair or reuse reports across infrastructure retries. Reviewed project checks
+still execute with the runner's privileges; remote mode is not a read-only OS
+sandbox. See [Execution profiles](execution-profiles.md).
+
 ## Project-root containment
 
 Project, scenario, policy, fixture, storage-state, evaluator-config, and reference-image paths are constrained to the candidate project:

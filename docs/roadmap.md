@@ -110,7 +110,10 @@ Candidate scope:
 - server-generated fix tasks from immutable findings;
 - path/file/line/iteration budgets enforced outside prompts;
 - separate writable patch workspace and read-only policy/design/holdout material;
-- affected-scenario selection and automatic rerun;
+- automatic change-impact classification remains planned; current selection is
+  explicit and append-only from a reviewed optional pool, with a mandatory floor
+  and full-pool fallback. Local/remote execution profiles are implemented as
+  described in [Execution profiles](execution-profiles.md);
 - patch audit for skips, masks, screenshot replacement, hard-coded viewport hacks, and test weakening;
 - attempt provenance, cost, score delta, plateau, and stop conditions;
 - withheld/holdout validation only where read isolation is real.

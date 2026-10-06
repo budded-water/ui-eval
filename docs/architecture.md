@@ -99,6 +99,11 @@ For each resolved variant, the orchestrator seals a `SealedRunManifest` containi
 
 ### 4. Own the candidate server
 
+This lifecycle applies to legacy/local execution. An explicitly selected remote
+profile uses pre/post deployment identity checks instead, without acquiring or
+stopping a candidate server. Target expectations are sealed in the run manifest
+and copied into the report. See [Execution profiles](execution-profiles.md).
+
 The development server is configured as a command plus argument array and starts in the candidate project. UI Eval does not accept an occupied responding port when `reuseExisting` is false. Reuse requires a project-specific readiness path and response marker.
 
 Each matrix variant acquires and releases its server handle independently. A

@@ -12,6 +12,9 @@ import {
   AssertionResultSchema,
   AssertionSpecSchema,
   BuildIdentitySchema,
+  DeploymentIdentitySchema,
+  ExecutionTargetSchema,
+  DeploymentVerificationSchema,
   CaptureBundleSchema,
   CaptureBundleSpecSchema,
   CaptureCapabilitySchema,
@@ -93,6 +96,9 @@ import {
 } from "./schemas"
 
 export type ContractVersion = Static<typeof ContractVersionSchema>
+export type DeploymentIdentity = Static<typeof DeploymentIdentitySchema>
+export type ExecutionTarget = Static<typeof ExecutionTargetSchema>
+export type DeploymentVerification = Static<typeof DeploymentVerificationSchema>
 export type Digest = Static<typeof DigestSchema>
 export type MatrixValue = Static<typeof MatrixValueSchema>
 export type MatrixMap = Static<typeof MatrixMapSchema>

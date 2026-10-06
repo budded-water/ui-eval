@@ -8,6 +8,17 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Optional local/remote execution profiles for `doctor`, `evaluate`, and Agent
+  suites. Remote runs bind a clean frontend commit and declared backend/API,
+  feature-flag or data versions, verify bounded metadata before/after capture,
+  and refuse local server ownership, mock fixtures and product repair.
+- Agent mandatory scenario floors, reviewed optional pools, append-only
+  suggestions and a full-scope fallback. JSON/HTML summaries record the selected
+  scope. Remote infrastructure retries re-capture all selected scenarios.
+  Existing inputs remain valid; older strict readers need the updated schemas
+  for new optional report, manifest and summary fields. Evaluator versions,
+  exit codes and the local store format are unchanged.
+
 - Optional canonical report `metrics`, binding raw evaluator measurements used
   for gates, including a zero changed-pixel ratio. Existing reports without the
   field remain readable; older strict-schema readers need the updated source

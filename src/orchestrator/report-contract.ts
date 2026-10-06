@@ -31,6 +31,8 @@ export interface ReportContractInput {
   evaluatedGates: readonly EvaluatedGate[]
   expectedExecutionOutcome: EvaluationReportSpec["executionOutcome"]
   expectedMetrics?: EvaluationReportSpec["metrics"]
+  expectedExecutionTarget?: EvaluationReportSpec["inputs"]["executionTarget"]
+  expectedDeploymentVerification?: EvaluationReportSpec["provenance"]["deploymentVerification"]
   visualDecision: ReportVisualDecision
   expectedEvaluatorProvenance: readonly EvaluatorProvenance[]
   /** ResolvedScenarioPlan is intentionally not part of EvaluationPlan in v1alpha1. */
@@ -633,6 +635,8 @@ export function reportContractIssues(
   )
   provenanceBindingIssues(input, issues)
   findingBindingIssues(input, issues)
+  valueIssue(issues, "/inputs/executionTarget", "execution target", input.reportSpec.inputs.executionTarget, input.expectedExecutionTarget)
+  valueIssue(issues, "/provenance/deploymentVerification", "deployment verification", input.reportSpec.provenance.deploymentVerification, input.expectedDeploymentVerification)
   valueIssue(issues, "/metrics", "report metrics", input.reportSpec.metrics, input.expectedMetrics)
   return issues
 }

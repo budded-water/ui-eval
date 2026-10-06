@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="2da7ec8215e30fc0d480810db1fa277fe69be4c519bd27dce2682f2c895605a1">
+  <meta name="source-sha256" content="7dbbf6007ae821fbd547b1bf9ed68a820668b8c0fdb5f29275af2f68eae0683a">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -42,17 +42,19 @@
 <a href="#contracts">Contracts</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
+<a href="#execution-profiles">Local and remote evaluation</a>
 <a href="#limitations">Limitations</a>
 <a href="#development">Development</a>
 <a href="#release">Release</a>
 <a href="#roadmap">Roadmap</a>
 <a href="#adr-0001">ADR 0001: standalone modular monolith</a>
-<a href="#adr-0002">ADR 0002: design constraint contract</a></nav>
+<a href="#adr-0002">ADR 0002: design constraint contract</a>
+<a href="#adr-0003">ADR 0003: execution profiles and bounded scope</a></nav>
     <main>
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 2da7ec8215e30fc0d480810db1fa277fe69be4c519bd27dce2682f2c895605a1</footer>
+        <footer>Source set SHA-256: 7dbbf6007ae821fbd547b1bf9ed68a820668b8c0fdb5f29275af2f68eae0683a</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -182,6 +184,10 @@ Orchestrator
 <p>UI Eval fingerprints the candidate Git state before capture. Commit, worktree state, tracked differences, and untracked content participate in provenance. Failure to read a mutually consistent source identity is a pre-run failure rather than a placeholder provenance value.</p>
 <p>For each resolved variant, the orchestrator seals a <code>SealedRunManifest</code> containing source/build, adapter, environment intent, scenario-plan digest, and capture key. Digest-bearing contracts are recomputed during validation; a caller cannot make a changed object authoritative by copying an old digest onto it.</p>
 <h3>4. Own the candidate server</h3>
+<p>This lifecycle applies to legacy/local execution. An explicitly selected remote
+profile uses pre/post deployment identity checks instead, without acquiring or
+stopping a candidate server. Target expectations are sealed in the run manifest
+and copied into the report. See <a href="execution-profiles.md">Execution profiles</a>.</p>
 <p>The development server is configured as a command plus argument array and starts in the candidate project. UI Eval does not accept an occupied responding port when <code>reuseExisting</code> is false. Reuse requires a project-specific readiness path and response marker.</p>
 <p>Each matrix variant acquires and releases its server handle independently. A
 server started by UI Eval is stopped before the next variant starts, preventing
@@ -402,6 +408,10 @@ EvaluationPlan + EvaluationPolicy
 <tbody><tr>
 <td><code>project.schema.json</code></td>
 <td>Active human-authored project/server/device/default/capability configuration.</td>
+</tr>
+<tr>
+<td><code>deployment-identity.schema.json</code></td>
+<td>Active bounded metadata checked against the selected remote profile.</td>
 </tr>
 <tr>
 <td><code>scenario-source.schema.json</code></td>
@@ -675,6 +685,24 @@ never be interpreted as commands or instructions.</p>
 <li>run manifest, capture/evaluation keys, and validated report bindings.</li>
 </ul>
 <p>Trust is earned through validation and cross-binding, not because an object has a familiar TypeScript type.</p>
+<h2>Remote deployment metadata</h2>
+<p>Execution profile URLs and version expectations are trusted configuration;
+identity responses are untrusted. Explicit credential-free HTTP(S) endpoints
+are resolved against reviewed base URL references, reject escaping paths and
+redirects, and never receive browser storage state. Each body is bounded to
+64 KiB, each verification has a deadline of at most 60 seconds, and failed
+parallel requests are cancelled between readiness attempts. Raw response bodies
+are not retained or echoed. Only structurally validated, matching expected
+fields enter report provenance.</p>
+<p>The clean checkout and configured expectations are separate from served
+metadata, which the candidate deployment pipeline must keep synchronized.
+Pre/post verification is an endpoint assertion, not artifact attestation or
+environment isolation. It grants no additional browser egress authority and
+does not prove which backend the frontend uses. Remote mode refuses local mock
+fixtures and never owns the candidate server. Its Agent cannot invoke product
+repair or reuse reports across infrastructure retries. Reviewed project checks
+still execute with the runner&#39;s privileges; remote mode is not a read-only OS
+sandbox. See <a href="execution-profiles.md">Execution profiles</a>.</p>
 <h2>Project-root containment</h2>
 <p>Project, scenario, policy, fixture, storage-state, evaluator-config, and reference-image paths are constrained to the candidate project:</p>
 <ul>
@@ -891,6 +919,10 @@ audit instead of silently disappearing.</p>
         <h1>Project Integration</h1>
 <p>UI Eval currently integrates from a local checkout of the public source repository at <code>https://github.com/budded-water/ui-eval</code>. The package remains private in package metadata, <code>UNLICENSED</code>, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout&#39;s Bun scripts at a candidate project with <code>--project-root</code>.</p>
 <h2>Integration boundary</h2>
+<p>For separate local iteration and preview/staging integration, use reviewed
+<a href="execution-profiles.md">execution profiles and suites</a>. Remote execution requires
+a clean checkout and matching version endpoints; a reachable URL alone is not
+proof that the intended frontend/backend revisions are deployed.</p>
 <p>A candidate repository should retain only project-owned inputs and a generated working directory:</p>
 <pre><code class="language-text">candidate/
   ui-eval/
@@ -1297,6 +1329,110 @@ as scales the stylesheet still does not declare.</p>
 <p>When a package distribution channel is introduced, integration documentation must be updated together with package exports, lockfile pinning, clean-install tests, licensing, and release policy. Until then, separately authorized local checkout invocation is the only workflow described here.</p>
 
       </section>
+<section id="execution-profiles" class="document">
+        <div class="source"><span>Local and remote evaluation</span><code>docs/execution-profiles.md</code></div>
+        <h1>Local and Remote Evaluation</h1>
+<p>Both modes use the same compiler, capture adapter, deterministic evaluators and
+policy gates. Profiles change the target and lifecycle, not passing semantics.
+Profiles and suites are reviewed project configuration. No hosted runner,
+deployment service or model call is introduced.</p>
+<h2>Configure profiles</h2>
+<p>Add this fragment to a complete <code>ui-eval/project.json</code>, retaining <code>devServer</code>.
+References must exist in <code>baseUrls</code>; these URLs are synthetic placeholders.</p>
+<pre><code class="language-json">{
+  &quot;baseUrls&quot;: {
+    &quot;local&quot;: &quot;http://127.0.0.1:3000&quot;,
+    &quot;preview&quot;: &quot;https://preview.example.invalid&quot;,
+    &quot;api&quot;: &quot;https://api.example.invalid&quot;
+  },
+  &quot;executionProfiles&quot;: {
+    &quot;local&quot;: { &quot;mode&quot;: &quot;local&quot;, &quot;baseUrlRef&quot;: &quot;local&quot; },
+    &quot;preview&quot;: {
+      &quot;mode&quot;: &quot;remote&quot;,
+      &quot;baseUrlRef&quot;: &quot;preview&quot;,
+      &quot;frontend&quot;: { &quot;identityPath&quot;: &quot;/version&quot; },
+      &quot;backend&quot;: {
+        &quot;baseUrlRef&quot;: &quot;api&quot;,
+        &quot;identityPath&quot;: &quot;/version&quot;,
+        &quot;expected&quot;: { &quot;revision&quot;: &quot;backend-v2&quot;, &quot;apiContractVersion&quot;: &quot;v2&quot; }
+      },
+      &quot;readinessTimeoutMs&quot;: 30000
+    }
+  }
+}
+</code></pre>
+<p>An explicitly selected profile replaces the scenario&#39;s base URL reference and
+seals the resolved target in its plan. Local profiles must share the development
+server&#39;s origin and keep existing lifecycle behavior. Omitting a profile
+preserves earlier local behavior and report shape.</p>
+<p>Remote profiles require a clean Git checkout. The frontend endpoint must report
+the checkout&#39;s exact commit SHA, which cannot be overridden in configuration.
+Optional frontend expectations can pin API contract, feature-flag digest and
+data revision. An optional backend endpoint pins its revision and can pin those
+same fields. Unspecified fields are not verified or retained as verified facts.</p>
+<p>Endpoints return JSON matching
+<a href="../schemas/deployment-identity.schema.json">deployment-identity.schema.json</a>:</p>
+<pre><code class="language-json">{
+  &quot;schemaVersion&quot;: &quot;uieval.deployment/v1alpha1&quot;,
+  &quot;revision&quot;: &quot;backend-v2&quot;,
+  &quot;apiContractVersion&quot;: &quot;v2&quot;
+}
+</code></pre>
+<p>The frontend uses its actual commit SHA instead of this backend example value.
+Versions are bounded, non-secret identifiers. Identity requests use explicit,
+credential-free HTTP(S) URLs; browser storage state is never attached. Paths
+cannot contain queries, fragments, backslashes or protocol-relative destinations.
+Redirects are refused; response bodies are limited to 64 KiB. Raw bodies are
+never persisted or included in diagnostics.</p>
+<p>Before each variant, the orchestrator polls both configured identities within
+the declared deadline (at most 60 seconds), cancelling unfinished requests
+between attempts. After capture it verifies them again without readiness
+retries. Mismatch, timeout, malformed response or dirty checkout produces an
+infrastructure/inconclusive report and cannot authorize product repair.
+Remote runs never acquire the local development server and refuse local
+mock-server fixtures. They still own and clean up their browser resources.</p>
+<pre><code class="language-bash">ui-eval doctor --execution-profile preview --project-root /path/to/candidate
+ui-eval evaluate home --execution-profile local --project-root /path/to/candidate
+ui-eval evaluate home --execution-profile preview --project-root /path/to/candidate
+</code></pre>
+<p><code>doctor</code> checks identities immediately; <code>evaluate</code> waits for readiness.
+Infrastructure failures retain exit <code>2</code>. JSON/HTML reports carry the selected
+target and verification status; reproduction commands retain the profile.</p>
+<h2>Bounded model decisions</h2>
+<p>Use a small local suite for iteration and a reviewed remote suite for integration.
+A suite can pin <code>executionProfile</code>; CLI overrides cannot replace it with another
+profile. <code>scenarios</code> is the mandatory floor. <code>optionalScenarios</code> is a reviewed
+pool of extra configurations, with unique IDs across both lists.</p>
+<p>An external model may assess a diff and propose IDs via repeated
+<code>--additional-scenario</code> flags or API <code>additionalScenarios</code>. The engine appends
+declared IDs only, rejects unknown IDs and deduplicates suggestions. The model
+cannot remove required checks or redefine scenarios, dimensions, references,
+thresholds or policy gates through this interface. Every selected scenario must
+pass, including additions. <code>--full-scope</code> (API <code>fullScope</code>) selects the whole
+pool when impact is uncertain. The engine does not infer uncertainty or select
+affected scenarios itself.</p>
+<pre><code class="language-bash">ui-eval agent local-smoke --additional-scenario details --project-root /path/to/candidate
+ui-eval agent preview-integration --full-scope --project-root /path/to/candidate
+</code></pre>
+<p>Canonical <code>summary.json</code> and derived <code>summary.html</code> record required/selected
+scenario IDs and the selected profile. Acceptance applies only to that scope;
+local acceptance does not establish remote integration readiness. Remote suites
+reject explicit <code>--repair</code> and disable implicit repair. Infrastructure retries
+re-capture all selected remote scenarios rather than reuse earlier evidence.</p>
+<h2>Deployment identity has two ledgers</h2>
+<p>The clean checkout is canonical for expected frontend revision; reviewed project
+configuration is canonical for backend and additional expectations. The candidate
+build/deployment pipeline owns served metadata and must publish it from the
+actual deployed artifact. Divergence blocks evaluation instead of changing the
+expectation to whatever happens to be online.</p>
+<p>Endpoint assertions are not signed artifact attestation or an environment lock.
+Pre/post matching cannot prove constant identity throughout capture or that the
+browser used the configured backend. Project checks must prove real API/data
+flows. Browser origin/auth egress restrictions still apply; metadata checks do
+not authorize browser cross-origin traffic. Use isolated preview/staging with
+reviewed scenarios; remote mode does not make mutating production workflows safe.</p>
+
+      </section>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
@@ -1375,6 +1511,16 @@ as scales the stylesheet still does not declare.</p>
 <td>Service surface</td>
 <td>CLI and local programmatic API.</td>
 <td>No hosted API, queue, web console, or multi-tenant control plane.</td>
+</tr>
+<tr>
+<td>Execution profiles</td>
+<td>Local server lifecycle or remote pre/post deployment metadata checks.</td>
+<td>No deployment scheduler, signed attestation or environment lock. Metadata does not prove the browser used the declared backend, nor that versions remained constant throughout capture.</td>
+</tr>
+<tr>
+<td>Scope decisions</td>
+<td>Mandatory Agent floor plus declared optional scenarios; append-only suggestions and full-pool fallback.</td>
+<td>No built-in model or automatic change-impact classification. Acceptance covers recorded scope only; local acceptance cannot establish remote readiness.</td>
 </tr>
 <tr>
 <td>Distribution</td>
@@ -1972,7 +2118,10 @@ consider a hosted multi-project platform
 <li>server-generated fix tasks from immutable findings;</li>
 <li>path/file/line/iteration budgets enforced outside prompts;</li>
 <li>separate writable patch workspace and read-only policy/design/holdout material;</li>
-<li>affected-scenario selection and automatic rerun;</li>
+<li>automatic change-impact classification remains planned; current selection is
+explicit and append-only from a reviewed optional pool, with a mandatory floor
+and full-pool fallback. Local/remote execution profiles are implemented as
+described in <a href="execution-profiles.md">Execution profiles</a>;</li>
 <li>patch audit for skips, masks, screenshot replacement, hard-coded viewport hacks, and test weakening;</li>
 <li>attempt provenance, cost, score delta, plateau, and stop conditions;</li>
 <li>withheld/holdout validation only where read isolation is real.</li>
@@ -2364,6 +2513,33 @@ canonical coverage rather than a separate capability list.</p>
 <p>Rejected because self-referential constraints need no design source, and because gating all geometry work on design availability discards the larger share of detectable drift while waiting for the smaller share.</p>
 <h3>Let adapters import the candidate&#39;s theme module</h3>
 <p>Rejected because it executes candidate application code inside the engine process, which ADR 0001 forbids, and because it makes evaluation depend on the candidate&#39;s build configuration resolving correctly.</p>
+
+      </section>
+<section id="adr-0003" class="document">
+        <div class="source"><span>ADR 0003: execution profiles and bounded scope</span><code>docs/adr/0003-execution-profiles-and-bounded-scope.md</code></div>
+        <h1>ADR 0003: Execution profiles and bounded scenario selection</h1>
+<p>Status: accepted for this source revision.</p>
+<h2>Context</h2>
+<p>Local iteration needs short feedback loops; deployment integration needs pinned
+versions and bounded readiness waits. A model can identify affected scenarios,
+but authority to reduce acceptance scope or change thresholds undermines truth.</p>
+<h2>Decision</h2>
+<p>Keep one deterministic engine with optional local/remote profiles in trusted
+project configuration. Verify remote identities before and after capture; bind
+targets and verification to sealed execution/report data. Keep local server
+ownership separate from remote deployment ownership.</p>
+<p>Use reviewed Agent suites for mandatory scope and a declared optional pool.
+External suggestions append declared IDs only. Record scope in both summaries;
+provide a full-pool fallback without automatic diff classification. Remote runs
+never invoke repair or reuse scenario evidence across infrastructure retries.</p>
+<h2>Consequences</h2>
+<p>Legacy configurations and reports remain readable by this revision. Older strict
+readers require updated schemas for new optional fields. Store format, evaluator
+versions, exit codes and service boundaries do not change.</p>
+<p>Candidate pipelines must synchronize their metadata with reviewed expectations.
+Metadata is not cryptographic attestation and pre/post sampling cannot lock an
+environment. See <a href="../execution-profiles.md">Local and Remote Evaluation</a> for
+configuration, decision boundaries and dual-ledger limitations.</p>
 
       </section>
     </main>

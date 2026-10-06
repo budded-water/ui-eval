@@ -4,9 +4,12 @@ import { resolve } from "node:path"
 import { chromium, type LaunchOptions } from "playwright"
 
 import { loadProjectConfig } from "../project/config"
+import { resolveExecutionProfile, type ResolvedExecutionProfile } from "../project/execution-profile"
+import { collectSourceRevision } from "../orchestrator/identity"
+import { executionTarget, verifyRemoteDeployment } from "../orchestrator/remote-target"
 
 export interface DoctorCheck {
-  id: "runtime" | "config" | "artifact-store" | "browser" | "dev-server"
+  id: "runtime" | "config" | "artifact-store" | "browser" | "dev-server" | "deployment"
   status: "pass" | "warn" | "fail"
   message: string
 }
@@ -19,6 +22,7 @@ export interface DoctorResult {
 export interface DoctorOptions {
   projectRoot: string
   browserChannel?: string
+  executionProfile?: string
   checkBrowser?: (launchOptions: LaunchOptions) => Promise<string>
   fetchImpl?: typeof fetch
 }
@@ -47,14 +51,17 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
   })
 
   let project: Awaited<ReturnType<typeof loadProjectConfig>> | undefined
+  let profile: ResolvedExecutionProfile | undefined
   try {
     project = await loadProjectConfig({ projectRoot: options.projectRoot })
+    profile = resolveExecutionProfile(project.value, options.executionProfile)
     checks.push({
       id: "config",
       status: "pass",
       message: `Loaded ${project.path}`,
     })
   } catch (error) {
+    project = undefined
     checks.push({
       id: "config",
       status: "fail",
@@ -83,43 +90,53 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
       })
     }
 
-    const fetchImpl = options.fetchImpl ?? fetch
-    try {
-      const server = project.value.devServer
-      const probeUrl = new URL(
-        server.readiness?.path ?? "/",
-        server.url,
-      ).toString()
-      const response = await fetchImpl(probeUrl, {
-        redirect: "manual",
-        signal: AbortSignal.timeout(1_500),
-      })
-      if (!server.reuseExisting) {
-        checks.push({
-          id: "dev-server",
-          status: "fail",
-          message: `A server is already responding at ${server.url}; evaluate will refuse this unowned process because reuseExisting is false.`,
+    if (profile?.config.mode === "remote") {
+      try {
+        const source = await collectSourceRevision(project.projectRoot)
+        await verifyRemoteDeployment(profile, executionTarget(profile, source)!, source, { fetchImpl: options.fetchImpl, waitForReady: false })
+        checks.push({ id: "deployment", status: "pass", message: "Configured deployment identities match this clean checkout and declared versions." })
+      } catch {
+        checks.push({ id: "deployment", status: "fail", message: "Configured deployment identities could not be verified against this clean checkout and declared versions." })
+      }
+    } else {
+      const fetchImpl = options.fetchImpl ?? fetch
+      try {
+        const server = project.value.devServer
+        const probeUrl = new URL(
+          server.readiness?.path ?? "/",
+          server.url,
+        ).toString()
+        const response = await fetchImpl(probeUrl, {
+          redirect: "manual",
+          signal: AbortSignal.timeout(1_500),
         })
-      } else {
-        const bodyMatches = server.readiness
-          ? (await response.text()).includes(server.readiness.bodyIncludes)
-          : false
-        const healthy = response.status >= 200 && response.status < 500
+        if (!server.reuseExisting) {
+          checks.push({
+            id: "dev-server",
+            status: "fail",
+            message: `A server is already responding at ${server.url}; evaluate will refuse this unowned process because reuseExisting is false.`,
+          })
+        } else {
+          const bodyMatches = server.readiness
+            ? (await response.text()).includes(server.readiness.bodyIncludes)
+            : false
+          const healthy = response.status >= 200 && response.status < 500
+          checks.push({
+            id: "dev-server",
+            status: healthy && bodyMatches ? "pass" : "fail",
+            message:
+              healthy && bodyMatches
+                ? `Candidate server proved the configured project identity at ${probeUrl}.`
+                : `A server responded at ${server.url}, but it did not prove the configured project identity.`,
+          })
+        }
+      } catch {
         checks.push({
           id: "dev-server",
-          status: healthy && bodyMatches ? "pass" : "fail",
-          message:
-            healthy && bodyMatches
-              ? `Candidate server proved the configured project identity at ${probeUrl}.`
-              : `A server responded at ${server.url}, but it did not prove the configured project identity.`,
+          status: "warn",
+          message: "Candidate server is offline; evaluate will start it from project.json",
         })
       }
-    } catch {
-      checks.push({
-        id: "dev-server",
-        status: "warn",
-        message: "Candidate server is offline; evaluate will start it from project.json",
-      })
     }
   }
 

@@ -22,10 +22,10 @@ const HELP = `UI Eval ${VERSION}
 Usage:
   ui-eval init --route /page --scenario page-desktop --yes
   ui-eval evaluate <scenario> [--policy default] [--reference path.png]
-                              [--browser-channel chrome] [--format text|json]
+                              [--execution-profile name] [--browser-channel chrome] [--format text|json]
   ui-eval agent <suite> [--repair] [--browser-channel chrome]
-                        [--format text|json]
-  ui-eval doctor [--browser-channel chrome] [--format text|json]
+                        [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
+  ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
 
 Exit codes:
   0  pass
@@ -181,6 +181,9 @@ async function agentCommand(
     strict: true,
     options: {
       repair: { type: "boolean", default: false },
+      "execution-profile": { type: "string" },
+      "additional-scenario": { type: "string", multiple: true },
+      "full-scope": { type: "boolean", default: false },
       "browser-channel": { type: "string" },
       "project-root": { type: "string" },
       format: { type: "string", default: "text" },
@@ -193,6 +196,9 @@ async function agentCommand(
   const result: AgentRunResult = await (deps.agent ?? runAgentSuite)({
     projectRoot: parsed.values["project-root"] ?? io.cwd,
     suite: parsed.positionals[0],
+    ...(parsed.values["execution-profile"] ? { executionProfile: parsed.values["execution-profile"] } : {}),
+    ...(parsed.values["additional-scenario"] ? { additionalScenarios: parsed.values["additional-scenario"] } : {}),
+    ...(parsed.values["full-scope"] ? { fullScope: true } : {}),
     repair: parsed.values.repair,
     ...(parsed.values["browser-channel"]
       ? { browserChannel: parsed.values["browser-channel"] }
@@ -274,6 +280,7 @@ async function evaluateCommand(
     strict: true,
     options: {
       policy: { type: "string" },
+      "execution-profile": { type: "string" },
       reference: { type: "string" },
       "browser-channel": { type: "string" },
       "project-root": { type: "string" },
@@ -287,6 +294,7 @@ async function evaluateCommand(
   const result = await (deps.evaluate ?? evaluateScenario)({
     projectRoot: parsed.values["project-root"] ?? io.cwd,
     scenario: parsed.positionals[0],
+    ...(parsed.values["execution-profile"] ? { executionProfile: parsed.values["execution-profile"] } : {}),
     ...(parsed.values.policy ? { policy: parsed.values.policy } : {}),
     ...(parsed.values.reference
       ? { referencePath: parsed.values.reference }
@@ -330,6 +338,7 @@ async function doctorCommand(
     allowPositionals: false,
     strict: true,
     options: {
+      "execution-profile": { type: "string" },
       "browser-channel": { type: "string" },
       "project-root": { type: "string" },
       format: { type: "string", default: "text" },
@@ -338,6 +347,7 @@ async function doctorCommand(
   const format = formatOption(parsed.values.format)
   const result = await (deps.doctor ?? runDoctor)({
     projectRoot: parsed.values["project-root"] ?? io.cwd,
+    ...(parsed.values["execution-profile"] ? { executionProfile: parsed.values["execution-profile"] } : {}),
     ...(parsed.values["browser-channel"]
       ? { browserChannel: parsed.values["browser-channel"] }
       : {}),

@@ -124,6 +124,26 @@ export const BuildIdentitySchema = Type.Object(
   strict,
 )
 
+const deploymentVersion = Type.String({ minLength: 1, maxLength: 256, pattern: "^[A-Za-z0-9._-]+$" })
+export const DeploymentIdentitySchema = Type.Object({
+  schemaVersion: Type.Literal("uieval.deployment/v1alpha1"),
+  revision: deploymentVersion,
+  apiContractVersion: Type.Optional(deploymentVersion),
+  featureFlagsDigest: Type.Optional(DigestSchema),
+  dataRevision: Type.Optional(deploymentVersion),
+}, strict)
+export const DeploymentExpectationSchema = Type.Omit(DeploymentIdentitySchema, ["schemaVersion"])
+export const ExecutionTargetSchema = Type.Union([
+  Type.Object({ profileId: Type.String(nonEmpty), mode: Type.Literal("local"), baseUrl: Type.String(nonEmpty) }, strict),
+  Type.Object({ profileId: Type.String(nonEmpty), mode: Type.Literal("remote"), baseUrl: Type.String(nonEmpty),
+    frontendIdentityUrl: Type.String(nonEmpty), backendIdentityUrl: Type.Optional(Type.String(nonEmpty)),
+    frontend: DeploymentExpectationSchema, backend: Type.Optional(DeploymentExpectationSchema) }, strict),
+])
+export const DeploymentVerificationSchema = Type.Object({
+  status: Type.Union([Type.Literal("verified"), Type.Literal("unverified")]),
+  frontend: Type.Optional(DeploymentIdentitySchema), backend: Type.Optional(DeploymentIdentitySchema),
+}, strict)
+
 export const ResolvedVariantSchema = Type.Object(
   {
     variantKey: Type.String(nonEmpty),
@@ -1171,6 +1191,7 @@ export const ResolvedScenarioPlanSchema = Type.Union([
 export const SealedRunManifestSchema = Type.Object(
   {
     executionId: Type.String(nonEmpty),
+    executionTarget: Type.Optional(ExecutionTargetSchema),
     scenarioPlanDigest: DigestSchema,
     sourceRevision: SourceRevisionSchema,
     build: BuildIdentitySchema,
@@ -1775,6 +1796,7 @@ export const EvaluationReportSpecSchema = Type.Object(
     evaluationKey: DigestSchema,
     inputs: Type.Object(
       {
+        executionTarget: Type.Optional(ExecutionTargetSchema),
         designContractDigest: Type.Optional(DigestSchema),
         baselineCaptureDigest: Type.Optional(DigestSchema),
         localReferenceDigest: Type.Optional(DigestSchema),
@@ -1818,6 +1840,7 @@ export const EvaluationReportSpecSchema = Type.Object(
     ),
     provenance: Type.Object(
       {
+        deploymentVerification: Type.Optional(DeploymentVerificationSchema),
         orchestratorVersion: Type.String(nonEmpty),
         evaluators: Type.Array(
           Type.Object(

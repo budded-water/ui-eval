@@ -13,11 +13,19 @@ const projectPath = Type.String({
   pattern: "^(?![A-Za-z][A-Za-z0-9+.-]*:)(?!/).+$",
 })
 
+const AgentScenarioSchema = Type.Object({
+  id: identifier, policy: Type.Optional(projectPath), reference: Type.Optional(projectPath),
+  maxChangedPixelRatio: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+  dimensions: Type.Array(identifier, { minItems: 1, uniqueItems: true }),
+  timeoutMs: Type.Integer({ minimum: 1_000, maximum: 600_000 }),
+}, { additionalProperties: false })
+
 export const AgentSuiteSchema = Type.Object(
   {
     apiVersion: Type.Literal("uieval.io/v1alpha1"),
     kind: Type.Literal("AgentSuite"),
     id: identifier,
+    executionProfile: Type.Optional(identifier),
     revision: Type.Integer({ minimum: 1 }),
     maxIterations: Type.Integer({ minimum: 1, maximum: 10 }),
     plateau: Type.Object(
@@ -45,25 +53,8 @@ export const AgentSuiteSchema = Type.Object(
       },
       { additionalProperties: false },
     ),
-    scenarios: Type.Array(
-      Type.Object(
-        {
-          id: identifier,
-          policy: Type.Optional(projectPath),
-          reference: Type.Optional(projectPath),
-          maxChangedPixelRatio: Type.Optional(
-            Type.Number({ minimum: 0, maximum: 1 }),
-          ),
-          dimensions: Type.Array(identifier, {
-            minItems: 1,
-            uniqueItems: true,
-          }),
-          timeoutMs: Type.Integer({ minimum: 1_000, maximum: 600_000 }),
-        },
-        { additionalProperties: false },
-      ),
-      { minItems: 1 },
-    ),
+    scenarios: Type.Array(AgentScenarioSchema, { minItems: 1 }),
+    optionalScenarios: Type.Optional(Type.Array(AgentScenarioSchema)),
     checks: Type.Array(
       Type.Object(
         {
@@ -121,5 +112,8 @@ export async function loadAgentSuite(
       .join("; ")
     throw new Error(`Invalid agent suite ${path}: ${details}`)
   }
+  const validatedSuite = value as AgentSuite
+  const ids = [...validatedSuite.scenarios, ...(validatedSuite.optionalScenarios ?? [])].map(({ id }) => id)
+  if (new Set(ids).size !== ids.length) throw new Error("Agent scenarios must have unique IDs across required and optional scope")
   return { projectRoot, path, value: value as AgentSuite }
 }

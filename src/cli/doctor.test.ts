@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { initUiEvalProject } from "./init"
 import { runDoctor } from "./doctor"
@@ -13,6 +13,32 @@ afterEach(async () => {
 })
 
 describe("runDoctor", () => {
+  it("fails a remote prerequisite rather than claiming it will start a local server", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "ui-eval-doctor-remote-"))
+    roots.push(projectRoot)
+    await initUiEvalProject({ projectRoot, route: "/", scenarioId: "home" })
+    const path = join(projectRoot, "ui-eval/project.json")
+    const project = JSON.parse(await readFile(path, "utf8"))
+    project.baseUrls.preview = "https://preview.example.invalid"
+    project.executionProfiles = { preview: { mode: "remote", baseUrlRef: "preview", frontend: { identityPath: "/version" }, readinessTimeoutMs: 10 } }
+    await writeFile(path, JSON.stringify(project))
+    const fetchImpl = vi.fn<typeof fetch>(async () => { throw new Error("offline") })
+    const result = await runDoctor({ projectRoot, executionProfile: "preview", checkBrowser: async () => "test", fetchImpl })
+    expect(result.ok).toBe(false)
+    expect(result.checks).toContainEqual(expect.objectContaining({ id: "deployment", status: "fail" }))
+    expect(result.checks.some((check) => check.id === "dev-server")).toBe(false)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+  it("does not probe a local server for an unknown profile", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "ui-eval-doctor-profile-"))
+    roots.push(projectRoot)
+    await initUiEvalProject({ projectRoot, route: "/", scenarioId: "home" })
+    const fetchImpl = vi.fn<typeof fetch>()
+    const result = await runDoctor({ projectRoot, executionProfile: "missing", checkBrowser: async () => "test", fetchImpl })
+    expect(result.ok).toBe(false)
+    expect(result.checks).toContainEqual(expect.objectContaining({ id: "config", status: "fail" }))
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
   it("reports machine-readable checks and treats an offline server as a warning", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "ui-eval-doctor-"))
     roots.push(projectRoot)

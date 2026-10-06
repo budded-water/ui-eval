@@ -8,6 +8,12 @@ directory. It declares required acceptance dimensions, scenarios, references
 and visual ceilings, executable project checks, mutation boundaries, iteration and plateau budgets, and an
 optional argv-only repair adapter. Commands never run through a shell.
 
+Suites can pin an execution profile and declare `optionalScenarios`. Mandatory
+`scenarios` always run; external model suggestions can only append declared IDs,
+and `--full-scope` selects the entire optional pool. Both summaries record scope.
+Remote suites disable repair and re-capture all selected scenarios on retries.
+See [Execution profiles](execution-profiles.md) for the enforced decision boundary.
+
 Command output is bounded while collecting it. Timeouts and cancellation stop
 the owned process group, escalate from graceful to forced termination, and wait
 for bounded cleanup. A command that exits zero after its timeout is still a
@@ -30,7 +36,7 @@ A deadline or evaluator exception with no report and settled cleanup is
 retried as infrastructure failure and is never sent to the product repair
 worker. Infrastructure-only iterations consume the finite run budget but do
 not contribute to product score plateau detection.
-After project checks, UI Eval compares the current source-file snapshot with
+For local execution, after project checks UI Eval compares the current source-file snapshot with
 the snapshot that authorized reuse. When source state is unchanged, the next infrastructure-only retry reuses
 already accepted immutable scenario reports from the same Agent run and
 reruns only failed or not-yet-executed scenarios. The result records the source

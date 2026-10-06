@@ -22,6 +22,10 @@ UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular mono
   handoff derived from that same result. Failure to publish either artifact
   fails the command; never claim Agent completion with JSON alone.
 - Evaluators are deterministic and do not mutate candidate source.
+- Execution profiles and mandatory suite scope are trusted configuration.
+  Model suggestions may only add declared optional scenarios; they cannot
+  reduce the mandatory floor or weaken acceptance. Remote verification failures
+  are infrastructure failures and never authorize repair or evidence reuse.
 - Missing/corrupt/unsupported evidence never becomes pass.
 - Product, infrastructure, invalid-evidence, and review outcomes remain distinct.
 - A schema declaration is not proof of runtime support.
