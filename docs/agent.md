@@ -108,6 +108,12 @@ Text-mode CLI output lists `summary.html` first because it is the review entry
 point, followed by `summary.json`. `--format json` remains stdout-safe for
 automation and includes both absolute paths.
 
+Completed Agent terminal results return CLI exit `0` for `accepted` and `1`
+for `blocked`, `plateau` or `exhausted`. Inspect the summary status, reason and
+underlying reports to distinguish product and infrastructure blocking conditions.
+CLI exceptions before a completed terminal result return `2`; termination
+signals retain `130`/`143`.
+
 ```bash
 ui-eval agent rentals \
   --project-root /path/to/candidate \

@@ -39,6 +39,8 @@ Exit codes:
   3  evidence requires human review
   130 interrupted by SIGINT
   143 terminated by SIGTERM
+
+Agent terminal results: 0 accepted, 1 non-accepted; inspect the summary status.
 `
 
 export interface CliIo {

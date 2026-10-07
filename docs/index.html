@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="430807a2d50a5724212cda17809a9010db9e030787979aab482a15b6eb469a4f">
+  <meta name="source-sha256" content="982863ac90afc90e3d207fdbb49484498f996f3880fd10d078cfbd2ea9876764">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -38,7 +38,8 @@
 </head>
 <body>
   <div class="layout">
-    <nav><strong>UI Eval docs</strong><a href="#architecture">Architecture</a>
+    <nav><strong>UI Eval docs</strong><a href="#design-overview">System design and flows</a>
+<a href="#architecture">Architecture</a>
 <a href="#contracts">Contracts</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
@@ -56,11 +57,226 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 430807a2d50a5724212cda17809a9010db9e030787979aab482a15b6eb469a4f</footer>
+        <footer>Source set SHA-256: 982863ac90afc90e3d207fdbb49484498f996f3880fd10d078cfbd2ea9876764</footer>
       </header>
-      <section id="architecture" class="document">
+      <section id="design-overview" class="document">
+        <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
+        <h1>System design overview</h1>
+<p>UI Eval is a standalone, local-first TypeScript modular monolith. Candidate
+projects declare the acceptance conditions; the engine turns those conditions
+into sealed execution inputs, observed evidence, deterministic measurements and
+validated machine/human reports. Its modules share one package and are not
+separately deployed services.</p>
+<p>This overview describes the runtime in the checkout containing this document.
+Consumers select an exact source revision; documentation or forward schemas do
+not enable a capability absent from that revision. For implementation detail,
+see <a href="architecture.md">Architecture</a>, <a href="contracts.md">Contracts</a> and
+<a href="limitations.md">Current limitations</a>.</p>
+<h2>Overall flow</h2>
+<p>Solid arrows show execution/data flow. Labeled return arrows are conditional on
+the invoking command: a direct evaluation does not automatically start an
+integration suite or an Agent loop. Integration and Agent are separate
+orchestration modes, not an automatic nested sequence.</p>
+<pre><code class="language-mermaid">flowchart TB
+  Candidate[&quot;Candidate-owned configuration, scenarios, policies and fixtures&quot;] --&gt; Entry[&quot;CLI / public API&quot;]
+  Entry --&gt; Direct[&quot;evaluate: one Web scenario&quot;]
+  Entry --&gt; Integration[&quot;integrate: pinned suite, prepare once, external checks&quot;]
+  Entry --&gt; Agent[&quot;agent: checks, Web scenarios, bounded repair loop&quot;]
+  Entry --&gt; Pilot[&quot;wechat-pilot: declared DevTools interactions&quot;]
+
+  subgraph Runtime[&quot;UI Eval: one package with separate module boundaries&quot;]
+    Web[&quot;Web pipeline: compile and seal, capture, verify, evaluate, policy&quot;] --&gt; WebReports[&quot;Per-variant report.json + report.html&quot;]
+    WeChat[&quot;WeChat pilot: driver, state setup, assertions, PNGs, restoration&quot;] --&gt; WeChatReports[&quot;Pilot report.json + report.html&quot;]
+    IntegrateResult[&quot;Integration: verify all reports, evidence, source and engine&quot;] --&gt; IntegrationSummary[&quot;Integration summary.json + summary.html&quot;]
+    AgentDecision[&quot;Agent: assess checks, scenarios and required dimensions&quot;] --&gt;|terminal state| AgentSummary[&quot;Terminal Agent summary.json + summary.html&quot;]
+  end
+
+  Direct --&gt; Web
+  Integration --&gt;|Web suite| Web
+  Integration --&gt;|WeChat suite| WeChat
+  Agent --&gt; Web
+  Pilot --&gt; WeChat
+  WebReports --&gt;|integration invocation| IntegrateResult
+  WeChatReports --&gt;|integration invocation| IntegrateResult
+  WebReports --&gt;|Agent iteration| AgentDecision
+  AgentDecision --&gt;|eligible repair within audited scope and budgets| Repair[&quot;Candidate-owned repair command&quot;]
+  Repair --&gt;|recheck and reevaluate| Agent
+
+  WebReports --&gt; Handoff[&quot;CLI / CI / human review&quot;]
+  WeChatReports --&gt; Handoff
+  IntegrationSummary --&gt; Handoff
+  AgentSummary --&gt; Handoff
+</code></pre>
+<p><code>init</code> produces authoring scaffolding and <code>doctor</code> checks prerequisites. Neither
+substitutes for the evaluation or acceptance paths shown above.</p>
+<h2>Web: how one scenario becomes evidence and a decision</h2>
+<pre><code class="language-mermaid">flowchart TB
+  Inputs[&quot;Project, scenario, policy, optional execution profile&quot;] --&gt; Validate[&quot;Validate structure, semantics, references and runtime support&quot;]
+  Validate --&gt; Seal[&quot;Expand matrix, materialize policy, fingerprint source, seal variant inputs&quot;]
+  Seal --&gt; Target{&quot;Execution target&quot;}
+  Target --&gt;|local| Local[&quot;Acquire variant-scoped fixtures and candidate server&quot;]
+  Target --&gt;|remote| Remote[&quot;Verify deployment identity before capture&quot;]
+  Local --&gt; Capture[&quot;Playwright Chromium: actions, assertions and requested checkpoints&quot;]
+  Remote --&gt; Capture
+  Capture --&gt; Evidence[&quot;Validate capture and seal bounded evidence in scoped CAS&quot;]
+  Evidence --&gt; Measures[&quot;Deterministic evaluators: execution, interaction, runtime; optional visual/geometry&quot;]
+  Measures --&gt; Gates[&quot;Policy gates derive raw disposition&quot;]
+  Gates --&gt; Draft[&quot;Cross-bind capture, manifest, evaluation plan, policy and report&quot;]
+  Draft --&gt; Cleanup[&quot;Complete owned cleanup; verify remote identity when applicable&quot;]
+  Cleanup --&gt; Publish[&quot;Publish report.json + escaped report.html for this variant&quot;]
+  Publish --&gt; Next[&quot;Repeat for the remaining matrix variants&quot;]
+</code></pre>
+<p>The diagram shows dependencies rather than every internal write. Intermediate
+manifest/capture/plan/policy artifacts can exist before the final report pair.
+Remote verification occurs around capture; a remote run does not acquire or
+stop a candidate server and cannot use local mock-server fixtures. Final Web
+report publication waits for successful owned server/fixture cleanup.</p>
+<p>The compiler&#39;s scenario plan declares <strong>what to execute</strong>. The later evaluation
+plan binds <strong>which actual evidence and evaluator configuration support the
+decision</strong>. The report contract verifies that these records agree. Keeping both
+plans prevents observations from being detached from the declared scenario.</p>
+<p>CAS means content-addressed storage. Artifact scope, digest, size and sensitivity
+are verified when evidence is used. Human report links expose permitted aliases;
+sensitive evidence can remain CAS-only. Storage is local and is not encrypted.</p>
+<h2>Integration: complete acceptance across a project</h2>
+<pre><code class="language-mermaid">flowchart LR
+  Pin[&quot;Verify engine pin and snapshot candidate source&quot;] --&gt; Prepare[&quot;Optional prepare: once per invocation&quot;]
+  Prepare --&gt; Before[&quot;Declared before checks&quot;]
+  Before --&gt; Scenarios[&quot;Every mandatory scenario and its complete variant floor&quot;]
+  Scenarios --&gt; After[&quot;Declared after checks&quot;]
+  After --&gt; Revalidate[&quot;Revalidate report pairs and underlying evidence&quot;]
+  Revalidate --&gt; Identity[&quot;Recheck candidate source and engine pin&quot;]
+  Identity --&gt; Decision[&quot;Aggregate acceptance and stage durations&quot;]
+  Decision --&gt; Pair[&quot;Publish canonical summary.json and derived summary.html&quot;]
+</code></pre>
+<p>This is the successful execution path. Candidate check failures do not remove
+the remaining mandatory scope. Infrastructure failures stop new scenarios;
+after checks may run only when the required source identity exists and cleanup
+has settled. Unsettled cleanup stops further commands. Unexecuted mandatory
+stages, invalid evidence or infrastructure failure cannot produce a pass.</p>
+<p>The engine verifies a reviewed checkout and never clones, installs or upgrades
+it during integration. Candidate-owned prepare/check commands receive bounded
+execution context and retain ownership of framework builds, synthetic APIs and
+business assertions. Preparation can serve all scenarios and variants in that
+invocation; each Web variant still has its own server/browser lifecycle. There
+is no cross-run build cache or attestation of ignored build output/dependencies.</p>
+<p>A browser report describes the browser observations. The integration summary
+describes complete declared acceptance, including external checks. A failed API
+contract check can therefore fail the integration while preserving a passing
+browser report. The summary does not rewrite the original observation.</p>
+<p>Consumers remain responsible for a reviewed bootstrap around the selected
+engine. The engine owns acceptance aggregation; a bootstrap must not treat an
+empty successful process exit as acceptance. Exact consumer transport/handoff
+checks belong to that consumer and are not additional engine guarantees. See
+<a href="integration-runner.md">Integration acceptance runner</a>.</p>
+<h2>Agent: a controlled optimization loop</h2>
+<p>An Agent iteration runs declared project checks, then Web scenarios when those
+checks permit evaluation, and assesses required acceptance dimensions. Only the
+complete acceptance conditions authorize <code>accepted</code>. A repair command receives
+findings, changes candidate files within a declared scope, and is followed by
+file-hash auditing and a new iteration. Iteration/time/mutation budgets and
+progress plateau bound the loop.</p>
+<p>Infrastructure failure does not authorize product repair. Incomplete cleanup
+blocks further work. Remote mode disables repair and evidence reuse; local reuse
+is confined to validated immutable results within the same Agent run and source
+snapshot. These audit controls do not provide OS isolation. The repair worker
+cannot change a raw report into a pass. See <a href="agent.md">Constrained Agent Loop</a>.</p>
+<h2>Why the responsibilities are separated</h2>
+<table>
+<thead>
+<tr>
+<th>Boundary</th>
+<th>Responsibility</th>
+<th>Benefit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Candidate / engine</td>
+<td>Candidate owns app-specific build, auth, fixtures and business paths; engine consumes contracts and narrow interfaces.</td>
+<td>One engine can evaluate different projects without importing their application code.</td>
+</tr>
+<tr>
+<td>Capture / evaluation</td>
+<td>Capture records observations; evaluators read immutable evidence and emit deterministic measurements/findings.</td>
+<td>Browser execution is separated from the criteria used to judge it.</td>
+</tr>
+<tr>
+<td>Evaluation / policy</td>
+<td>Evaluators produce facts; restricted policy expressions decide acceptance.</td>
+<td>Reviewed gates can evolve without letting a model invent or weaken acceptance.</td>
+</tr>
+<tr>
+<td>Raw reports / suite summaries</td>
+<td>Reports describe individual observations; integration/Agent summaries add declared acceptance conditions.</td>
+<td>External rejection and infrastructure limits remain visible without rewriting evidence.</td>
+</tr>
+<tr>
+<td>JSON / HTML</td>
+<td>Validated JSON is canonical; escaped HTML is its reading projection.</td>
+<td>CI and humans receive synchronized results; failed summary publication fails completion.</td>
+</tr>
+<tr>
+<td>Current / forward contracts</td>
+<td>Executable runtime registration is distinct from reserved schema shapes.</td>
+<td>A declared native/design/governance type cannot silently become a support promise.</td>
+</tr>
+</tbody></table>
+<p>Project configuration is trusted executable input. Candidate page/evidence data
+is untrusted. Path containment, authenticated origin/egress guards, scoped CAS
+integrity, sensitivity handling, evidence limits and owned cleanup enforce the
+implemented boundaries. OS/process/network isolation remains an operator
+responsibility; see <a href="security-model.md">Security model</a>.</p>
+<h2>Decisions and capability limits</h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Scope of a usable result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Web <code>evaluate</code></td>
+<td>Declared steps/assertions, runtime observations and configured evidence/evaluators across the scenario matrix. Visual comparison is advisory; geometry requires explicit policy configuration.</td>
+</tr>
+<tr>
+<td>WeChat pilot</td>
+<td>Declared DevTools interactions, assertions and validated PNG checkpoints with state restoration. It has its own contract and does not execute the Web evaluator/policy pipeline or certify real-device rendering.</td>
+</tr>
+<tr>
+<td><code>integrate</code></td>
+<td>Every declared scenario/check plus evidence and identity verification for a Web or experimental WeChat suite.</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>Declared checks, Web scenarios and acceptance dimensions, with an optional bounded repair loop.</td>
+</tr>
+<tr>
+<td>Offline design tools</td>
+<td>Tailwind CSS token production, token/config drift checks and offline audits. Evaluators consume reviewed sealed configuration, not the design producer itself.</td>
+</tr>
+<tr>
+<td>Native/design governance forward contracts</td>
+<td>Reserved declarations; native capture and online Figma sync are not registered in this runtime.</td>
+</tr>
+</tbody></table>
+<p>For <code>evaluate</code> and <code>integrate</code>, pass is exit <code>0</code>, candidate failure is <code>1</code>,
+configuration/infrastructure/invalid or inconclusive evidence is <code>2</code>, and human
+review is <code>3</code>. A product defect and an inability to establish evidence are
+different outcomes. A pass covers only the declared and actually executed scope.</p>
+<p>Agent terminal results use a separate acceptance mapping: <code>0</code> for <code>accepted</code>,
+<code>1</code> for other terminal states. Inspect its summary status/reason and underlying
+reports to distinguish blocking conditions. Pre-terminal CLI exceptions return
+<code>2</code>; SIGINT/SIGTERM retain <code>130</code>/<code>143</code>. See the <a href="agent.md">Agent handoff</a>.</p>
+<p>Mermaid-aware Markdown viewers render these diagrams. The generated technical
+HTML reading view retains the diagram source as code blocks. Markdown remains
+canonical.</p>
+
+      </section>
+<section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
         <h1>Architecture</h1>
+<p>Start with the <a href="design-overview.md">system design overview and flow diagrams</a>
+for command composition, the Web evidence pipeline and full-suite acceptance.</p>
 <p>The experimental <a href="wechat-pilot.md">WeChat DevTools pilot</a> is an additive module
 under <code>src/wechat-pilot/</code> with separate CLI and result contracts. It uses the
 installed official CLI rather than the Web capture/evaluator pipeline below.</p>

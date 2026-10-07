@@ -8,6 +8,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- System design overview with Mermaid diagrams for execution modes, the Web
+  evidence pipeline and complete integration acceptance. README, Agent docs and
+  CLI help clarify the existing Agent terminal exit mapping separately from
+  Web/integration outcomes; runtime exit behavior is unchanged.
 - Pinned-source `integrate` suites for mandatory Web and experimental WeChat
   scenarios, once-per-invocation prepare, before/after checks and stage durations.
   Canonical `summary.json` and derived `summary.html` include external failures,

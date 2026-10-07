@@ -7,6 +7,7 @@ import { marked } from "marked"
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const outputPath = resolve(repositoryRoot, "docs/index.html")
 const documents = [
+  ["design-overview", "System design and flows", "docs/design-overview.md"],
   ["architecture", "Architecture", "docs/architecture.md"],
   ["contracts", "Contracts", "docs/contracts.md"],
   ["security", "Security model", "docs/security-model.md"],

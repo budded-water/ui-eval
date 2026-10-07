@@ -149,6 +149,8 @@ Sensitive evidence such as console, network, trace, and crash data remains in th
 
 ## Result and exit semantics
 
+For Web `evaluate`:
+
 | Exit code | Meaning |
 | ---: | --- |
 | `0` | Valid evidence and all hard gates passed. |
@@ -157,6 +159,12 @@ Sensitive evidence such as console, network, trace, and crash data remains in th
 | `3` | Valid evidence requires human review. |
 | `130` | Interrupted by `SIGINT`. |
 | `143` | Terminated by `SIGTERM`. |
+
+`integrate` uses the same outcome categories across the full declared suite,
+including external candidate checks. Agent terminal results return `0` for
+`accepted` and `1` for other terminal states; inspect the summary status and
+reason to distinguish blocking conditions. Pre-terminal CLI exceptions return
+`2`, and termination signals retain `130`/`143`.
 
 Missing or corrupt required evidence never becomes a pass. Product failures, runner/infrastructure failures, and advisory observations remain separate in the report.
 
@@ -191,6 +199,7 @@ Do not import internal `src/*` modules from a consumer. See [Contracts](docs/con
 ## Documentation
 
 - [Browser-readable technical documentation](docs/index.html)
+- [System design and flow diagrams](docs/design-overview.md)
 - [Architecture](docs/architecture.md)
 - [Contracts and canonical truth](docs/contracts.md)
 - [Security model](docs/security-model.md)

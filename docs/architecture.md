@@ -1,5 +1,8 @@
 # Architecture
 
+Start with the [system design overview and flow diagrams](design-overview.md)
+for command composition, the Web evidence pipeline and full-suite acceptance.
+
 The experimental [WeChat DevTools pilot](wechat-pilot.md) is an additive module
 under `src/wechat-pilot/` with separate CLI and result contracts. It uses the
 installed official CLI rather than the Web capture/evaluator pipeline below.
