@@ -1,5 +1,9 @@
 # Contracts and Canonical Truth
 
+The separate [WeChat DevTools pilot](wechat-pilot.md) exports its project,
+scenario and result schemas through `wechatPilot`. These do not change the Web
+authoring schemas or enable the forward iOS/Android contracts.
+
 UI Eval is contract-first: authoring, execution identity, evidence, policy, and reports are explicit JSON values that are validated and content-digested before downstream use.
 
 This document explains ownership, lifecycle, and compatibility. It intentionally does not duplicate every schema field. The checked-in schemas and runtime validators are the field-level source of truth.

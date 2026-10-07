@@ -1,5 +1,9 @@
 # Architecture
 
+The experimental [WeChat DevTools pilot](wechat-pilot.md) is an additive module
+under `src/wechat-pilot/` with separate CLI and result contracts. It uses the
+installed official CLI rather than the Web capture/evaluator pipeline below.
+
 UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.
 
 This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the [roadmap](roadmap.md), not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.

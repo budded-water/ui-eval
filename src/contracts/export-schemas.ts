@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url"
 import type { TSchema } from "@sinclair/typebox"
 import { AgentSuiteSchema } from "../agent/config"
 import { AgentRunResultSchema } from "../agent/model"
+import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-pilot/config"
+import { WechatPilotResultSchema } from "../wechat-pilot/report"
 
 import {
   ProjectConfigSchema,
@@ -27,6 +29,9 @@ import {
 const DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
+  ["wechat-pilot-project.schema.json", WechatPilotProjectSchema],
+  ["wechat-pilot-scenario.schema.json", WechatPilotScenarioSchema],
+  ["wechat-pilot-result.schema.json", WechatPilotResultSchema],
   ["deployment-identity.schema.json", DeploymentIdentitySchema],
   ["agent-suite.schema.json", AgentSuiteSchema],
   ["agent-summary.schema.json", AgentRunResultSchema],
