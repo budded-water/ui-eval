@@ -6,6 +6,8 @@ import { AgentSuiteSchema } from "../agent/config"
 import { AgentRunResultSchema } from "../agent/model"
 import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-pilot/config"
 import { WechatPilotResultSchema } from "../wechat-pilot/report"
+import { EnginePinSchema, IntegrationSuiteSchema } from "../integration/config"
+import { IntegrationResultSchema } from "../integration/model"
 
 import {
   ProjectConfigSchema,
@@ -29,6 +31,9 @@ import {
 const DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
+  ["engine-pin.schema.json", EnginePinSchema],
+  ["integration-suite.schema.json", IntegrationSuiteSchema],
+  ["integration-result.schema.json", IntegrationResultSchema],
   ["wechat-pilot-project.schema.json", WechatPilotProjectSchema],
   ["wechat-pilot-scenario.schema.json", WechatPilotScenarioSchema],
   ["wechat-pilot-result.schema.json", WechatPilotResultSchema],

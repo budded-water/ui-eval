@@ -1,5 +1,22 @@
 # Security Model
 
+## Integration command boundary
+
+The [integration runner](integration-runner.md) treats pins, suites and
+prepare/check argv as reviewed executable configuration. Executing source must
+match its own clean checkout and the project pin before and after evaluation;
+this does not attest ignored build files or dependencies. Candidate source is
+fingerprinted across the invocation and mutations invalidate acceptance. Command
+output is bounded and withheld from summaries. Owned-process cleanup and scenario
+deadlines remain bounded; unsettled cleanup stops later checks/captures. Adapter
+results require canonical JSON, source/scenario binding, complete variants and
+regular HTML. Original report digests are rechecked after external commands.
+WeChat passes additionally bind declared PNG digests. Summary paths
+reject escapes/symlink ancestors; HTML escapes data and links local reports. Both
+summary projections must publish. These are audit/lifecycle controls, not an OS
+sandbox or candidate-command network isolation. Use synthetic data and external
+isolation for authoritative CI.
+
 ## WeChat DevTools pilot boundary
 
 The separate [WeChat pilot](wechat-pilot.md) executes trusted, bounded official

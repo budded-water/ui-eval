@@ -1,5 +1,10 @@
 # Contracts and Canonical Truth
 
+The additive [integration runner](integration-runner.md) has generated engine-pin,
+suite and result schemas derived from `src/integration/`. Its acceptance record
+adds reviewed checks to original Web/WeChat observations without changing their
+schemas, evaluator versions, store IDs or raw dispositions.
+
 The separate [WeChat DevTools pilot](wechat-pilot.md) exports its project,
 scenario and result schemas through `wechatPilot`. These do not change the Web
 authoring schemas or enable the forward iOS/Android contracts.

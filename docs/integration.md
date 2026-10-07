@@ -1,5 +1,9 @@
 # Project Integration
 
+For multiple scenarios, preparation and business checks, use the
+[pinned integration runner](integration-runner.md). Direct commands below
+retain their existing behavior and report semantics.
+
 For compiled mini programs, the separate experimental [WeChat DevTools
 pilot](wechat-pilot.md) uses its own authoring and result schemas. The Web
 integration below does not execute those inputs.

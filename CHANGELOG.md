@@ -8,6 +8,16 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Pinned-source `integrate` suites for mandatory Web and experimental WeChat
+  scenarios, once-per-invocation prepare, before/after checks and stage durations.
+  Canonical `summary.json` and derived `summary.html` include external failures,
+  scope, capability limits and original evidence links. Missing/foreign evidence,
+  unsettled cleanup, and candidate/engine drift cannot pass.
+- Generated engine-pin/integration schemas and a synthetic prepared Web built-CLI
+  verifier. Existing evaluate/Agent/pilot contracts, exit codes and storage formats
+  remain unchanged. Consumer wrappers migrate explicitly; native iOS is not
+  registered by this runner.
+
 - Experimental `wechat-pilot` command and `wechatPilot` API namespace for
   declared interactions and validated PNG screenshots in WeChat DevTools through
   the installed official CLI. A separate result/schema family records source

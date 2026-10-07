@@ -27,6 +27,12 @@ consider a hosted multi-project platform
 
 ## Milestone 1: Standalone hardening
 
+Current increment: [pinned integration suites](integration-runner.md) consolidate
+engine verification, once-per-invocation preparation and complete acceptance
+reporting for Web/WeChat. A synthetic prepared Web verifier checks the built CLI;
+consumer migration and wider framework/device compatibility corpora remain work
+to verify separately.
+
 Goal: make the current public-source modular monolith self-contained and independently verifiable without implying package publication or open-source licensing.
 
 Candidate scope:

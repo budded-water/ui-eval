@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="dbe95caf00ff2e4b4ab5baef8b28ce8bcc8eff5e0979a7228233ac7a2b58363d">
+  <meta name="source-sha256" content="1337e6528a86c634c9f5c75f10983e693d0dfa226b19100f5755f4638f65a56b">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -42,6 +42,7 @@
 <a href="#contracts">Contracts</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
+<a href="#integration-runner">Integration acceptance runner</a>
 <a href="#wechat-pilot">WeChat DevTools pilot</a>
 <a href="#execution-profiles">Local and remote evaluation</a>
 <a href="#limitations">Limitations</a>
@@ -55,7 +56,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: dbe95caf00ff2e4b4ab5baef8b28ce8bcc8eff5e0979a7228233ac7a2b58363d</footer>
+        <footer>Source set SHA-256: 1337e6528a86c634c9f5c75f10983e693d0dfa226b19100f5755f4638f65a56b</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -155,7 +156,11 @@ candidate Git state ────────────────────
 </tr>
 <tr>
 <td><code>src/cli/</code></td>
-<td><code>init</code>, <code>doctor</code>, <code>evaluate</code>, and <code>agent</code>; stdout/stderr discipline, exit mapping, and signal handling.</td>
+<td><code>init</code>, <code>doctor</code>, <code>evaluate</code>, <code>agent</code>, <code>integrate</code>, and pilot commands; stdout/stderr discipline, exit mapping, and signal handling.</td>
+</tr>
+<tr>
+<td><code>src/integration/</code></td>
+<td>Engine pin checks, once-per-invocation prepare, mandatory Web/WeChat suites and external checks, stage timing, and canonical acceptance JSON/HTML.</td>
 </tr>
 <tr>
 <td><code>src/index.ts</code></td>
@@ -333,6 +338,10 @@ network-profile, or secret providers;</li>
 <section id="contracts" class="document">
         <div class="source"><span>Contracts</span><code>docs/contracts.md</code></div>
         <h1>Contracts and Canonical Truth</h1>
+<p>The additive <a href="integration-runner.md">integration runner</a> has generated engine-pin,
+suite and result schemas derived from <code>src/integration/</code>. Its acceptance record
+adds reviewed checks to original Web/WeChat observations without changing their
+schemas, evaluator versions, store IDs or raw dispositions.</p>
 <p>The separate <a href="wechat-pilot.md">WeChat DevTools pilot</a> exports its project,
 scenario and result schemas through <code>wechatPilot</code>. These do not change the Web
 authoring schemas or enable the forward iOS/Android contracts.</p>
@@ -647,6 +656,21 @@ using older strict schemas need the updated source revision to read new output.<
 <section id="security" class="document">
         <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
         <h1>Security Model</h1>
+<h2>Integration command boundary</h2>
+<p>The <a href="integration-runner.md">integration runner</a> treats pins, suites and
+prepare/check argv as reviewed executable configuration. Executing source must
+match its own clean checkout and the project pin before and after evaluation;
+this does not attest ignored build files or dependencies. Candidate source is
+fingerprinted across the invocation and mutations invalidate acceptance. Command
+output is bounded and withheld from summaries. Owned-process cleanup and scenario
+deadlines remain bounded; unsettled cleanup stops later checks/captures. Adapter
+results require canonical JSON, source/scenario binding, complete variants and
+regular HTML. Original report digests are rechecked after external commands.
+WeChat passes additionally bind declared PNG digests. Summary paths
+reject escapes/symlink ancestors; HTML escapes data and links local reports. Both
+summary projections must publish. These are audit/lifecycle controls, not an OS
+sandbox or candidate-command network isolation. Use synthetic data and external
+isolation for authoritative CI.</p>
 <h2>WeChat DevTools pilot boundary</h2>
 <p>The separate <a href="wechat-pilot.md">WeChat pilot</a> executes trusted, bounded official
 CLI argv against a declared synthetic runtime below the candidate root. It
@@ -941,6 +965,9 @@ audit instead of silently disappearing.</p>
 <section id="integration" class="document">
         <div class="source"><span>Integration</span><code>docs/integration.md</code></div>
         <h1>Project Integration</h1>
+<p>For multiple scenarios, preparation and business checks, use the
+<a href="integration-runner.md">pinned integration runner</a>. Direct commands below
+retain their existing behavior and report semantics.</p>
 <p>For compiled mini programs, the separate experimental <a href="wechat-pilot.md">WeChat DevTools
 pilot</a> uses its own authoring and result schemas. The Web
 integration below does not execute those inputs.</p>
@@ -1356,6 +1383,106 @@ as scales the stylesheet still does not declare.</p>
 <p>When a package distribution channel is introduced, integration documentation must be updated together with package exports, lockfile pinning, clean-install tests, licensing, and release policy. Until then, separately authorized local checkout invocation is the only workflow described here.</p>
 
       </section>
+<section id="integration-runner" class="document">
+        <div class="source"><span>Integration acceptance runner</span><code>docs/integration-runner.md</code></div>
+        <h1>Integration acceptance runner</h1>
+<p><code>ui-eval integrate &lt;suite&gt;</code> verifies the executing engine pin, prepares a candidate
+once, runs required Web or experimental WeChat scenarios and external checks,
+and publishes complete acceptance JSON/HTML. It does not repair source. Existing
+<code>evaluate</code>, <code>agent</code> and project wrappers retain their behavior.</p>
+<h2>Engine source pin</h2>
+<p>Candidate <code>ui-eval/engine.json</code> follows
+<a href="../schemas/engine-pin.schema.json"><code>engine-pin.schema.json</code></a>: an authorized HTTPS
+repository and exact full Git revision, plus optional <code>bunVersion</code> matching the
+engine&#39;s declared package manager. The latter is installation metadata, not proof
+of the executing Bun version. The runner locates its own source checkout, checks
+its Git root, <code>origin</code>, package repository, revision and clean source before and
+after execution. It never clones, installs, upgrades or follows latest main.
+Use the reviewed clean checkout with locked dependencies and installed browser.
+These checks do not attest ignored build output or installed dependency contents.</p>
+<h2>Suite and command context</h2>
+<p>Suites live at <code>ui-eval/integrations/&lt;id&gt;.json</code>; explicit project-contained JSON
+paths also work. Inputs are bounded regular files without symlink ancestors.
+<a href="../schemas/integration-suite.schema.json"><code>integration-suite.schema.json</code></a>
+defines the authoring contract:</p>
+<pre><code class="language-json">{
+  &quot;apiVersion&quot;: &quot;uieval.io/integration-v1alpha1&quot;,
+  &quot;kind&quot;: &quot;IntegrationSuite&quot;,
+  &quot;id&quot;: &quot;smoke&quot;,
+  &quot;projectId&quot;: &quot;example-web&quot;,
+  &quot;adapter&quot;: &quot;web&quot;,
+  &quot;prepare&quot;: { &quot;command&quot;: &quot;node&quot;, &quot;args&quot;: [&quot;prepare.mjs&quot;], &quot;timeoutMs&quot;: 120000 },
+  &quot;checks&quot;: [{
+    &quot;id&quot;: &quot;api-contract&quot;, &quot;phase&quot;: &quot;after&quot;, &quot;dimension&quot;: &quot;api-data&quot;,
+    &quot;failureOutcome&quot;: &quot;candidate&quot;,
+    &quot;command&quot;: &quot;node&quot;, &quot;args&quot;: [&quot;check-requests.mjs&quot;], &quot;timeoutMs&quot;: 30000
+  }],
+  &quot;scenarios&quot;: [{ &quot;id&quot;: &quot;home&quot;, &quot;timeoutMs&quot;: 120000 }]
+}
+</code></pre>
+<p>Trusted argv commands execute in the candidate root without a shell. Each receives
+JSON on stdin containing <code>apiVersion</code>, <code>projectId</code>, <code>integrationDirectory</code>,
+<code>suiteDigest</code> and current <code>stages</code>. After checks can read project-relative report
+paths from scenario stages. Retained stdout/stderr are bounded and withheld from
+summaries. Checks implement their own business assertions. Nonzero exits use the
+declared candidate/infrastructure classification; spawn failures, deadlines and
+missing exit codes are always infrastructure failures.</p>
+<h2>Preparation and mandatory scope</h2>
+<p>Order is engine/source verification, prepare, before checks, scenarios, after
+checks, and final evidence/source/engine verification. Every scenario/check is mandatory;
+CLI options cannot remove scope or replace the profile. Candidate check failures
+do not skip the remaining floor. Infrastructure failures stop new scenarios;
+after checks can gather additional results only when cleanup settled. Incomplete
+owned cleanup stops all further commands.</p>
+<p>Move compilation from server launchers into prepare, then serve its generated
+output. Prepare runs once across this invocation&#39;s scenarios and variants.
+Variant server/browser isolation remains unchanged. There is no cross-run cache.
+Generated outputs must be ignored by Git; source/configuration changes caused by
+prepare, checks or concurrent edits invalidate acceptance. Timings cover prepare,
+each check/scenario and verification. Scenario timing combines capture, evaluation
+and report validation, not separately measured subphases.</p>
+<p>Web suites may declare <code>executionProfile</code>, <code>browserChannel</code>, scenario <code>policy</code>
+and <code>reference</code>. Raw visual review stays <code>needs-review</code>; this command does not
+apply Agent visual ceilings or waive review. Remote deployment/fixture rules
+remain enforced. WeChat suites may declare <code>driver</code>, but reject Web-only options.
+Their runtime/network/design/real-device gaps stay explicit. Native iOS is not
+registered in this source revision and is rejected rather than emulated.</p>
+<h2>Results and migration</h2>
+<p><code>.ui-eval/integration/&lt;execution-id&gt;/</code> contains sealed <code>suite.json</code>, canonical
+<code>summary.json</code> and default human <code>summary.html</code>. HTML derives from the validated
+record and publishes before terminal JSON; failure to write either fails the
+command. Original adapter reports remain unchanged. Web aggregation requires all
+compiled variants, matching source/scenario identity, canonical JSON and regular
+HTML. Original JSON/HTML digests are rechecked after external checks so modified
+evidence cannot substantiate completion. WeChat passes also require declared steps/assertions and digest-verified
+PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.</p>
+<p>Exit codes are <code>0</code> pass, <code>1</code> candidate failure, <code>2</code> configuration/infrastructure/
+inconclusive scope, and <code>3</code> review. Infrastructure and unexecuted mandatory stages
+take precedence. SIGINT/SIGTERM retain <code>130</code>/<code>143</code>: initialized runs attempt both
+interrupted summaries before propagating. Forced termination or unwritable
+storage can prevent publication and never proves completion. Scenario deadlines
+wait bounded cleanup grace; a late success after a deadline cannot pass.</p>
+<pre><code class="language-sh">node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate
+node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate --format json
+</code></pre>
+<p>JSON mode emits one payload and progress goes to stderr. Invalid inputs before
+run initialization produce a structured CLI error, without claiming a run report.</p>
+<p>Migrate wrappers explicitly: retain candidate-owned fixtures/auth/proxies and
+business assertions; replace duplicated pin checks, result aggregation and
+acceptance reporting. Move builds into prepare and request checks into after
+checks, using stdin context to locate run artifacts. Do not import candidate code
+into the engine or weaken runtime gates. Review engine upgrades, update the pin
+and rerun the declared suite plus required project checks.</p>
+<p>Two ledgers remain explicit: candidate pins own expected engine source and the
+checkout owns actual source. Divergence blocks acceptance. Adapter reports own
+observations; the integration suite/result owns added acceptance conditions.</p>
+<p>The <a href="../examples/prepared-web/README.md">prepared Web example</a> uses no framework
+dependencies. <code>bun run verify:integration</code> checks its built CLI in an independent
+temporary Git candidate with two variants and injected after-check failure. It
+requires clean engine source, a current build and Chromium, and is additional to
+the non-browser <code>check</code> command.</p>
+
+      </section>
 <section id="wechat-pilot" class="document">
         <div class="source"><span>WeChat DevTools pilot</span><code>docs/wechat-pilot.md</code></div>
         <h1>WeChat DevTools pilot</h1>
@@ -1506,6 +1633,13 @@ reviewed scenarios; remote mode does not make mutating production workflows safe
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
+<p>The <a href="integration-runner.md">integration runner</a> aggregates required Web or
+experimental WeChat scenarios with reviewed preparation/checks. It does not
+register native iOS, introduce calibrated scoring, waive review, cache builds
+across runs or attest dependencies/build output. Stage durations are measured;
+speedup requires candidate launchers to move builds into prepare. Existing
+wrappers migrate explicitly. Forced termination or storage failure can prevent
+summary publication and cannot establish completion.</p>
 <p>UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.</p>
 <p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
 <h2>Support matrix</h2>
@@ -1773,6 +1907,7 @@ crash, network, accessibility or design gates on mini programs.</p>
   report-html/           static report view
   cli/                   commands, output, exits, signals
   agent/                 suite loader, pure assessment, bounded loop and reports
+  integration/           engine pin, preparation, full acceptance and JSON/HTML
   index.ts               supported programmatic exports
 schemas/                 generated JSON Schema artifacts
 docs/                    Markdown source documentation
@@ -1825,6 +1960,10 @@ docs/                    Markdown source documentation
 <tr>
 <td><code>bun run check</code></td>
 <td>Check schemas and generated docs, run unit tests, lint and typecheck, build, and verify the direct and symlinked dist CLI.</td>
+</tr>
+<tr>
+<td><code>bun run verify:integration</code></td>
+<td>Additional real-Chromium built-CLI check of a temporary prepared Web candidate; requires a clean engine checkout and current build.</td>
 </tr>
 </tbody></table>
 <p><code>bun run check</code> does not replace the real-browser suite. Changes to capture, browser routing, stabilization, auth state, evidence collection, or lifecycle require <code>bun run test:capture</code> as an additional gate.</p>
@@ -2116,6 +2255,11 @@ add constrained agent and native-app integrations
 consider a hosted multi-project platform
 </code></pre>
 <h2>Milestone 1: Standalone hardening</h2>
+<p>Current increment: <a href="integration-runner.md">pinned integration suites</a> consolidate
+engine verification, once-per-invocation preparation and complete acceptance
+reporting for Web/WeChat. A synthetic prepared Web verifier checks the built CLI;
+consumer migration and wider framework/device compatibility corpora remain work
+to verify separately.</p>
 <p>Goal: make the current public-source modular monolith self-contained and independently verifiable without implying package publication or open-source licensing.</p>
 <p>Candidate scope:</p>
 <ul>

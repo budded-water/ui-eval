@@ -1,0 +1,12 @@
+{
+  "apiVersion": "uieval.io/integration-v1alpha1",
+  "kind": "IntegrationSuite",
+  "id": "smoke",
+  "projectId": "prepared-web",
+  "adapter": "web",
+  "prepare": { "command": "node", "args": ["prepare.mjs"], "timeoutMs": 10000 },
+  "checks": [
+    { "id": "prepared-page", "phase": "after", "dimension": "prepared-content", "failureOutcome": "candidate", "command": "node", "args": ["check.mjs"], "timeoutMs": 10000 }
+  ],
+  "scenarios": [{ "id": "home", "timeoutMs": 60000 }]
+}

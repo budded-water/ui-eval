@@ -18,6 +18,9 @@ declared mini-program interactions and captures PNG evidence using the installed
 official CLI. It does not extend the Web policy pipeline or real-device coverage.
 
 - Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
+- Shared pinned-engine `integrate` suites with once-per-invocation preparation,
+  required Web/WeChat scenarios and checks, stage durations, and synchronized
+  complete-acceptance JSON/HTML. See [Integration runner](docs/integration-runner.md).
 - Strict JSON authoring for project configuration, web scenarios, and evaluation policies.
 - Matrix expansion into sealed, content-digested run plans.
 - Per-variant, loopback-only mock HTTP fixtures with fixed bounded responses and
@@ -112,6 +115,8 @@ ui-eval/
   project.json
   scenarios/*.json
   policies/*.json
+  engine.json                # exact source pin for integrate
+  integrations/*.json        # reviewed complete acceptance suites
   fixtures/*                 # reviewed, scrubbed inputs only
 ```
 
@@ -134,6 +139,10 @@ Generated state belongs outside Git:
     repair-request-*.json     # only when a repair is requested
     summary.json              # authoritative Agent terminal result
     summary.html              # default human review entry point
+  integration/<execution-id>/
+    suite.json                # reviewed input bound by digest
+    summary.json              # complete integration acceptance record
+    summary.html              # default integration handoff
 ```
 
 Sensitive evidence such as console, network, trace, and crash data remains in the content-addressed store and does not receive a plaintext run alias. `.ui-eval/` is a local working area, not a canonical source of project policy or scenarios, and it is not encrypted at rest.

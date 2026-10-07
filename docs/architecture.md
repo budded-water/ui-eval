@@ -59,7 +59,8 @@ All modules ship from one package and use relative internal imports. The directo
 | `src/report-html/` | Escaped static HTML rendering; capability labels derive from canonical coverage and actual evaluator provenance. |
 | `src/agent/` | Bounded suite orchestration, constrained repair requests, terminal decision model, and synchronized JSON/HTML Agent summary publication. |
 | `src/design-adapters/` | Reference producers that read declarative design sources into a normalized token set, plus an offline sealed-token drift guard. Not on the evaluation path and never imported by an evaluator. |
-| `src/cli/` | `init`, `doctor`, `evaluate`, and `agent`; stdout/stderr discipline, exit mapping, and signal handling. |
+| `src/cli/` | `init`, `doctor`, `evaluate`, `agent`, `integrate`, and pilot commands; stdout/stderr discipline, exit mapping, and signal handling. |
+| `src/integration/` | Engine pin checks, once-per-invocation prepare, mandatory Web/WeChat suites and external checks, stage timing, and canonical acceptance JSON/HTML. |
 | `src/index.ts` | Supported programmatic exports. |
 
 The dependency intent is inward toward contracts and narrow interfaces:
