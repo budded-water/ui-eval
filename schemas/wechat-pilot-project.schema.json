@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "runtimeProject",
+    "appId",
+    "driver",
+    "timeoutMs",
+    "scenarios"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/wechat-pilot-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "WechatPilotProject",
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[a-z][a-z0-9-]{0,79}$",
+      "type": "string"
+    },
+    "runtimeProject": {
+      "pattern": "^\\.ui-eval/",
+      "maxLength": 512,
+      "type": "string"
+    },
+    "appId": {
+      "pattern": "^wx[a-f0-9]{16}$",
+      "type": "string"
+    },
+    "driver": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "clientName",
+        "skillVersion"
+      ],
+      "properties": {
+        "clientName": {
+          "pattern": "^[A-Za-z][A-Za-z0-9-]{0,39}$",
+          "type": "string"
+        },
+        "skillVersion": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        }
+      }
+    },
+    "timeoutMs": {
+      "minimum": 1000,
+      "maximum": 300000,
+      "type": "integer"
+    },
+    "scenarios": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z][a-z0-9-]{0,79}$": {
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?!/)(?!.*\\.\\.)",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

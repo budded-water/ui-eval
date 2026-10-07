@@ -8,7 +8,7 @@ This page is part of the product contract. A schema field or future-facing type 
 
 | Area | Current status | Consequence |
 | --- | --- | --- |
-| Platform | Web only. | iOS/Android types are forward contracts; there is no app driver. |
+| Platform | Web evaluation plus a separate experimental WeChat DevTools pilot. | The pilot is not Web policy evaluation or real-device acceptance. iOS/Android types remain forward contracts on this branch. |
 | Browser | Playwright Chromium, with an optional installed Chrome channel. | WebKit, Firefox, cross-OS renderer profiles, and device farms are not supported. |
 | Page model | Exactly one declared browser page. | Any popup/additional page fails capture closed, including same-origin popups. |
 | Core evaluation | Execution, interaction, and runtime deterministic gates. | All three evaluators and independent hard gates are mandatory. |
@@ -174,6 +174,10 @@ The wire family is currently alpha. Generated schemas, TypeScript types, validat
 Forward contracts such as `DesignContract`, `ScenarioManifest`, and app unions may change before their runtime paths exist. Consumers must not infer a support promise from their presence.
 
 ## What not to claim
+
+The separate [WeChat DevTools pilot](wechat-pilot.md) observes declared
+interactions and PNG completeness only. It does not enable the Web geometry,
+crash, network, accessibility or design gates on mini programs.
 
 Do not describe the current implementation as:
 

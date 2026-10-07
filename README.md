@@ -13,6 +13,10 @@ can add reviewed optional scenarios while preserving mandatory scope.
 
 ## What works today
 
+A separate experimental [WeChat DevTools pilot](docs/wechat-pilot.md) runs
+declared mini-program interactions and captures PNG evidence using the installed
+official CLI. It does not extend the Web policy pipeline or real-device coverage.
+
 - Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
 - Strict JSON authoring for project configuration, web scenarios, and evaluation policies.
 - Matrix expansion into sealed, content-digested run plans.

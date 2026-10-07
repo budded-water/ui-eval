@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "experimental",
+    "projectId",
+    "scenarioId",
+    "executionId",
+    "status",
+    "reason",
+    "planDigest",
+    "sourceDigest",
+    "sourceCommit",
+    "runtimeDigest",
+    "driver",
+    "steps",
+    "assertions",
+    "screenshots",
+    "cleanup",
+    "limitations"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/wechat-pilot-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "WechatPilotResult",
+      "type": "string"
+    },
+    "experimental": {
+      "const": true,
+      "type": "boolean"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "scenarioId": {
+      "type": "string"
+    },
+    "executionId": {
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "passed",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "type": "string"
+        }
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "planDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceCommit": {
+      "type": "string"
+    },
+    "runtimeDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "driver": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "clientName",
+        "skillVersion"
+      ],
+      "properties": {
+        "clientName": {
+          "type": "string"
+        },
+        "skillVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index",
+          "action",
+          "status"
+        ],
+        "properties": {
+          "index": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "passed",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "not-run",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "assertions": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "passed",
+        "failed"
+      ],
+      "properties": {
+        "passed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "checkpointId",
+          "path",
+          "digest",
+          "widthPx",
+          "heightPx"
+        ],
+        "properties": {
+          "checkpointId": {
+            "type": "string"
+          },
+          "path": {
+            "pattern": "^[a-z][a-z0-9-]*\\.png$",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "widthPx": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "heightPx": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "pendingTaskId": {
+      "type": "string"
+    },
+    "cleanup": {
+      "anyOf": [
+        {
+          "const": "completed",
+          "type": "string"
+        },
+        {
+          "const": "incomplete",
+          "type": "string"
+        }
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
