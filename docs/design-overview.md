@@ -136,8 +136,11 @@ findings, changes candidate files within a declared scope, and is followed by
 file-hash auditing and a new iteration. Iteration/time/mutation budgets and
 progress plateau bound the loop.
 
-Infrastructure failure does not authorize product repair. Incomplete cleanup
-blocks further work. Remote mode disables repair and evidence reuse; local reuse
+Scenario/evaluator infrastructure failure does not authorize product repair.
+Project-check failures separately follow their declared `onFailure` policy,
+which defaults to `repair`; external infrastructure preconditions should use
+`block` when failure must prevent repair. Incomplete evaluator cleanup blocks
+further work. Remote mode disables repair and evidence reuse; local reuse
 is confined to validated immutable results within the same Agent run and source
 snapshot. These audit controls do not provide OS isolation. The repair worker
 cannot change a raw report into a pass. See [Constrained Agent Loop](agent.md).

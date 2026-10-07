@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="982863ac90afc90e3d207fdbb49484498f996f3880fd10d078cfbd2ea9876764">
+  <meta name="source-sha256" content="66e2b59c7f067a8369c89d910740e0e4eaf77e862f2c00d9eb45c0b5111a3da5">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -57,7 +57,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 982863ac90afc90e3d207fdbb49484498f996f3880fd10d078cfbd2ea9876764</footer>
+        <footer>Source set SHA-256: 66e2b59c7f067a8369c89d910740e0e4eaf77e862f2c00d9eb45c0b5111a3da5</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -176,8 +176,11 @@ complete acceptance conditions authorize <code>accepted</code>. A repair command
 findings, changes candidate files within a declared scope, and is followed by
 file-hash auditing and a new iteration. Iteration/time/mutation budgets and
 progress plateau bound the loop.</p>
-<p>Infrastructure failure does not authorize product repair. Incomplete cleanup
-blocks further work. Remote mode disables repair and evidence reuse; local reuse
+<p>Scenario/evaluator infrastructure failure does not authorize product repair.
+Project-check failures separately follow their declared <code>onFailure</code> policy,
+which defaults to <code>repair</code>; external infrastructure preconditions should use
+<code>block</code> when failure must prevent repair. Incomplete evaluator cleanup blocks
+further work. Remote mode disables repair and evidence reuse; local reuse
 is confined to validated immutable results within the same Agent run and source
 snapshot. These audit controls do not provide OS isolation. The repair worker
 cannot change a raw report into a pass. See <a href="agent.md">Constrained Agent Loop</a>.</p>
