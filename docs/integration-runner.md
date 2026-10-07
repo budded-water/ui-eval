@@ -80,8 +80,11 @@ registered in this source revision and is rejected rather than emulated.
 record and publishes before terminal JSON; failure to write either fails the
 command. Original adapter reports remain unchanged. Web aggregation requires all
 compiled variants, matching source/scenario identity, canonical JSON and regular
-HTML. Original JSON/HTML digests are rechecked after external checks so modified
-evidence cannot substantiate completion. WeChat passes also require declared steps/assertions and digest-verified
+HTML, plus matching capture, manifest, evaluation plan, policy and verified CAS
+objects. Verification references existing sealed inputs without recreating missing
+artifacts. Original report digests and underlying evidence are rechecked after
+external checks. Modified, missing or corrupt evidence cannot substantiate
+completion. WeChat passes also require declared steps/assertions and digest-verified
 PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.
 
 Exit codes are `0` pass, `1` candidate failure, `2` configuration/infrastructure/

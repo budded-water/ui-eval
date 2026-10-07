@@ -138,6 +138,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Browser cancellation conformance now aborts after its hanging navigation
+  request starts, preserving the cleanup budget while avoiding a startup race
+  on slower CI runners.
+
 - Agent visual acceptance requires each variant's explicit pixel measurement;
   equal screenshots can pass without a finding, while missing measurements and
   failed or inconclusive reports cannot be covered by another variant's result.

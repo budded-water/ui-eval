@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { initUiEvalProject } from "../cli/init"
 import { runCli, CliInterruptedError } from "../cli/main"
@@ -131,6 +131,60 @@ describe("integration runner", () => {
     const root = await project(); const command = vi.fn()
     const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, command, verifyEngine: async () => { throw new Error("wrong pin") } })
     expect(result.exitCode).toBe(2); expect(command).not.toHaveBeenCalled()
+  })
+
+  it.each(["capture-missing", "capture-corrupt", "artifact-missing", "artifact-corrupt", "manifest", "plan", "policy"])("rejects damaged underlying evidence after checks (%s)", async (defect) => {
+    const root = await project()
+    await update(root, (suite) => { suite.checks = [{ id: "after", command: "check", args: [], timeoutMs: 1000,
+      phase: "after", dimension: "contract", failureOutcome: "candidate" }] })
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies,
+      command: async (_command, _args, options) => {
+        const context = JSON.parse(options.input!)
+        const report = context.stages.find((stage: { kind: string }) => stage.kind === "scenario")?.reports[0]
+        if (report) {
+          const directory = dirname(join(root, report.reportPath))
+          const capturePath = join(directory, "capture.json")
+          if (defect === "capture-missing") await rm(capturePath)
+          if (defect === "capture-corrupt") await writeFile(capturePath, "{}")
+          if (defect === "artifact-missing") await rm(join(root, ".ui-eval/artifacts"), { recursive: true })
+          if (defect === "artifact-corrupt") {
+            const capture = JSON.parse(await readFile(capturePath, "utf8"))
+            const ref = capture.spec.checkpoints[0].evidence[0].artifact
+            const hex = ref.digest.slice(7)
+            await writeFile(join(root, ".ui-eval/artifacts/projects", ref.projectId, "stores", ref.storeId, "sha256", hex.slice(0, 2), hex), "changed bytes")
+          }
+          const files: Record<string, string> = { manifest: "run-manifest.json", plan: "evaluation-plan.json", policy: "policy.json" }
+          if (files[defect]) await writeFile(join(directory, files[defect]), "{}")
+        }
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+    })
+    expect(result.exitCode).toBe(2)
+    expect(result.stages.find((stage) => stage.id === "evidence-after")?.status).toBe("inconclusive")
+    expect(JSON.parse(await readFile(result.summaryPath, "utf8")).status).toBe("inconclusive")
+    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("smoke: inconclusive")
+  })
+
+  it("waits for deadline cleanup before after checks and refuses the adapter's late success", async () => {
+    const root = await project()
+    await update(root, (suite) => { suite.scenarios[0].timeoutMs = 1000; suite.checks = [{ id: "after", command: "check", args: [], timeoutMs: 1000,
+      phase: "after", dimension: "contract", failureOutcome: "candidate" }] })
+    let cleaned = false
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, cleanupTimeoutMs: 500,
+      evaluate: async (options) => {
+        expect(options.signal).toBeDefined()
+        await new Promise<void>((done) => options.signal!.addEventListener("abort", () => setTimeout(() => { cleaned = true; done() }, 5), { once: true }))
+        return { projectId: "unused", scenarioId: "home", runs: [] }
+      },
+      command: async (_command, _args, options) => {
+        const context = JSON.parse(options.input!)
+        if (context.stages.some((stage: { kind: string; status: string }) => stage.kind === "scenario" && stage.status === "inconclusive")) expect(cleaned).toBe(true)
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+    })
+    expect(cleaned).toBe(true)
+    expect(result.exitCode).toBe(2)
+    expect(result.stages.find((stage) => stage.id === "home")).toMatchObject({ status: "inconclusive", cleanupSettled: true })
   })
 
   it.each(["json", "html"])("revalidates original %s evidence after external checks", async (artifact) => {

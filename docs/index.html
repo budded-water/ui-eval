@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="1337e6528a86c634c9f5c75f10983e693d0dfa226b19100f5755f4638f65a56b">
+  <meta name="source-sha256" content="430807a2d50a5724212cda17809a9010db9e030787979aab482a15b6eb469a4f">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -56,7 +56,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 1337e6528a86c634c9f5c75f10983e693d0dfa226b19100f5755f4638f65a56b</footer>
+        <footer>Source set SHA-256: 430807a2d50a5724212cda17809a9010db9e030787979aab482a15b6eb469a4f</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -665,7 +665,9 @@ fingerprinted across the invocation and mutations invalidate acceptance. Command
 output is bounded and withheld from summaries. Owned-process cleanup and scenario
 deadlines remain bounded; unsettled cleanup stops later checks/captures. Adapter
 results require canonical JSON, source/scenario binding, complete variants and
-regular HTML. Original report digests are rechecked after external commands.
+regular HTML. Persisted capture/manifest/plan/policy bindings and referenced CAS
+scope, containment, size, digest and sensitivity are verified initially and after
+external commands, together with original report digests.
 WeChat passes additionally bind declared PNG digests. Summary paths
 reject escapes/symlink ancestors; HTML escapes data and links local reports. Both
 summary projections must publish. These are audit/lifecycle controls, not an OS
@@ -1453,8 +1455,11 @@ registered in this source revision and is rejected rather than emulated.</p>
 record and publishes before terminal JSON; failure to write either fails the
 command. Original adapter reports remain unchanged. Web aggregation requires all
 compiled variants, matching source/scenario identity, canonical JSON and regular
-HTML. Original JSON/HTML digests are rechecked after external checks so modified
-evidence cannot substantiate completion. WeChat passes also require declared steps/assertions and digest-verified
+HTML, plus matching capture, manifest, evaluation plan, policy and verified CAS
+objects. Verification references existing sealed inputs without recreating missing
+artifacts. Original report digests and underlying evidence are rechecked after
+external checks. Modified, missing or corrupt evidence cannot substantiate
+completion. WeChat passes also require declared steps/assertions and digest-verified
 PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.</p>
 <p>Exit codes are <code>0</code> pass, <code>1</code> candidate failure, <code>2</code> configuration/infrastructure/
 inconclusive scope, and <code>3</code> review. Infrastructure and unexecuted mandatory stages

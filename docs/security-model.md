@@ -10,7 +10,9 @@ fingerprinted across the invocation and mutations invalidate acceptance. Command
 output is bounded and withheld from summaries. Owned-process cleanup and scenario
 deadlines remain bounded; unsettled cleanup stops later checks/captures. Adapter
 results require canonical JSON, source/scenario binding, complete variants and
-regular HTML. Original report digests are rechecked after external commands.
+regular HTML. Persisted capture/manifest/plan/policy bindings and referenced CAS
+scope, containment, size, digest and sensitivity are verified initially and after
+external commands, together with original report digests.
 WeChat passes additionally bind declared PNG digests. Summary paths
 reject escapes/symlink ancestors; HTML escapes data and links local reports. Both
 summary projections must publish. These are audit/lifecycle controls, not an OS

@@ -15,9 +15,10 @@ const revision = (await exec("git", ["rev-parse", "HEAD"], { cwd: engine })).std
 const root = await realpath(await mkdtemp(resolve(tmpdir(), "ui-eval-prepared-web-")))
 const invoke = async (args, expected) => {
   let output
+  let actual = 0
   try { output = await exec(process.execPath, [cli, ...args, "--project-root", root], { cwd: engine, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }) }
-  catch (error) { if (error.code !== expected) throw error; output = error }
-  if (expected === 0) assert.equal(output.code, undefined)
+  catch (error) { actual = error.code; if (actual !== expected) throw error; output = error }
+  assert.equal(actual, expected, "CLI process exit must match the expected outcome")
   return output
 }
 try {

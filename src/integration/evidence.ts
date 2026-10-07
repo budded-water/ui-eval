@@ -3,12 +3,15 @@ import { createHash } from "node:crypto"
 import { lstat } from "node:fs/promises"
 import { Value } from "@sinclair/typebox/value"
 import { canonicalDigest } from "../contracts/canonical-json"
-import { validateEvaluationReport } from "../contracts/validation"
+import { validateCaptureBundle, validateEvaluationPlan, validateEvaluationPolicy, validateEvaluationReport, validateSealedRunManifest } from "../contracts/validation"
+import { assertCaptureContract } from "../orchestrator/capture-contract"
+import { normalizedCandidateEvidenceDigest } from "../orchestrator/evidence-digest"
+import type { ArtifactRef } from "../contracts/model"
 import { loadProjectConfig, loadScenarioSource } from "../project/config"
 import { resolveExecutionProfile } from "../project/execution-profile"
 import { compileScenario } from "../manifest-compiler/compiler"
 import { LocalArtifactStore, DEFAULT_LOCAL_ARTIFACT_STORE_ID } from "../storage-local/artifact-store"
-import { PLAYWRIGHT_CAPTURE_CAPABILITIES } from "../capture-playwright/adapter"
+import { PLAYWRIGHT_CAPTURE_CAPABILITIES, PLAYWRIGHT_CAPTURE_ADAPTER_ID, PLAYWRIGHT_CAPTURE_ADAPTER_VERSION } from "../capture-playwright/adapter"
 import { evaluationExitCode } from "../cli/exit-code"
 import { reportCapabilities } from "../report-html/capabilities"
 import { assertSafeSegment } from "../storage-local/filesystem"
@@ -41,10 +44,11 @@ export async function webIntegrationEvidence(root: string, suite: IntegrationSui
   const source = await loadScenarioSource(project, `scenarios/${scenarioId}.json`)
   if (source.value.id !== scenarioId) throw new Error("Scenario file does not match integration scope")
   const artifactRoot = resolve(root, project.value.artifactRoot ?? ".ui-eval")
+  const store = new LocalArtifactStore({ root: artifactRoot, projectId: suite.projectId, storeId: DEFAULT_LOCAL_ARTIFACT_STORE_ID })
   const profile = resolveExecutionProfile(project.value, suite.executionProfile)
   const plans = await compileScenario(source, project, {
     availableCapabilities: PLAYWRIGHT_CAPTURE_CAPABILITIES,
-    artifactMaterializer: new LocalArtifactStore({ root: artifactRoot, projectId: suite.projectId, storeId: DEFAULT_LOCAL_ARTIFACT_STORE_ID }),
+    artifactMaterializer: { put: (value, options) => store.referenceExisting(value, options) },
     ...(profile ? { baseUrlOverride: profile.baseUrl } : {}),
   })
   const expected = new Set(plans.map((plan) => plan.variant.variantKey))
@@ -60,6 +64,42 @@ export async function webIntegrationEvidence(root: string, suite: IntegrationSui
       report.metadata.id !== `report-${run.executionId}` || report.spec.inputs.scenarioDigest !== source.digest ||
       canonicalDigest(report.spec.inputs.sourceRevision) !== sourceDigest ||
       run.executionOutcome !== report.spec.executionOutcome || run.rawStatus !== report.spec.rawStatus) throw new Error("Adapter result contradicts its canonical report or source")
+    const json = (name: string) => readIntegrationJson(root, relative(root, resolve(directory, name)), 8 * 1024 * 1024)
+    const capture = validateCaptureBundle(await json("capture.json"))
+    const manifest = validateSealedRunManifest(await json("run-manifest.json"))
+    const evaluation = validateEvaluationPlan(await json("evaluation-plan.json"))
+    const policy = validateEvaluationPolicy(await json("policy.json"))
+    const plan = plans.find((entry) => entry.variant.variantKey === run.variantKey)!
+    if (capture.metadata.projectId !== suite.projectId || capture.metadata.id !== `capture-${run.executionId}` ||
+      manifest.executionId !== run.executionId || manifest.scenarioPlanDigest !== plan.planDigest ||
+      canonicalDigest(manifest.sourceRevision) !== sourceDigest ||
+      capture.metadata.specDigest !== report.spec.inputs.candidateCaptureDigest ||
+      policy.metadata.projectId !== suite.projectId || policy.metadata.specDigest !== report.spec.inputs.policyDigest ||
+      evaluation.evaluationId !== `evaluation-${run.executionId}` || evaluation.evaluationKey !== report.spec.evaluationKey ||
+      evaluation.candidate.captureBundleDigest !== capture.metadata.specDigest ||
+      evaluation.candidate.normalizedCandidateEvidenceDigest !== report.spec.inputs.normalizedCandidateEvidenceDigest ||
+      evaluation.policy.policyDigest !== policy.metadata.specDigest ||
+      normalizedCandidateEvidenceDigest(capture.spec, {
+        includeScreenshot: suite.scenarios.find((entry) => entry.id === scenarioId)?.reference !== undefined,
+        includeGeometry: report.spec.provenance.evaluators.some((entry) => entry.id === "geometry"),
+      }) !== report.spec.inputs.normalizedCandidateEvidenceDigest) throw new Error("Report is not bound to its persisted capture and evaluation inputs")
+    assertCaptureContract({ capture: capture.spec, plan, context: {
+      executionId: run.executionId, runManifestDigest: canonicalDigest(manifest), captureKey: manifest.captureKey,
+      sourceRevision: manifest.sourceRevision, build: manifest.build,
+    }, expectedAdapter: { id: PLAYWRIGHT_CAPTURE_ADAPTER_ID, version: PLAYWRIGHT_CAPTURE_ADAPTER_VERSION,
+      platform: "web", capabilities: PLAYWRIGHT_CAPTURE_CAPABILITIES,
+      browserOrDevice: suite.browserChannel ? `chromium:${suite.browserChannel}` : "chromium:playwright",
+    } })
+    const artifacts = [
+      ...capture.spec.checkpoints.flatMap((checkpoint) => checkpoint.evidence.flatMap((record) => record.artifact ? [record.artifact] : [])),
+      ...policy.spec.evaluators.map((entry) => entry.configRef),
+      ...report.spec.findings.flatMap((finding) => finding.evidence),
+    ]
+    for (const ref of artifacts) {
+      // Schema validation above verifies the digest shape; the store verifies
+      // project/store scope, containment, size, bytes and sensitivity metadata.
+      await store.resolve({ ...ref, digest: ref.digest as `sha256:${string}` } satisfies ArtifactRef)
+    }
     reports.push({ executionId: run.executionId, variantKey: run.variantKey,
       status: statusForExit(evaluationExitCode(report.spec)), reportPath: relative(root, run.reportPath), htmlPath: relative(root, run.htmlPath),
       reportDigest: canonicalDigest(report), htmlDigest: pair.htmlDigest,
