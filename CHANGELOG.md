@@ -6,6 +6,12 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+### Fixed
+
+- Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
+  from infrastructure exceptions and missing/unknown error evidence, even when
+  Maestro returns exit 1 with a FAILED assertion command.
+
 ### Added
 
 - Separate experimental `native-pilot doctor/evaluate` for an explicitly selected

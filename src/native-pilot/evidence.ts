@@ -62,9 +62,12 @@ export function inspectNativeCommands(data: unknown, project: NativePilotProject
         if (canonicalDigest(command) !== canonicalDigest(expectedCommand)) throw new Error("Native command semantics mismatch")
         if (step.action !== "tap") {
           if (metadata.status === "COMPLETED") passed++
-          // An assertion command failure is reported as failed interaction only;
-          // it is never a native runtime/crash or visual-conformance finding.
-          if (metadata.status === "FAILED") failed++
+          // Maestro also marks infrastructure exceptions FAILED. Only its pinned
+          // assertion-mismatch diagnostics establish a failed interaction.
+          const error = metadata.error as JsonObject | undefined
+          const message = error?.message
+          if (metadata.status === "FAILED" && typeof message === "string" && message.startsWith("Assertion is false: ")
+            && typeof error?.debugMessage === "string" && error.debugMessage.startsWith(`Assertion '${message.slice("Assertion is false: ".length)}' failed. Check the UI hierarchy in debug artifacts`)) failed++
         }
       }
     }

@@ -30,7 +30,9 @@ The adapter binds device, app, scenario, selectors, command order and checkpoint
 identities to evaluated command metadata. Pass requires exit 0, every required
 non-optional command completed, and every PNG passing encoded-size/dimension
 budgets and CRC-checked decoding. Exit 1 plus a bound failed visibility assertion
-reports failed interaction; other driver failures, timeouts, incomplete or invalid
+with matching Maestro 2.9.0 assertion-mismatch message/debug diagnostics reports
+failed interaction. Missing/unknown diagnostics or infrastructure errors during
+an assertion remain inconclusive; other driver failures, timeouts, incomplete or invalid
 evidence are inconclusive. Source identity is checked before/after capture;
 source changes invalidate acceptance.
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="9e7a37c59069413fc090a0a4b4baa5fc1854a6a949b4946f5c19deb22400d06e">
+  <meta name="source-sha256" content="10a0492a891209895afa69fd6b4d5e651f6fac9886dc1fc479a1825dd1f0cb3b">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -55,7 +55,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 9e7a37c59069413fc090a0a4b4baa5fc1854a6a949b4946f5c19deb22400d06e</footer>
+        <footer>Source set SHA-256: 10a0492a891209895afa69fd6b4d5e651f6fac9886dc1fc479a1825dd1f0cb3b</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -1471,7 +1471,9 @@ clearing its state; use a dedicated simulator and synthetic data.</p>
 identities to evaluated command metadata. Pass requires exit 0, every required
 non-optional command completed, and every PNG passing encoded-size/dimension
 budgets and CRC-checked decoding. Exit 1 plus a bound failed visibility assertion
-reports failed interaction; other driver failures, timeouts, incomplete or invalid
+with matching Maestro 2.9.0 assertion-mismatch message/debug diagnostics reports
+failed interaction. Missing/unknown diagnostics or infrastructure errors during
+an assertion remain inconclusive; other driver failures, timeouts, incomplete or invalid
 evidence are inconclusive. Source identity is checked before/after capture;
 source changes invalidate acceptance.</p>
 <h2>Reports and limits</h2>

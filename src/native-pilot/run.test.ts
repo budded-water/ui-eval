@@ -35,7 +35,7 @@ function commands(status = "COMPLETED") {
 }
 const sourceRevision = async () => ({ repository: "test", commitSha: "abc", dirtyTree: false })
 const platform = "darwin" as const
-function driver(mode: "pass" | "missing-png" | "bad-png" | "failed" | "transport" | "timeout" = "pass"): typeof runCommand {
+function driver(mode: "pass" | "missing-png" | "bad-png" | "failed" | "assertion-transport" | "missing-error" | "unknown-error" | "transport" | "timeout" = "pass"): typeof runCommand {
   return async (binary: string, args: readonly string[]): Promise<CommandResult> => {
     let stdout = ""
     if (args.includes("--version")) stdout = "2.9.0\n"
@@ -43,15 +43,21 @@ function driver(mode: "pass" | "missing-png" | "bad-png" | "failed" | "transport
     else if (binary === "maestro") {
       const directory = resolve(args[args.indexOf("--test-output-dir") + 1], "stamp/home")
       await mkdir(resolve(directory, "takeScreenshot"), { recursive: true })
-      const records = commands(mode === "failed" ? "FAILED" : "COMPLETED")
-      if (mode === "failed") records.pop()
+      const failed = ["failed", "assertion-transport", "missing-error", "unknown-error"].includes(mode)
+      const records = commands(failed ? "FAILED" : "COMPLETED")
+      if (failed) {
+        records.pop()
+        const mismatch = { message: "Assertion is false: id: home-title is visible", debugMessage: "Assertion 'id: home-title is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties." }
+        const error = mode === "failed" ? mismatch : mode === "assertion-transport" ? { message: "java.io.IOException: Failed to read iOS UI hierarchy" } : mode === "unknown-error" ? { ...mismatch, debugMessage: "Unknown exception" } : undefined
+        Object.assign(records[3].metadata, { error })
+      }
       await writeFile(resolve(directory, "commands.json"), JSON.stringify(records))
       if (mode !== "missing-png") {
         const png = new PNG({ width: 2, height: 2 })
         png.data.fill(255)
         await writeFile(resolve(directory, "takeScreenshot/home.png"), mode === "bad-png" ? "not a PNG" : PNG.sync.write(png))
       }
-      return { exitCode: mode === "failed" ? 1 : mode === "transport" ? 2 : mode === "timeout" ? null : 0, stdout, stderr: "" }
+      return { exitCode: failed ? 1 : mode === "transport" ? 2 : mode === "timeout" ? null : 0, stdout, stderr: "" }
     }
     return { exitCode: 0, stdout, stderr: "" }
   }
@@ -78,6 +84,13 @@ describe("native pilot evidence acceptance", () => {
     expect(run.result.status).toBe("failed")
     expect(run.result.assertions.failed).toBe(1)
     expect(run.result.screenshots).toEqual([])
+  })
+  it.each(["assertion-transport", "missing-error", "unknown-error"] as const)("keeps exit 1 with %s evidence inconclusive", async (mode) => {
+    const run = await evaluateNativePilot({ projectRoot: await candidate(), deviceId, scenario: "home" }, { platform, command: driver(mode), sourceRevision })
+    expect(run.result.status).toBe("inconclusive")
+    expect(run.result.assertions.failed).toBe(0)
+    expect(JSON.parse(await readFile(run.reportPath, "utf8")).status).toBe("inconclusive")
+    expect(await readFile(run.htmlPath, "utf8")).toContain("home: inconclusive")
   })
   it("invalidates successful evidence when source changes during capture", async () => {
     let calls = 0
