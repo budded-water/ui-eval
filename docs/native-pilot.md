@@ -49,7 +49,10 @@ remain in the run directory. Native evidence does not use the Web CAS store.
 Exit 0 means declared checks passed, 1 means a visibility assertion failed, and 2
 means prerequisites, infrastructure or evidence were inconclusive. Existing CLI
 signal exit semantics remain in effect. Cancellation requests bounded cleanup of
-the owned driver; after capture starts it attempts to publish both reports.
+the owned driver; after capture starts it attempts to publish both reports as
+inconclusive/interrupted, including cancellation during final source checks or
+report publication. Completed projections are replaced through exclusive writes
+before cancellation propagates; publication/storage failures still fail the command.
 
 Reports explicitly do not certify:
 

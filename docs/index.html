@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="10a0492a891209895afa69fd6b4d5e651f6fac9886dc1fc479a1825dd1f0cb3b">
+  <meta name="source-sha256" content="d070d917329bf19e8ba0293db1bacb1a14b1c5b27ef81fe39642f87a8795adeb">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -55,7 +55,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 10a0492a891209895afa69fd6b4d5e651f6fac9886dc1fc479a1825dd1f0cb3b</footer>
+        <footer>Source set SHA-256: d070d917329bf19e8ba0293db1bacb1a14b1c5b27ef81fe39642f87a8795adeb</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -1487,7 +1487,10 @@ remain in the run directory. Native evidence does not use the Web CAS store.</p>
 <p>Exit 0 means declared checks passed, 1 means a visibility assertion failed, and 2
 means prerequisites, infrastructure or evidence were inconclusive. Existing CLI
 signal exit semantics remain in effect. Cancellation requests bounded cleanup of
-the owned driver; after capture starts it attempts to publish both reports.</p>
+the owned driver; after capture starts it attempts to publish both reports as
+inconclusive/interrupted, including cancellation during final source checks or
+report publication. Completed projections are replaced through exclusive writes
+before cancellation propagates; publication/storage failures still fail the command.</p>
 <p>Reports explicitly do not certify:</p>
 <ul>
 <li>installed binary or Metro provenance: source identity and installed app

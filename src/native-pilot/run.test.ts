@@ -2,7 +2,8 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, readdir } from "node:
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import { PNG } from "pngjs"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import * as nativeReport from "./report"
 import { loadNativePilotProject, loadNativePilotScenario, type NativePilotProject, type NativePilotScenario } from "./config"
 import { evaluateNativePilot, doctorNativePilot } from "./run"
 import { inspectNativeCommands, findNativeCommandFile } from "./evidence"
@@ -14,7 +15,7 @@ const deviceId = "11111111-1111-1111-1111-111111111111"
 const project: NativePilotProject = { apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotProject", projectId: "test-app", platform: "ios-simulator", appId: "test.app", maestroVersion: "2.9.0", timeoutMs: 1000, scenarios: { home: "ui-eval/home.json" } }
 const scenario: NativePilotScenario = { apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotScenario", scenarioId: "home", steps: [{ action: "assert-visible", selector: { id: "home-title" } }, { action: "screenshot", checkpointId: "home" }] }
 const roots: string[] = []
-afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
+afterEach(async () => { vi.restoreAllMocks(); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
 async function candidate() {
   const root = await mkdtemp(resolve(tmpdir(), "native-pilot-test-"))
   roots.push(root)
@@ -174,6 +175,31 @@ describe("native pilot evidence acceptance", () => {
     expect(report.status).toBe("inconclusive")
     expect(report.reason).toContain("interrupted")
     expect(await readFile(resolve(runs, directories[0], "report.html"), "utf8")).toContain("interrupted")
+  })
+  it.each(["final-source", "report-publication"] as const)("invalidates passed projections when cancelled during %s", async (stage) => {
+    const root = await candidate()
+    const abort = new AbortController()
+    let sourceReads = 0
+    if (stage === "report-publication") {
+      const publish = nativeReport.writeNativePilotReport
+      vi.spyOn(nativeReport, "writeNativePilotReport").mockImplementation(async (directory, result) => {
+        await publish(directory, result)
+        abort.abort(new Error("late cancellation"))
+      })
+    }
+    await expect(evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home", signal: abort.signal }, {
+      platform, command: driver(), sourceRevision: async () => {
+        if (++sourceReads === 3 && stage === "final-source") abort.abort(new Error("late cancellation"))
+        return sourceRevision()
+      },
+    })).rejects.toThrow("late cancellation")
+    const runs = resolve(root, ".ui-eval/native-runs")
+    const directories = await readdir(runs)
+    expect(directories).toHaveLength(1)
+    const report = JSON.parse(await readFile(resolve(runs, directories[0], "report.json"), "utf8"))
+    expect(report.status).toBe("inconclusive")
+    expect(report.reason).toContain("interrupted")
+    expect(await readFile(resolve(runs, directories[0], "report.html"), "utf8")).toContain("home: inconclusive")
   })
 })
 

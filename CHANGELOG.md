@@ -11,6 +11,8 @@ The source repository is public, but the project has no package release or confi
 - Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
   from infrastructure exceptions and missing/unknown error evidence, even when
   Maestro returns exit 1 with a FAILED assertion command.
+- Late native-pilot cancellation invalidates both report projections before
+  propagating the signal, including final source checks and report publication.
 
 ### Added
 

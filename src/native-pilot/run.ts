@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { lstat, mkdir, writeFile } from "node:fs/promises"
+import { lstat, mkdir, writeFile, unlink } from "node:fs/promises"
 import { resolve } from "node:path"
 import { canonicalDigest } from "../contracts/canonical-json"
 import { collectSourceRevision } from "../orchestrator/identity"
@@ -112,7 +112,21 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
     result.status = "inconclusive"
     result.reason = options.signal?.aborted ? "Native capture was interrupted." : "Native capture or required evidence was unavailable or invalid."
   }
+  const markInterrupted = () => {
+    result.status = "inconclusive"
+    result.reason = "Native capture was interrupted."
+  }
+  const interruptedBeforePublication = options.signal?.aborted === true
+  if (interruptedBeforePublication) markInterrupted()
   await writeNativePilotReport(directory, result)
+  if (options.signal?.aborted && !interruptedBeforePublication) {
+    markInterrupted()
+    // Remove only our completed projections, then recreate with exclusive writes;
+    // never follow a replaced/symlinked report destination when updating it.
+    await unlink(resolve(directory, "report.json"))
+    await unlink(resolve(directory, "report.html"))
+    await writeNativePilotReport(directory, result)
+  }
   options.signal?.throwIfAborted()
   return { result, reportPath: resolve(directory, "report.json"), htmlPath: resolve(directory, "report.html") }
 }
