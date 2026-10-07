@@ -12,6 +12,8 @@ The source repository is public, but the project has no package release or confi
   evidence pipeline and complete integration acceptance. README, Agent docs and
   CLI help clarify the existing Agent terminal exit mapping separately from
   Web/integration outcomes; runtime exit behavior is unchanged.
+  Real-browser popup assertions accept rejection at either the click or following
+  checkpoint while requiring a failed run and blocked capture.
 - Pinned-source `integrate` suites for mandatory Web and experimental WeChat
   scenarios, once-per-invocation prepare, before/after checks and stage durations.
   Canonical `summary.json` and derived `summary.html` include external failures,
