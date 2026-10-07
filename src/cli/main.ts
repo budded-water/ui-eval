@@ -6,6 +6,7 @@ import { evaluateScenario, type EvaluateScenarioResult } from "../orchestrator/e
 import { runDoctor, type DoctorResult } from "./doctor"
 import { evaluationExitCode } from "./exit-code"
 import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
+import { nativePilotCommand } from "../native-pilot/cli"
 
 const VERSION = packageJson.version
 const SIGNAL_CLEANUP_TIMEOUT_MS = 10_000
@@ -26,6 +27,7 @@ Usage:
   ui-eval agent <suite> [--repair] [--browser-channel chrome]
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
+  ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
 
 Exit codes:
   0  pass
@@ -386,6 +388,7 @@ export async function runCli(
     }
     if (command === "agent") return await agentCommand(args, io, deps, runOptions)
     if (command === "doctor") return await doctorCommand(args, io, deps, runOptions)
+    if (command === "native-pilot") return await nativePilotCommand(args, io, runOptions.signal)
     throw new Error(`Unknown command: ${command}`)
   } catch (error) {
     const failure = runOptions.signal?.aborted

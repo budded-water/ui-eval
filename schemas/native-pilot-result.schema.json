@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "experimental",
+    "projectId",
+    "scenarioId",
+    "executionId",
+    "status",
+    "reason",
+    "planDigest",
+    "sourceDigest",
+    "sourceCommit",
+    "device",
+    "appId",
+    "provenanceAssurance",
+    "assertions",
+    "screenshots",
+    "limitations"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/native-pilot-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativePilotResult",
+      "type": "string"
+    },
+    "experimental": {
+      "const": true,
+      "type": "boolean"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "scenarioId": {
+      "type": "string"
+    },
+    "executionId": {
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "passed",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "type": "string"
+        }
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "planDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceCommit": {
+      "type": "string"
+    },
+    "device": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "runtime",
+        "maestroVersion"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string"
+        },
+        "maestroVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "appId": {
+      "type": "string"
+    },
+    "provenanceAssurance": {
+      "const": "observed-source-and-installed-app-only",
+      "type": "string"
+    },
+    "assertions": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "passed",
+        "failed"
+      ],
+      "properties": {
+        "passed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "checkpointId",
+          "path",
+          "digest",
+          "widthPx",
+          "heightPx"
+        ],
+        "properties": {
+          "checkpointId": {
+            "type": "string"
+          },
+          "path": {
+            "pattern": "^[a-z][a-z0-9-]*\\.png$",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "widthPx": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "heightPx": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

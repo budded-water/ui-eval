@@ -2,7 +2,7 @@
 
 UI Eval is a local-first, evidence-first conformance harness for web user interfaces. It compiles reviewable project inputs into sealed execution plans, captures browser evidence with Playwright, applies deterministic policy gates, and writes a validated JSON result plus a static HTML view.
 
-The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter.
+The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter. A separate [experimental iOS Simulator pilot](docs/native-pilot.md) captures limited native interaction/screenshot evidence; it does not extend Web policies or establish release readiness.
 
 Optional [execution profiles](docs/execution-profiles.md) support fast local
 iteration and remote preview/staging validation through the same engine. Remote
@@ -30,7 +30,7 @@ can add reviewed optional scenarios while preserving mandatory scope.
   reruns. Every terminal state emits canonical `summary.json` plus a default
   human-readable `summary.html` acceptance dashboard.
 
-See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; typography, authoritative design sync, baselines, waivers, native apps, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config. The constrained repair loop is documented in [Constrained Agent Loop](docs/agent.md).
+See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; authoritative design sync, baselines, waivers, full native-app evaluation, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config. The constrained repair loop is documented in [Constrained Agent Loop](docs/agent.md).
 
 ## Requirements
 

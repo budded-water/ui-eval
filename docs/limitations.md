@@ -8,7 +8,7 @@ This page is part of the product contract. A schema field or future-facing type 
 
 | Area | Current status | Consequence |
 | --- | --- | --- |
-| Platform | Web only. | iOS/Android types are forward contracts; there is no app driver. |
+| Platform | Web `evaluate` only; separate experimental iOS Simulator `native-pilot`. | Generic iOS/Android types remain forward contracts. The [native pilot](native-pilot.md) reports limited interaction/screenshot evidence under a separate contract, without Web policies or release assurance. |
 | Browser | Playwright Chromium, with an optional installed Chrome channel. | WebKit, Firefox, cross-OS renderer profiles, and device farms are not supported. |
 | Page model | Exactly one declared browser page. | Any popup/additional page fails capture closed, including same-origin popups. |
 | Core evaluation | Execution, interaction, and runtime deterministic gates. | All three evaluators and independent hard gates are mandatory. |
@@ -186,7 +186,7 @@ Do not describe the current implementation as:
 - a protected holdout evaluator;
 - an unconstrained or security-isolated autonomous fixing agent;
 - a shared team platform or SaaS;
-- native mobile support;
+- general native mobile evaluation or native release assurance (the separate iOS Simulator pilot has limited interaction/screenshot scope);
 - an open-source project;
 - a publicly released package or supported software.
 

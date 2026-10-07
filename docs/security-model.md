@@ -1,5 +1,12 @@
 # Security Model
 
+The separate [native pilot](native-pilot.md) has a narrower evidence boundary:
+reviewed JSON generates data-only Maestro commands, source and command bindings
+are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
+is bounded. Raw native driver/device logs and screenshots are not Web-redacted
+or stored in Web CAS. Backend isolation and synthetic device state are the
+candidate project's responsibility; the pilot is not a network or OS sandbox.
+
 UI Eval runs a candidate application's command and browser content with the current user's privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.
 
 For GitHub Private Vulnerability Reporting instructions, see [SECURITY.md](../SECURITY.md).

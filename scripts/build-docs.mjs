@@ -12,6 +12,7 @@ const documents = [
   ["security", "Security model", "docs/security-model.md"],
   ["integration", "Integration", "docs/integration.md"],
   ["execution-profiles", "Local and remote evaluation", "docs/execution-profiles.md"],
+  ["native-pilot", "Experimental native pilot", "docs/native-pilot.md"],
   ["limitations", "Limitations", "docs/limitations.md"],
   ["development", "Development", "docs/development.md"],
   ["release", "Release", "docs/release.md"],

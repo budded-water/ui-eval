@@ -8,6 +8,12 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Separate experimental `native-pilot doctor/evaluate` for an explicitly selected
+  iOS Simulator and Maestro 2.9.0. Restricted JSON scenarios, bound command
+  evidence, decoded PNGs and synchronized JSON/HTML reports have their own
+  generated schemas and library namespace. Web policies and release assurance
+  remain outside this pilot.
+
 - Optional local/remote execution profiles for `doctor`, `evaluate`, and Agent
   suites. Remote runs bind a clean frontend commit and declared backend/API,
   feature-flag or data versions, verify bounded metadata before/after capture,
