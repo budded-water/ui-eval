@@ -24,7 +24,10 @@ Steps are limited to tap, visible/hidden assertions and screenshots. Selectors
 are Maestro ID/text regular expressions. Expression templates, scripts, text
 input and arbitrary driver commands are rejected. Every screenshot must
 immediately follow an assertion. Generated flows stop/relaunch the app without
-clearing its state; use a dedicated simulator and synthetic data.
+clearing its state by default. An explicit project `restartApp: false` reuses an
+already running App instead; candidate setup then owns startup readiness and
+navigation state. The observed launch command must match this declared policy.
+Use a dedicated simulator and synthetic data in either mode.
 
 The adapter binds device, app, scenario, selectors, command order and checkpoint
 identities to evaluated command metadata. Pass requires exit 0, every required

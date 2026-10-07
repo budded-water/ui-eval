@@ -37,6 +37,9 @@
       "const": "2.9.0",
       "type": "string"
     },
+    "restartApp": {
+      "type": "boolean"
+    },
     "timeoutMs": {
       "minimum": 1000,
       "maximum": 600000,

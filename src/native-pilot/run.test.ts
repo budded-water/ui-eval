@@ -116,6 +116,21 @@ describe("native pilot evidence acceptance", () => {
     Object.assign(changedSelector[3].command.assertConditionCommand!.condition.visible, { textRegex: "unrequested-title" })
     expect(() => inspectNativeCommands(changedSelector, project, scenario, deviceId)).toThrow(/semantics/)
   })
+  it("binds explicit App reuse without weakening the default restart", async () => {
+    const root = await candidate()
+    const reuse = { ...project, restartApp: false }
+    await writeFile(resolve(root, "ui-eval/native.json"), JSON.stringify(reuse))
+    expect(await loadNativePilotProject(root)).toEqual(reuse)
+    expect(compileNativePilotFlow(project, scenario)).toContain('"stopApp":true')
+    expect(compileNativePilotFlow(reuse, scenario)).toContain('"stopApp":false')
+    const records = commands()
+    expect(() => inspectNativeCommands(records, reuse, scenario, deviceId)).toThrow(/launch/)
+    records[2].command.launchAppCommand!.stopApp = false
+    expect(inspectNativeCommands(records, reuse, scenario, deviceId)).toEqual({ passed: 1, failed: 0, complete: true })
+    expect(() => inspectNativeCommands(records, project, scenario, deviceId)).toThrow(/launch/)
+    await writeFile(resolve(root, "ui-eval/native.json"), JSON.stringify({ ...project, restartApp: "false" }))
+    await expect(loadNativePilotProject(root)).rejects.toThrow(/Invalid native pilot project/)
+  })
   it("binds observed Maestro tap defaults and hidden assertions", () => {
     const chain: NativePilotScenario = { ...scenario, steps: [
       { action: "tap", selector: { id: "probe-button" } },

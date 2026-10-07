@@ -2,7 +2,7 @@ import type { NativePilotProject, NativePilotScenario } from "./config"
 
 /** JSON quoted scalars are valid YAML scalars. No scripts, credentials or writes. */
 export function compileNativePilotFlow(project: NativePilotProject, scenario: NativePilotScenario): string {
-  const commands: unknown[] = [{ launchApp: { appId: project.appId, stopApp: true } }]
+  const commands: unknown[] = [{ launchApp: { appId: project.appId, stopApp: project.restartApp ?? true } }]
   for (const step of scenario.steps) {
     if (step.action === "screenshot") commands.push({ takeScreenshot: step.checkpointId })
     else {

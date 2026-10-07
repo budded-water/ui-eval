@@ -27,6 +27,7 @@ export const NativePilotProjectSchema = Type.Object({
   platform: Type.Literal("ios-simulator"),
   appId: Type.String({ pattern: "^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+$" }),
   maestroVersion: Type.Literal("2.9.0"),
+  restartApp: Type.Optional(Type.Boolean()),
   timeoutMs: Type.Integer({ minimum: 1000, maximum: 600000 }),
   scenarios: Type.Record(id, Type.String({ pattern: "^[a-zA-Z0-9/_-]+\\.json$" })),
 }, { additionalProperties: false })

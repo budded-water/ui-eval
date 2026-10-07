@@ -19,6 +19,9 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Native-pilot projects may explicitly set `restartApp: false` to reuse an App
+  prepared by candidate setup. Omitted values retain stop/relaunch behavior;
+  command evidence binds the selected launch policy.
 - Separate experimental `native-pilot doctor/evaluate` for an explicitly selected
   iOS Simulator and Maestro 2.9.0. Restricted JSON scenarios, bound command
   evidence, decoded PNGs and synchronized JSON/HTML reports have their own

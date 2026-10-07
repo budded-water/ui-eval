@@ -35,7 +35,7 @@ export function inspectNativeCommands(data: unknown, project: NativePilotProject
       const expected = { applyConfigurationCommand: { config: { appId: project.appId, name: scenario.scenarioId }, optional: false } }
       if (canonicalDigest(command) !== canonicalDigest(expected)) throw new Error("Native scenario binding mismatch")
     } else if (index === 2) {
-      if (canonicalDigest(command) !== canonicalDigest({ launchAppCommand: { appId: project.appId, stopApp: true, optional: false } })) throw new Error("Native launch binding mismatch")
+      if (canonicalDigest(command) !== canonicalDigest({ launchAppCommand: { appId: project.appId, stopApp: project.restartApp ?? true, optional: false } })) throw new Error("Native launch binding mismatch")
     } else {
       const step = scenario.steps[index - 3]
       if (step.action === "screenshot") {

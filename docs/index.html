@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="d070d917329bf19e8ba0293db1bacb1a14b1c5b27ef81fe39642f87a8795adeb">
+  <meta name="source-sha256" content="6e8afc5f0fcb8112db86cfa01d4bb46d35a904a8b37a6cae93bb63030ad2f708">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -55,7 +55,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: d070d917329bf19e8ba0293db1bacb1a14b1c5b27ef81fe39642f87a8795adeb</footer>
+        <footer>Source set SHA-256: 6e8afc5f0fcb8112db86cfa01d4bb46d35a904a8b37a6cae93bb63030ad2f708</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -1466,7 +1466,10 @@ bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --d
 are Maestro ID/text regular expressions. Expression templates, scripts, text
 input and arbitrary driver commands are rejected. Every screenshot must
 immediately follow an assertion. Generated flows stop/relaunch the app without
-clearing its state; use a dedicated simulator and synthetic data.</p>
+clearing its state by default. An explicit project <code>restartApp: false</code> reuses an
+already running App instead; candidate setup then owns startup readiness and
+navigation state. The observed launch command must match this declared policy.
+Use a dedicated simulator and synthetic data in either mode.</p>
 <p>The adapter binds device, app, scenario, selectors, command order and checkpoint
 identities to evaluated command metadata. Pass requires exit 0, every required
 non-optional command completed, and every PNG passing encoded-size/dimension
