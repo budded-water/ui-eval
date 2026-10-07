@@ -13,6 +13,9 @@ The source repository is public, but the project has no package release or confi
   Maestro returns exit 1 with a FAILED assertion command.
 - Late native-pilot cancellation invalidates both report projections before
   propagating the signal, including final source checks and report publication.
+- The real-browser live-navigation cancellation test now waits for its hanging
+  request before aborting, rather than racing browser startup with a wall-clock
+  timer. Its cancellation-cleanup deadline and evidence assertions are unchanged.
 
 ### Added
 
