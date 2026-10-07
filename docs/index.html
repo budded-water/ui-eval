@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="6e8afc5f0fcb8112db86cfa01d4bb46d35a904a8b37a6cae93bb63030ad2f708">
+  <meta name="source-sha256" content="15ed852c9ad49083376b0941545d0192a47c550bf7c53f770966f7aa0e55c951">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -55,7 +55,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 6e8afc5f0fcb8112db86cfa01d4bb46d35a904a8b37a6cae93bb63030ad2f708</footer>
+        <footer>Source set SHA-256: 15ed852c9ad49083376b0941545d0192a47c550bf7c53f770966f7aa0e55c951</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
@@ -347,7 +347,10 @@ network-profile, or secret providers;</li>
 <p>The isolated <a href="native-pilot.md">native pilot</a> uses <code>uieval.io/native-pilot-v1</code>
 project/scenario/result schemas. It neither consumes generic native forward
 contracts nor emits the Web policy report. Consumers must not interpret a native
-pilot interaction pass as a Web hard-gate or release-readiness pass.</p>
+pilot interaction pass as a Web hard-gate or release-readiness pass.
+Its optional boolean <code>restartApp</code> defaults to <code>true</code>; <code>false</code> declares App reuse.
+The flow compiler and evidence validator bind the same value, and the project
+input participates in the native plan digest.</p>
 <p>These versions solve different problems and must not be conflated:</p>
 <table>
 <thead>
@@ -650,7 +653,11 @@ reviewed JSON generates data-only Maestro commands, source and command bindings
 are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
-candidate project&#39;s responsibility; the pilot is not a network or OS sandbox.</p>
+candidate project&#39;s responsibility; the pilot is not a network or OS sandbox.
+The trusted project&#39;s optional <code>restartApp</code> policy is bound to observed launch
+metadata. Omitted values restart; <code>false</code> reuses the current App and leaves
+startup readiness and navigation state to candidate setup, without certifying
+a fresh session or reducing assertion/screenshot requirements.</p>
 <p>UI Eval runs a candidate application&#39;s command and browser content with the current user&#39;s privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.</p>
 <p>For GitHub Private Vulnerability Reporting instructions, see <a href="../SECURITY.md">SECURITY.md</a>.</p>
 <h2>Assets to protect</h2>
@@ -1519,6 +1526,9 @@ does not complete the broader native-adapter roadmap milestone.</p>
         <h1>Current Limitations</h1>
 <p>UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.</p>
 <p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
+<p>Native-pilot App reuse (<code>restartApp: false</code>) preserves existing navigation and
+session state. Candidate setup must make that state ready; an interaction pass
+does not establish a fresh launch or isolated account/backend state.</p>
 <h2>Support matrix</h2>
 <table>
 <thead>

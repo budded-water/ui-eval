@@ -4,6 +4,10 @@ UI Eval currently proves deterministic execution, explicit interaction assertion
 
 This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.
 
+Native-pilot App reuse (`restartApp: false`) preserves existing navigation and
+session state. Candidate setup must make that state ready; an interaction pass
+does not establish a fresh launch or isolated account/backend state.
+
 ## Support matrix
 
 | Area | Current status | Consequence |

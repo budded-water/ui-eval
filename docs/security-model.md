@@ -6,6 +6,10 @@ are checked, reads are bounded, output rejects symlinks, and owned-driver cleanu
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
 candidate project's responsibility; the pilot is not a network or OS sandbox.
+The trusted project's optional `restartApp` policy is bound to observed launch
+metadata. Omitted values restart; `false` reuses the current App and leaves
+startup readiness and navigation state to candidate setup, without certifying
+a fresh session or reducing assertion/screenshot requirements.
 
 UI Eval runs a candidate application's command and browser content with the current user's privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.
 

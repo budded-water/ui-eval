@@ -25,6 +25,9 @@ The isolated [native pilot](native-pilot.md) uses `uieval.io/native-pilot-v1`
 project/scenario/result schemas. It neither consumes generic native forward
 contracts nor emits the Web policy report. Consumers must not interpret a native
 pilot interaction pass as a Web hard-gate or release-readiness pass.
+Its optional boolean `restartApp` defaults to `true`; `false` declares App reuse.
+The flow compiler and evidence validator bind the same value, and the project
+input participates in the native plan digest.
 
 These versions solve different problems and must not be conflated:
 
