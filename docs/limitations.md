@@ -12,11 +12,15 @@ UI Eval currently proves deterministic execution, explicit interaction assertion
 
 This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.
 
+Native-pilot App reuse (`restartApp: false`) preserves existing navigation and
+session state. Candidate setup must make that state ready; an interaction pass
+does not establish a fresh launch or isolated account/backend state.
+
 ## Support matrix
 
 | Area | Current status | Consequence |
 | --- | --- | --- |
-| Platform | Web evaluation plus a separate experimental WeChat DevTools pilot. | The pilot is not Web policy evaluation or real-device acceptance. iOS/Android types remain forward contracts on this branch. |
+| Platform | Web `evaluate` plus separate experimental iOS Simulator `native-pilot` and WeChat DevTools `wechat-pilot` commands. | Both pilots report limited interaction/screenshot evidence under separate contracts, without Web policies or release assurance. Generic iOS/Android contracts and real-device acceptance remain unsupported. |
 | Browser | Playwright Chromium, with an optional installed Chrome channel. | WebKit, Firefox, cross-OS renderer profiles, and device farms are not supported. |
 | Page model | Exactly one declared browser page. | Any popup/additional page fails capture closed, including same-origin popups. |
 | Core evaluation | Execution, interaction, and runtime deterministic gates. | All three evaluators and independent hard gates are mandatory. |
@@ -198,7 +202,7 @@ Do not describe the current implementation as:
 - a protected holdout evaluator;
 - an unconstrained or security-isolated autonomous fixing agent;
 - a shared team platform or SaaS;
-- native mobile support;
+- general native mobile evaluation or native release assurance (the separate iOS Simulator pilot has limited interaction/screenshot scope);
 - an open-source project;
 - a publicly released package or supported software.
 

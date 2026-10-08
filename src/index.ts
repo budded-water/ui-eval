@@ -1,6 +1,8 @@
 // Default imports describe executable web behavior. Forward multi-platform,
 // design-binding and governance contracts require an explicit namespace.
 export * as forwardContracts from "./contracts/index"
+// Experimental native evidence is a separate contract, not a Web policy pass.
+export * as nativePilot from "./native-pilot/index"
 export { canonicalJson, canonicalDigest, canonicalSpecDigest, DigestExclusionProfiles } from "./contracts/canonical-json"
 export {
   ArtifactRefSchema, CaptureBundleSchema, EvaluationPlanSchema,

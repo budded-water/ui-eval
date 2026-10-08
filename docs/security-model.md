@@ -19,6 +19,19 @@ summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.
 
+## iOS Simulator pilot boundary
+
+The separate [native pilot](native-pilot.md) has a narrower evidence boundary:
+reviewed JSON generates data-only Maestro commands, source and command bindings
+are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
+is bounded. Raw native driver/device logs and screenshots are not Web-redacted
+or stored in Web CAS. Backend isolation and synthetic device state are the
+candidate project's responsibility; the pilot is not a network or OS sandbox.
+The trusted project's optional `restartApp` policy is bound to observed launch
+metadata. Omitted values restart; `false` reuses the current App and leaves
+startup readiness and navigation state to candidate setup, without certifying
+a fresh session or reducing assertion/screenshot requirements.
+
 ## WeChat DevTools pilot boundary
 
 The separate [WeChat pilot](wechat-pilot.md) executes trusted, bounded official

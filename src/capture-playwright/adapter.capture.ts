@@ -1047,8 +1047,8 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
   it("aborts a live navigation and returns only after owned browser resources close", async () => {
     const controller = new AbortController()
     let startedAt: number | undefined
-    // Abort a confirmed in-flight request, not browser startup. The budget
-    // measures cancellation cleanup consistently on local and CI runners.
+    // Abort a confirmed in-flight request, not a machine-dependent browser
+    // startup phase. The five-second budget measures cancellation cleanup.
     onHangNavigation = () => {
       startedAt = Date.now()
       controller.abort()

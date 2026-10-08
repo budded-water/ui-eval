@@ -2,7 +2,7 @@
 
 UI Eval is a local-first, evidence-first conformance harness for web user interfaces. It compiles reviewable project inputs into sealed execution plans, captures browser evidence with Playwright, applies deterministic policy gates, and writes a validated JSON result plus a static HTML view.
 
-The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter.
+The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter. A separate [experimental iOS Simulator pilot](docs/native-pilot.md) captures limited native interaction/screenshot evidence; it does not extend Web policies or establish release readiness.
 
 Optional [execution profiles](docs/execution-profiles.md) support fast local
 iteration and remote preview/staging validation through the same engine. Remote
@@ -37,7 +37,7 @@ official CLI. It does not extend the Web policy pipeline or real-device coverage
   reruns. Every terminal state emits canonical `summary.json` plus a default
   human-readable `summary.html` acceptance dashboard.
 
-See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; typography, authoritative design sync, baselines, waivers, native apps, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config. The constrained repair loop is documented in [Constrained Agent Loop](docs/agent.md).
+See [Current limitations](docs/limitations.md) before treating a result as a release gate. In particular, current visual comparison is advisory; authoritative design sync, baselines, waivers, full native-app evaluation, and a hosted control plane are not implemented. Geometry evaluation is optional and runs only when a policy registers `geometry@0.1.0` with a sealed config. The constrained repair loop is documented in [Constrained Agent Loop](docs/agent.md).
 
 ## Requirements
 
@@ -187,7 +187,8 @@ The reference is explicitly `local-unprotected`. A changed image produces `needs
 The package entry point exports executable web contract types/validators, the active
 `ProjectConfigSchema`, `WebScenarioSourceSchema`, and `WebPolicySourceSchema` authoring surfaces with
 their structural validators, `evaluateScenario`, `initUiEvalProject`,
-`runDoctor`, Agent APIs, and the local artifact/run stores. Forward multi-platform,
+`runDoctor`, Agent and Integration APIs, separate experimental `nativePilot` and
+`wechatPilot` namespaces, and the local artifact/run stores. Forward multi-platform,
 design-binding, and governance contracts are available through the explicit
 `forwardContracts` namespace. Its generic `ScenarioSource` contract is not proof that the current
 web CLI can execute native scenarios. This repository currently has no
@@ -204,6 +205,9 @@ Do not import internal `src/*` modules from a consumer. See [Contracts](docs/con
 - [Contracts and canonical truth](docs/contracts.md)
 - [Security model](docs/security-model.md)
 - [Project integration](docs/integration.md)
+- [Integration acceptance runner](docs/integration-runner.md)
+- [Experimental iOS Simulator pilot](docs/native-pilot.md)
+- [WeChat DevTools pilot](docs/wechat-pilot.md)
 - [Development](docs/development.md)
 - [Release process](docs/release.md)
 - [Current limitations](docs/limitations.md)

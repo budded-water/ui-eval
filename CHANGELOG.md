@@ -6,10 +6,22 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+### Fixed
+
+- Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
+  from infrastructure exceptions and missing/unknown error evidence, even when
+  Maestro returns exit 1 with a FAILED assertion command.
+- Late native-pilot cancellation invalidates both report projections before
+  propagating the signal, including final source checks and report publication.
+- The real-browser live-navigation cancellation test now waits for its hanging
+  request before aborting, rather than racing browser startup with a wall-clock
+  timer. Its cancellation-cleanup deadline and evidence assertions are unchanged.
+
 ### Added
 
 - System design overview with Mermaid diagrams for execution modes, the Web
-  evidence pipeline and complete integration acceptance. README, Agent docs and
+  evidence pipeline and complete integration acceptance, including the separate
+  iOS Simulator pilot and its exclusion from Integration. README, Agent docs and
   CLI help clarify the existing Agent terminal exit mapping separately from
   Web/integration outcomes; runtime exit behavior is unchanged.
   Real-browser popup assertions accept rejection at either the click or following
@@ -24,6 +36,14 @@ The source repository is public, but the project has no package release or confi
   remain unchanged. Consumer wrappers migrate explicitly; native iOS is not
   registered by this runner.
 
+- Native-pilot projects may explicitly set `restartApp: false` to reuse an App
+  prepared by candidate setup. Omitted values retain stop/relaunch behavior;
+  command evidence binds the selected launch policy.
+- Separate experimental `native-pilot doctor/evaluate` for an explicitly selected
+  iOS Simulator and Maestro 2.9.0. Restricted JSON scenarios, bound command
+  evidence, decoded PNGs and synchronized JSON/HTML reports have their own
+  generated schemas and library namespace. Web policies and release assurance
+  remain outside this pilot.
 - Experimental `wechat-pilot` command and `wechatPilot` API namespace for
   declared interactions and validated PNG screenshots in WeChat DevTools through
   the installed official CLI. A separate result/schema family records source

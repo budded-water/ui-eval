@@ -6,6 +6,7 @@ import { evaluateScenario, type EvaluateScenarioResult } from "../orchestrator/e
 import { runDoctor, type DoctorResult } from "./doctor"
 import { evaluationExitCode } from "./exit-code"
 import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
+import { nativePilotCommand } from "../native-pilot/cli"
 import { runWechatPilotCli } from "../wechat-pilot/cli"
 import { runIntegrationSuite } from "../integration/run"
 
@@ -29,6 +30,7 @@ Usage:
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
   ui-eval integrate <suite> [--project-root path] [--format text|json]
+  ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
   ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
                               [--project-root path] [--format text|json]
 
@@ -409,6 +411,7 @@ export async function runCli(
       else io.stdout(`${result.status.toUpperCase()} ${result.suiteId}\n  HTML: ${result.summaryHtmlPath}\n  JSON: ${result.summaryPath}\n`)
       return result.exitCode
     }
+    if (command === "native-pilot") return await nativePilotCommand(args, io, runOptions.signal)
     if (command === "wechat-pilot") return await runWechatPilotCli(args, io, runOptions.signal)
     throw new Error(`Unknown command: ${command}`)
   } catch (error) {

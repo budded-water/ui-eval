@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="66e2b59c7f067a8369c89d910740e0e4eaf77e862f2c00d9eb45c0b5111a3da5">
+  <meta name="source-sha256" content="9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -46,6 +46,7 @@
 <a href="#integration-runner">Integration acceptance runner</a>
 <a href="#wechat-pilot">WeChat DevTools pilot</a>
 <a href="#execution-profiles">Local and remote evaluation</a>
+<a href="#native-pilot">Experimental native pilot</a>
 <a href="#limitations">Limitations</a>
 <a href="#development">Development</a>
 <a href="#release">Release</a>
@@ -57,7 +58,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 66e2b59c7f067a8369c89d910740e0e4eaf77e862f2c00d9eb45c0b5111a3da5</footer>
+        <footer>Source set SHA-256: 9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -83,10 +84,12 @@ orchestration modes, not an automatic nested sequence.</p>
   Entry --&gt; Integration[&quot;integrate: pinned suite, prepare once, external checks&quot;]
   Entry --&gt; Agent[&quot;agent: checks, Web scenarios, bounded repair loop&quot;]
   Entry --&gt; Pilot[&quot;wechat-pilot: declared DevTools interactions&quot;]
+  Entry --&gt; NativeEntry[&quot;native-pilot: declared iOS Simulator interactions&quot;]
 
   subgraph Runtime[&quot;UI Eval: one package with separate module boundaries&quot;]
     Web[&quot;Web pipeline: compile and seal, capture, verify, evaluate, policy&quot;] --&gt; WebReports[&quot;Per-variant report.json + report.html&quot;]
     WeChat[&quot;WeChat pilot: driver, state setup, assertions, PNGs, restoration&quot;] --&gt; WeChatReports[&quot;Pilot report.json + report.html&quot;]
+    Native[&quot;Native pilot: Maestro, bound command evidence and validated PNGs&quot;] --&gt; NativeReports[&quot;Native report.json + report.html&quot;]
     IntegrateResult[&quot;Integration: verify all reports, evidence, source and engine&quot;] --&gt; IntegrationSummary[&quot;Integration summary.json + summary.html&quot;]
     AgentDecision[&quot;Agent: assess checks, scenarios and required dimensions&quot;] --&gt;|terminal state| AgentSummary[&quot;Terminal Agent summary.json + summary.html&quot;]
   end
@@ -96,6 +99,7 @@ orchestration modes, not an automatic nested sequence.</p>
   Integration --&gt;|WeChat suite| WeChat
   Agent --&gt; Web
   Pilot --&gt; WeChat
+  NativeEntry --&gt; Native
   WebReports --&gt;|integration invocation| IntegrateResult
   WeChatReports --&gt;|integration invocation| IntegrateResult
   WebReports --&gt;|Agent iteration| AgentDecision
@@ -104,11 +108,16 @@ orchestration modes, not an automatic nested sequence.</p>
 
   WebReports --&gt; Handoff[&quot;CLI / CI / human review&quot;]
   WeChatReports --&gt; Handoff
+  NativeReports --&gt; Handoff
   IntegrationSummary --&gt; Handoff
   AgentSummary --&gt; Handoff
 </code></pre>
 <p><code>init</code> produces authoring scaffolding and <code>doctor</code> checks prerequisites. Neither
 substitutes for the evaluation or acceptance paths shown above.</p>
+<p>The iOS Simulator pilot is a separate executable path. It does not extend the
+Web pipeline or Agent, and <code>integrate</code> does not register it. Its interaction/PNG
+evidence does not certify installed binary provenance, runtime health or design
+conformance; see <a href="native-pilot.md">Experimental native evidence pilot</a>.</p>
 <h2>Web: how one scenario becomes evidence and a decision</h2>
 <pre><code class="language-mermaid">flowchart TB
   Inputs[&quot;Project, scenario, policy, optional execution profile&quot;] --&gt; Validate[&quot;Validate structure, semantics, references and runtime support&quot;]
@@ -246,6 +255,10 @@ responsibility; see <a href="security-model.md">Security model</a>.</p>
 <td>Declared DevTools interactions, assertions and validated PNG checkpoints with state restoration. It has its own contract and does not execute the Web evaluator/policy pipeline or certify real-device rendering.</td>
 </tr>
 <tr>
+<td>iOS Simulator pilot</td>
+<td>Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract. It is independent of Web policies, Agent and Integration; installed binary/build-to-source provenance and release assurance remain unproven.</td>
+</tr>
+<tr>
 <td><code>integrate</code></td>
 <td>Every declared scenario/check plus evidence and identity verification for a Web or experimental WeChat suite.</td>
 </tr>
@@ -258,8 +271,8 @@ responsibility; see <a href="security-model.md">Security model</a>.</p>
 <td>Tailwind CSS token production, token/config drift checks and offline audits. Evaluators consume reviewed sealed configuration, not the design producer itself.</td>
 </tr>
 <tr>
-<td>Native/design governance forward contracts</td>
-<td>Reserved declarations; native capture and online Figma sync are not registered in this runtime.</td>
+<td>Generic native/design governance forward contracts</td>
+<td>Reserved declarations; the separate iOS Simulator pilot does not enable generic native contracts. Online Figma sync, Android and real-device capture are not registered.</td>
 </tr>
 </tbody></table>
 <p>For <code>evaluate</code> and <code>integrate</code>, pass is exit <code>0</code>, candidate failure is <code>1</code>,
@@ -284,7 +297,7 @@ for command composition, the Web evidence pipeline and full-suite acceptance.</p
 under <code>src/wechat-pilot/</code> with separate CLI and result contracts. It uses the
 installed official CLI rather than the Web capture/evaluator pipeline below.</p>
 <p>UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.</p>
-<p>This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the <a href="roadmap.md">roadmap</a>, not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.</p>
+<p>This document describes implemented behavior in the current source tree. Proposed design sync, general native-app adapters, shared control planes, and baseline governance live in the <a href="roadmap.md">roadmap</a>. Separate experimental <a href="native-pilot.md">iOS Simulator</a> and <a href="wechat-pilot.md">WeChat DevTools</a> pilots have limited interaction/screenshot contracts outside the Web pipeline. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.</p>
 <h2>System boundary</h2>
 <p>UI Eval evaluates a candidate project but does not become part of that application&#39;s runtime:</p>
 <pre><code class="language-text">Candidate repository                         UI Eval process
@@ -520,6 +533,8 @@ runs. HTML capability labels derive from that report&#39;s coverage and provenan
 <li><code>initUiEvalProject</code>;</li>
 <li><code>runDoctor</code>;</li>
 <li><code>runAgentSuite</code>, validated Agent result schemas, and summary rendering;</li>
+<li><code>runIntegrationSuite</code>, its input/result schemas, validator and derived types;</li>
+<li>separate experimental <code>nativePilot</code> and <code>wechatPilot</code> namespaces;</li>
 <li>the local artifact and run stores.</li>
 </ul>
 <p>Internal module paths are not a supported consumer API. The source repository is public, but the package is <code>UNLICENSED</code>, private in package metadata, and has no configured package distribution. This boundary supports source development and separately authorized local integration rather than a published SDK compatibility promise.</p>
@@ -546,7 +561,7 @@ result.</p>
 <li>online design/Figma sync or authoritative structured design comparison;</li>
 <li>calibrated geometry, typography, accessibility, or visual release scoring;</li>
 <li>baseline/waiver ledgers or shared storage;</li>
-<li>multi-page scenarios, WebKit/Firefox, or native-app adapters;</li>
+<li>multi-page Web scenarios, WebKit/Firefox, or general native-app adapters;</li>
 <li>static, seed-script, or remote fixture providers; feature-flag,
 network-profile, or secret providers;</li>
 <li>MCP, holdout isolation, a web console, or a service API.</li>
@@ -569,7 +584,7 @@ authoring schemas or enable the forward iOS/Android contracts.</p>
 <h2>Truth hierarchy</h2>
 <p>The current repository has four related representations with distinct roles:</p>
 <ol>
-<li>TypeBox sources under <code>src/contracts/</code>, <code>src/project/</code>, and <code>src/agent/</code> define the wire and active authoring shapes.</li>
+<li>TypeBox sources under <code>src/contracts/</code>, <code>src/project/</code>, <code>src/agent/</code>, and the separate experimental <code>src/native-pilot/</code> and <code>src/wechat-pilot/</code> define the wire and active authoring shapes.</li>
 <li><code>schemas/*.schema.json</code> are generated JSON Schema 2020-12 wire artifacts for the current checkout.</li>
 <li>TypeScript types are derived from TypeBox with <code>Static&lt;&gt;</code>; they must not be maintained as a second handwritten model.</li>
 <li>Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.</li>
@@ -578,6 +593,13 @@ authoring schemas or enable the forward iOS/Android contracts.</p>
 <p>Documentation and examples are explanatory consumers. They must link to schemas rather than maintain independent field inventories. When prose and a schema disagree, fix the prose or implementation; do not treat the duplicate as an alternate contract.</p>
 <p>This repository does not provide a supported schema API or immutable network endpoint. Use the checked-in <code>schemas/</code> files from an exact source revision or the package&#39;s <code>./schemas/*</code> export from a separately authorized local build. A browsable GitHub file or schema <code>$id</code> is not a stable distribution URL.</p>
 <h2>Version dimensions</h2>
+<p>The isolated <a href="native-pilot.md">native pilot</a> uses <code>uieval.io/native-pilot-v1</code>
+project/scenario/result schemas. It neither consumes generic native forward
+contracts nor emits the Web policy report. Consumers must not interpret a native
+pilot interaction pass as a Web hard-gate or release-readiness pass.
+Its optional boolean <code>restartApp</code> defaults to <code>true</code>; <code>false</code> declares App reuse.
+The flow compiler and evidence validator bind the same value, and the project
+input participates in the native plan digest.</p>
 <p>These versions solve different problems and must not be conflated:</p>
 <table>
 <thead>
@@ -892,6 +914,17 @@ reject escapes/symlink ancestors; HTML escapes data and links local reports. Bot
 summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.</p>
+<h2>iOS Simulator pilot boundary</h2>
+<p>The separate <a href="native-pilot.md">native pilot</a> has a narrower evidence boundary:
+reviewed JSON generates data-only Maestro commands, source and command bindings
+are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
+is bounded. Raw native driver/device logs and screenshots are not Web-redacted
+or stored in Web CAS. Backend isolation and synthetic device state are the
+candidate project&#39;s responsibility; the pilot is not a network or OS sandbox.
+The trusted project&#39;s optional <code>restartApp</code> policy is bound to observed launch
+metadata. Omitted values restart; <code>false</code> reuses the current App and leaves
+startup readiness and navigation state to candidate setup, without certifying
+a fresh session or reducing assertion/screenshot requirements.</p>
 <h2>WeChat DevTools pilot boundary</h2>
 <p>The separate <a href="wechat-pilot.md">WeChat pilot</a> executes trusted, bounded official
 CLI argv against a declared synthetic runtime below the candidate root. It
@@ -1667,7 +1700,8 @@ and <code>reference</code>. Raw visual review stays <code>needs-review</code>; t
 apply Agent visual ceilings or waive review. Remote deployment/fixture rules
 remain enforced. WeChat suites may declare <code>driver</code>, but reject Web-only options.
 Their runtime/network/design/real-device gaps stay explicit. Native iOS is not
-registered in this source revision and is rejected rather than emulated.</p>
+registered by the integration runner and is rejected rather than emulated. The
+separate <a href="native-pilot.md">iOS Simulator pilot</a> has its own execution/report path.</p>
 <h2>Results and migration</h2>
 <p><code>.ui-eval/integration/&lt;execution-id&gt;/</code> contains sealed <code>suite.json</code>, canonical
 <code>summary.json</code> and default human <code>summary.html</code>. HTML derives from the validated
@@ -1854,6 +1888,76 @@ not authorize browser cross-origin traffic. Use isolated preview/staging with
 reviewed scenarios; remote mode does not make mutating production workflows safe.</p>
 
       </section>
+<section id="native-pilot" class="document">
+        <div class="source"><span>Experimental native pilot</span><code>docs/native-pilot.md</code></div>
+        <h1>Experimental native evidence pilot</h1>
+<p><code>native-pilot</code> is an additive iOS Simulator experiment. It does not extend Web
+<code>evaluate</code>, Agent suites, Web policies or generic native forward contracts.
+Its separate <code>uieval.io/native-pilot-v1</code> result assesses declared interactions and
+screenshot completeness. It is not a release or design-conformance gate.</p>
+<h2>Inputs and execution</h2>
+<p>Candidate repositories own <code>ui-eval/native.json</code> and referenced scenario JSON.
+TypeBox sources in <code>src/native-pilot/config.ts</code> and generated
+<code>schemas/native-pilot-{project,scenario}.schema.json</code> define these inputs.
+Only Maestro <strong>2.9.0</strong> command evidence is currently supported. Prerequisites are
+macOS, Xcode, an explicitly selected booted iOS Simulator and an installed app.
+The engine does not install/reset apps, boot devices, start Metro, supply
+credentials or isolate backend calls.</p>
+<pre><code class="language-sh">bun run ui-eval native-pilot doctor --project-root /path/to/app --device &lt;uuid&gt;
+bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device &lt;uuid&gt; --format json
+</code></pre>
+<p>Steps are limited to tap, visible/hidden assertions and screenshots. Selectors
+are Maestro ID/text regular expressions. Expression templates, scripts, text
+input and arbitrary driver commands are rejected. Every screenshot must
+immediately follow an assertion. Generated flows stop/relaunch the app without
+clearing its state by default. An explicit project <code>restartApp: false</code> reuses an
+already running App instead; candidate setup then owns startup readiness and
+navigation state. The observed launch command must match this declared policy.
+Use a dedicated simulator and synthetic data in either mode.</p>
+<p>The adapter binds device, app, scenario, selectors, command order and checkpoint
+identities to evaluated command metadata. Pass requires exit 0, every required
+non-optional command completed, and every PNG passing encoded-size/dimension
+budgets and CRC-checked decoding. Exit 1 plus a bound failed visibility assertion
+with matching Maestro 2.9.0 assertion-mismatch message/debug diagnostics reports
+failed interaction. Missing/unknown diagnostics or infrastructure errors during
+an assertion remain inconclusive; other driver failures, timeouts, incomplete or invalid
+evidence are inconclusive. Source identity is checked before/after capture;
+source changes invalidate acceptance.</p>
+<h2>Reports and limits</h2>
+<p>Each run writes <code>.ui-eval/native-runs/&lt;execution-id&gt;/report.json</code> and <code>report.html</code>.
+The result schema is <code>schemas/native-pilot-result.schema.json</code>; HTML derives from
+that validated record. Both must be written for command success. <code>plan.json</code> and
+<code>source.json</code> retain the inputs corresponding to the report digests, including
+working-tree identity. Screenshots have
+SHA-256 digests and sit beside the report. Generated flows and raw Maestro output
+remain in the run directory. Native evidence does not use the Web CAS store.</p>
+<p>Exit 0 means declared checks passed, 1 means a visibility assertion failed, and 2
+means prerequisites, infrastructure or evidence were inconclusive. Existing CLI
+signal exit semantics remain in effect. Cancellation requests bounded cleanup of
+the owned driver; after capture starts it attempts to publish both reports as
+inconclusive/interrupted, including cancellation during final source checks or
+report publication. Completed projections are replaced through exclusive writes
+before cancellation propagates; publication/storage failures still fail the command.</p>
+<p>Reports explicitly do not certify:</p>
+<ul>
+<li>installed binary or Metro provenance: source identity and installed app
+presence are observations, not a cryptographic build-to-source binding;</li>
+<li>crashes/runtime health, network isolation, accessibility, geometry, typography,
+visual diffs or authoritative design conformance;</li>
+<li>language, clock, orientation, keyboard, permission, safe-area or backend
+determinism: candidate setup owns those inputs;</li>
+<li>Android, Harmony, real-device or device-farm support.</li>
+</ul>
+<p>Raw Maestro logs, command metadata and screenshots may contain private data.
+They are ignored local artifacts, unencrypted, and do not receive Web evidence
+redaction. Use synthetic state, review before sharing and manage retention
+externally. Evidence reads are bounded and reject symlinks; total driver disk
+output is not quota-managed.</p>
+<p>The separate <code>nativePilot</code> library namespace exposes the experimental API.
+Distribution remains a separately authorized source checkout/build. This pilot
+does not complete the broader native-adapter roadmap milestone.</p>
+
+      </section>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
@@ -1866,6 +1970,9 @@ wrappers migrate explicitly. Forced termination or storage failure can prevent
 summary publication and cannot establish completion.</p>
 <p>UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.</p>
 <p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
+<p>Native-pilot App reuse (<code>restartApp: false</code>) preserves existing navigation and
+session state. Candidate setup must make that state ready; an interaction pass
+does not establish a fresh launch or isolated account/backend state.</p>
 <h2>Support matrix</h2>
 <table>
 <thead>
@@ -1877,8 +1984,8 @@ summary publication and cannot establish completion.</p>
 </thead>
 <tbody><tr>
 <td>Platform</td>
-<td>Web evaluation plus a separate experimental WeChat DevTools pilot.</td>
-<td>The pilot is not Web policy evaluation or real-device acceptance. iOS/Android types remain forward contracts on this branch.</td>
+<td>Web <code>evaluate</code> plus separate experimental iOS Simulator <code>native-pilot</code> and WeChat DevTools <code>wechat-pilot</code> commands.</td>
+<td>Both pilots report limited interaction/screenshot evidence under separate contracts, without Web policies or release assurance. Generic iOS/Android contracts and real-device acceptance remain unsupported.</td>
 </tr>
 <tr>
 <td>Browser</td>
@@ -2091,7 +2198,7 @@ crash, network, accessibility or design gates on mini programs.</p>
 <li>a protected holdout evaluator;</li>
 <li>an unconstrained or security-isolated autonomous fixing agent;</li>
 <li>a shared team platform or SaaS;</li>
-<li>native mobile support;</li>
+<li>general native mobile evaluation or native release assurance (the separate iOS Simulator pilot has limited interaction/screenshot scope);</li>
 <li>an open-source project;</li>
 <li>a publicly released package or supported software.</li>
 </ul>
@@ -2576,6 +2683,11 @@ described in <a href="execution-profiles.md">Execution profiles</a>;</li>
 <li>human review time and maintenance cost are measured against a baseline.</li>
 </ul>
 <h2>Milestone 5: Native-app adapters</h2>
+<p>An experimental iOS Simulator interaction/screenshot pilot now exists under
+<code>native-pilot</code>; see <a href="native-pilot.md">its executable scope and limits</a>. It does
+not satisfy the complete evidence, build provenance, governance or platform
+normalization requirements below. A candidate App pilot is not device acceptance
+until its real binary and declared scenarios actually run.</p>
 <p>Goal: reuse upper contracts and governance without pretending apps have DOM/CSSOM evidence.</p>
 <p>Candidate scope:</p>
 <ul>

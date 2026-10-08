@@ -71,7 +71,8 @@ and `reference`. Raw visual review stays `needs-review`; this command does not
 apply Agent visual ceilings or waive review. Remote deployment/fixture rules
 remain enforced. WeChat suites may declare `driver`, but reject Web-only options.
 Their runtime/network/design/real-device gaps stay explicit. Native iOS is not
-registered in this source revision and is rejected rather than emulated.
+registered by the integration runner and is rejected rather than emulated. The
+separate [iOS Simulator pilot](native-pilot.md) has its own execution/report path.
 
 ## Results and migration
 

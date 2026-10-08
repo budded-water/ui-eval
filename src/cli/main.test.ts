@@ -89,6 +89,17 @@ function deferred<T>() {
 }
 
 describe("runCli", () => {
+  it.each(["native-pilot", "wechat-pilot"] as const)("routes %s to its own argument validator", async (command) => {
+    const stream = output()
+    const args = [command, "unsupported", "--format", "json"]
+    if (command === "native-pilot") args.push("--device", "test-device")
+    expect(await runCli(args, stream.io)).toBe(2)
+    expect(JSON.parse(stream.stdout.join(""))).toMatchObject({
+      error: { message: expect.stringContaining(`Usage: ${command}`) },
+    })
+    expect(stream.stderr).toEqual([])
+  })
+
   it("forwards an execution profile to evaluation without changing stdout or exit semantics", async () => {
     const stream = output()
     const evaluate = vi.fn(async () => result("infra-error", "inconclusive"))
