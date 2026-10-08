@@ -66,6 +66,7 @@ export { AgentRunResultSchema } from "./agent/model"
 export { IncompleteCleanupError } from "./runtime/cleanup"
 export { ExecutionProfileSchema, resolveExecutionProfile, type ExecutionProfile } from "./project/execution-profile"
 export { selectAgentScenarios } from "./agent/selection"
+export * as wechatPilot from "./wechat-pilot/index"
 export {
   LocalArtifactStore,
   RunStore,

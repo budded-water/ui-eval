@@ -7,6 +7,7 @@ import { runDoctor, type DoctorResult } from "./doctor"
 import { evaluationExitCode } from "./exit-code"
 import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
 import { nativePilotCommand } from "../native-pilot/cli"
+import { runWechatPilotCli } from "../wechat-pilot/cli"
 
 const VERSION = packageJson.version
 const SIGNAL_CLEANUP_TIMEOUT_MS = 10_000
@@ -28,6 +29,8 @@ Usage:
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
+  ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
+                              [--project-root path] [--format text|json]
 
 Exit codes:
   0  pass
@@ -389,6 +392,7 @@ export async function runCli(
     if (command === "agent") return await agentCommand(args, io, deps, runOptions)
     if (command === "doctor") return await doctorCommand(args, io, deps, runOptions)
     if (command === "native-pilot") return await nativePilotCommand(args, io, runOptions.signal)
+    if (command === "wechat-pilot") return await runWechatPilotCli(args, io, runOptions.signal)
     throw new Error(`Unknown command: ${command}`)
   } catch (error) {
     const failure = runOptions.signal?.aborted
@@ -418,7 +422,7 @@ export async function runCliProcess(
   const runtime = options.runtime ?? defaultSignalRuntime
   const cleanupTimeoutMs = Math.max(
     1,
-    options.cleanupTimeoutMs ?? SIGNAL_CLEANUP_TIMEOUT_MS,
+    options.cleanupTimeoutMs ?? (argv[0] === "wechat-pilot" ? 25_000 : SIGNAL_CLEANUP_TIMEOUT_MS),
   )
   const controller = new AbortController()
   let firstSignal: CliSignal | undefined

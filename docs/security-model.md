@@ -1,5 +1,7 @@
 # Security Model
 
+## iOS Simulator pilot boundary
+
 The separate [native pilot](native-pilot.md) has a narrower evidence boundary:
 reviewed JSON generates data-only Maestro commands, source and command bindings
 are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
@@ -10,6 +12,25 @@ The trusted project's optional `restartApp` policy is bound to observed launch
 metadata. Omitted values restart; `false` reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
 a fresh session or reducing assertion/screenshot requirements.
+
+## WeChat DevTools pilot boundary
+
+The separate [WeChat pilot](wechat-pilot.md) executes trusted, bounded official
+CLI argv against a declared synthetic runtime below the candidate root. It
+does not authenticate, approve pending tasks, install tools or isolate the
+candidate backend. Candidate setup owns synthetic account/API isolation.
+Input, runtime and output paths reject symlinks and escapes. Captured PNGs are
+bounded, CRC-decoded and bound to the requested checkpoint and driver metadata.
+Declared storage changes are backed up in memory and restored; temporary CLI
+argument files use private permissions and are removed after each call. Only
+the pilot's own geolocation mock is restored. Failed restoration invalidates
+acceptance and retains the runtime lock for inspected recovery. Unresolved
+owned-process cleanup also quarantines the runtime. Private DevTools config
+overrides are rejected; compiled files must stay inside the dedicated runtime.
+A per-runtime lock prevents overlapping pilot runs in that runtime;
+it does not exclude manual IDE actions or other automation clients.
+Raw driver logs and original storage values are not persisted in reports.
+PNG screenshots can contain private data and remain unencrypted local output.
 
 UI Eval runs a candidate application's command and browser content with the current user's privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="15ed852c9ad49083376b0941545d0192a47c550bf7c53f770966f7aa0e55c951">
+  <meta name="source-sha256" content="258c96e3e8b1431b6df2159b82536c7cbf468a82651f31fe27ae5a028f04acaa">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -42,6 +42,7 @@
 <a href="#contracts">Contracts</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
+<a href="#wechat-pilot">WeChat DevTools pilot</a>
 <a href="#execution-profiles">Local and remote evaluation</a>
 <a href="#native-pilot">Experimental native pilot</a>
 <a href="#limitations">Limitations</a>
@@ -55,11 +56,14 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 15ed852c9ad49083376b0941545d0192a47c550bf7c53f770966f7aa0e55c951</footer>
+        <footer>Source set SHA-256: 258c96e3e8b1431b6df2159b82536c7cbf468a82651f31fe27ae5a028f04acaa</footer>
       </header>
       <section id="architecture" class="document">
         <div class="source"><span>Architecture</span><code>docs/architecture.md</code></div>
         <h1>Architecture</h1>
+<p>The experimental <a href="wechat-pilot.md">WeChat DevTools pilot</a> is an additive module
+under <code>src/wechat-pilot/</code> with separate CLI and result contracts. It uses the
+installed official CLI rather than the Web capture/evaluator pipeline below.</p>
 <p>UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.</p>
 <p>This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the <a href="roadmap.md">roadmap</a>, not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.</p>
 <h2>System boundary</h2>
@@ -330,12 +334,15 @@ network-profile, or secret providers;</li>
 <section id="contracts" class="document">
         <div class="source"><span>Contracts</span><code>docs/contracts.md</code></div>
         <h1>Contracts and Canonical Truth</h1>
+<p>The separate <a href="wechat-pilot.md">WeChat DevTools pilot</a> exports its project,
+scenario and result schemas through <code>wechatPilot</code>. These do not change the Web
+authoring schemas or enable the forward iOS/Android contracts.</p>
 <p>UI Eval is contract-first: authoring, execution identity, evidence, policy, and reports are explicit JSON values that are validated and content-digested before downstream use.</p>
 <p>This document explains ownership, lifecycle, and compatibility. It intentionally does not duplicate every schema field. The checked-in schemas and runtime validators are the field-level source of truth.</p>
 <h2>Truth hierarchy</h2>
 <p>The current repository has four related representations with distinct roles:</p>
 <ol>
-<li>TypeBox sources under <code>src/contracts/</code>, <code>src/project/</code>, <code>src/agent/</code>, and the separate experimental <code>src/native-pilot/</code> define the wire and active authoring shapes.</li>
+<li>TypeBox sources under <code>src/contracts/</code>, <code>src/project/</code>, <code>src/agent/</code>, and the separate experimental <code>src/native-pilot/</code> and <code>src/wechat-pilot/</code> define the wire and active authoring shapes.</li>
 <li><code>schemas/*.schema.json</code> are generated JSON Schema 2020-12 wire artifacts for the current checkout.</li>
 <li>TypeScript types are derived from TypeBox with <code>Static&lt;&gt;</code>; they must not be maintained as a second handwritten model.</li>
 <li>Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.</li>
@@ -648,6 +655,7 @@ using older strict schemas need the updated source revision to read new output.<
 <section id="security" class="document">
         <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
         <h1>Security Model</h1>
+<h2>iOS Simulator pilot boundary</h2>
 <p>The separate <a href="native-pilot.md">native pilot</a> has a narrower evidence boundary:
 reviewed JSON generates data-only Maestro commands, source and command bindings
 are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup
@@ -658,6 +666,23 @@ The trusted project&#39;s optional <code>restartApp</code> policy is bound to ob
 metadata. Omitted values restart; <code>false</code> reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
 a fresh session or reducing assertion/screenshot requirements.</p>
+<h2>WeChat DevTools pilot boundary</h2>
+<p>The separate <a href="wechat-pilot.md">WeChat pilot</a> executes trusted, bounded official
+CLI argv against a declared synthetic runtime below the candidate root. It
+does not authenticate, approve pending tasks, install tools or isolate the
+candidate backend. Candidate setup owns synthetic account/API isolation.
+Input, runtime and output paths reject symlinks and escapes. Captured PNGs are
+bounded, CRC-decoded and bound to the requested checkpoint and driver metadata.
+Declared storage changes are backed up in memory and restored; temporary CLI
+argument files use private permissions and are removed after each call. Only
+the pilot&#39;s own geolocation mock is restored. Failed restoration invalidates
+acceptance and retains the runtime lock for inspected recovery. Unresolved
+owned-process cleanup also quarantines the runtime. Private DevTools config
+overrides are rejected; compiled files must stay inside the dedicated runtime.
+A per-runtime lock prevents overlapping pilot runs in that runtime;
+it does not exclude manual IDE actions or other automation clients.
+Raw driver logs and original storage values are not persisted in reports.
+PNG screenshots can contain private data and remain unencrypted local output.</p>
 <p>UI Eval runs a candidate application&#39;s command and browser content with the current user&#39;s privileges. Its current protections are fail-closed contract, browser-context, filesystem-containment, evidence-classification, and process-ownership controls. They are not an operating-system sandbox.</p>
 <p>For GitHub Private Vulnerability Reporting instructions, see <a href="../SECURITY.md">SECURITY.md</a>.</p>
 <h2>Assets to protect</h2>
@@ -935,6 +960,9 @@ audit instead of silently disappearing.</p>
 <section id="integration" class="document">
         <div class="source"><span>Integration</span><code>docs/integration.md</code></div>
         <h1>Project Integration</h1>
+<p>For compiled mini programs, the separate experimental <a href="wechat-pilot.md">WeChat DevTools
+pilot</a> uses its own authoring and result schemas. The Web
+integration below does not execute those inputs.</p>
 <p>UI Eval currently integrates from a local checkout of the public source repository at <code>https://github.com/budded-water/ui-eval</code>. The package remains private in package metadata, <code>UNLICENSED</code>, and unavailable from a registry. Public source visibility does not grant integration rights, so this guide assumes separately authorized use and points the checkout&#39;s Bun scripts at a candidate project with <code>--project-root</code>.</p>
 <h2>Integration boundary</h2>
 <p>For separate local iteration and preview/staging integration, use reviewed
@@ -1347,6 +1375,49 @@ as scales the stylesheet still does not declare.</p>
 <p>When a package distribution channel is introduced, integration documentation must be updated together with package exports, lockfile pinning, clean-install tests, licensing, and release policy. Until then, separately authorized local checkout invocation is the only workflow described here.</p>
 
       </section>
+<section id="wechat-pilot" class="document">
+        <div class="source"><span>WeChat DevTools pilot</span><code>docs/wechat-pilot.md</code></div>
+        <h1>WeChat DevTools pilot</h1>
+<p>This experimental adapter runs declared UI interactions and captures raw PNGs
+in WeChat DevTools through its installed official <code>wechatide</code> CLI. It is a
+separate <code>wechat-pilot</code> command and result contract, not the Web <code>evaluate</code>
+pipeline or a real-device release gate.</p>
+<p>Candidate repositories own <code>ui-eval/wechat.json</code>, referenced scenarios, a
+synthetic API fixture and a dedicated compiled runtime project. The engine
+does not build the candidate, install DevTools, log in, approve authorization,
+submit payments or publish a mini program. No new driver dependency is needed.</p>
+<p>The CLI must be authorized for the configured client, logged in and compatible
+with the declared skill version. Pending authorization and unavailable evidence
+are inconclusive, never passes. Commands use bounded argv subprocesses and
+operate only on the declared runtime project.</p>
+<p>Compiled files must stay inside the dedicated runtime. Private DevTools
+configuration overrides are rejected. Missing action acknowledgements cannot
+pass. If process or state cleanup is incomplete, the runtime lock remains:
+inspect owned processes, close the pilot window and regenerate the dedicated
+runtime before removing its lock and retrying. Signal cleanup has a bounded
+25-second CLI budget, including the 15-second state-restoration budget.</p>
+<p>Run from an authorized, pinned engine checkout:</p>
+<pre><code class="language-sh">bun run ui-eval wechat-pilot doctor --project-root /path/to/candidate
+bun run ui-eval wechat-pilot evaluate login-controls --project-root /path/to/candidate
+</code></pre>
+<p>Use <code>--driver /absolute/path/to/wechatide</code> when the bundled CLI is not on PATH.
+<code>--format json</code> emits one machine payload. Evaluation publishes validated
+<code>report.json</code> and <code>report.html</code> with declared assertions and PNG screenshots in
+<code>.ui-eval/wechat-runs/</code>. Generated output is private local evidence, ignored by
+Git. The candidate integration owns backend and account isolation.</p>
+<p>The first pilot supports navigation, tap, input, explicit text/page assertions
+and screenshots. It does not certify Web DOM/CSSOM geometry, crash/network
+coverage, accessibility, design conformance, backend compatibility, payment,
+phone-number authorization or actual mobile-WeChat rendering. Source and
+compiled runtime digests are recorded and checked around capture; they do not
+prove that DevTools executed exactly those bytes throughout the run.</p>
+<p>Schema sources, generated schemas and this document describe the same pilot.
+Scenario JSON is canonical for acceptance scope; the report records actual
+coverage, including missing steps. Runtime project configuration and candidate
+build output are a second source of state: the integration must regenerate
+them from the reviewed candidate inputs before running evaluation.</p>
+
+      </section>
 <section id="execution-profiles" class="document">
         <div class="source"><span>Local and remote evaluation</span><code>docs/execution-profiles.md</code></div>
         <h1>Local and Remote Evaluation</h1>
@@ -1540,8 +1611,8 @@ does not establish a fresh launch or isolated account/backend state.</p>
 </thead>
 <tbody><tr>
 <td>Platform</td>
-<td>Web <code>evaluate</code> only; separate experimental iOS Simulator <code>native-pilot</code>.</td>
-<td>Generic iOS/Android types remain forward contracts. The <a href="native-pilot.md">native pilot</a> reports limited interaction/screenshot evidence under a separate contract, without Web policies or release assurance.</td>
+<td>Web <code>evaluate</code> plus separate experimental iOS Simulator <code>native-pilot</code> and WeChat DevTools <code>wechat-pilot</code> commands.</td>
+<td>Both pilots report limited interaction/screenshot evidence under separate contracts, without Web policies or release assurance. Generic iOS/Android contracts and real-device acceptance remain unsupported.</td>
 </tr>
 <tr>
 <td>Browser</td>
@@ -1740,6 +1811,9 @@ isolation and an outer job deadline remain necessary for those failure modes.</p
 <p>The wire family is currently alpha. Generated schemas, TypeScript types, validators, CLI semantics, and documentation must move together, but this public source repository has no released package compatibility history.</p>
 <p>Forward contracts such as <code>DesignContract</code>, <code>ScenarioManifest</code>, and app unions may change before their runtime paths exist. Consumers must not infer a support promise from their presence.</p>
 <h2>What not to claim</h2>
+<p>The separate <a href="wechat-pilot.md">WeChat DevTools pilot</a> observes declared
+interactions and PNG completeness only. It does not enable the Web geometry,
+crash, network, accessibility or design gates on mini programs.</p>
 <p>Do not describe the current implementation as:</p>
 <ul>
 <li>design-to-code validation;</li>

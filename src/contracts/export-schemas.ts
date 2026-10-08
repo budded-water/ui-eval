@@ -6,6 +6,8 @@ import { AgentSuiteSchema } from "../agent/config"
 import { AgentRunResultSchema } from "../agent/model"
 import { NativePilotProjectSchema, NativePilotScenarioSchema } from "../native-pilot/config"
 import { NativePilotResultSchema } from "../native-pilot/report"
+import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-pilot/config"
+import { WechatPilotResultSchema } from "../wechat-pilot/report"
 
 import {
   ProjectConfigSchema,
@@ -32,6 +34,9 @@ const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
   ["native-pilot-project.schema.json", NativePilotProjectSchema],
   ["native-pilot-scenario.schema.json", NativePilotScenarioSchema],
   ["native-pilot-result.schema.json", NativePilotResultSchema],
+  ["wechat-pilot-project.schema.json", WechatPilotProjectSchema],
+  ["wechat-pilot-scenario.schema.json", WechatPilotScenarioSchema],
+  ["wechat-pilot-result.schema.json", WechatPilotResultSchema],
   ["deployment-identity.schema.json", DeploymentIdentitySchema],
   ["agent-suite.schema.json", AgentSuiteSchema],
   ["agent-summary.schema.json", AgentRunResultSchema],

@@ -27,6 +27,11 @@ The source repository is public, but the project has no package release or confi
   evidence, decoded PNGs and synchronized JSON/HTML reports have their own
   generated schemas and library namespace. Web policies and release assurance
   remain outside this pilot.
+- Experimental `wechat-pilot` command and `wechatPilot` API namespace for
+  declared interactions and validated PNG screenshots in WeChat DevTools through
+  the installed official CLI. A separate result/schema family records source
+  and compiled-file identities, missing steps, state restoration, and JSON/HTML
+  reports. This does not extend Web gates or certify phone-WeChat rendering.
 
 - Optional local/remote execution profiles for `doctor`, `evaluate`, and Agent
   suites. Remote runs bind a clean frontend commit and declared backend/API,

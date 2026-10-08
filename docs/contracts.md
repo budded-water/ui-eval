@@ -1,5 +1,9 @@
 # Contracts and Canonical Truth
 
+The separate [WeChat DevTools pilot](wechat-pilot.md) exports its project,
+scenario and result schemas through `wechatPilot`. These do not change the Web
+authoring schemas or enable the forward iOS/Android contracts.
+
 UI Eval is contract-first: authoring, execution identity, evidence, policy, and reports are explicit JSON values that are validated and content-digested before downstream use.
 
 This document explains ownership, lifecycle, and compatibility. It intentionally does not duplicate every schema field. The checked-in schemas and runtime validators are the field-level source of truth.
@@ -8,7 +12,7 @@ This document explains ownership, lifecycle, and compatibility. It intentionally
 
 The current repository has four related representations with distinct roles:
 
-1. TypeBox sources under `src/contracts/`, `src/project/`, `src/agent/`, and the separate experimental `src/native-pilot/` define the wire and active authoring shapes.
+1. TypeBox sources under `src/contracts/`, `src/project/`, `src/agent/`, and the separate experimental `src/native-pilot/` and `src/wechat-pilot/` define the wire and active authoring shapes.
 2. `schemas/*.schema.json` are generated JSON Schema 2020-12 wire artifacts for the current checkout.
 3. TypeScript types are derived from TypeBox with `Static<>`; they must not be maintained as a second handwritten model.
 4. Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.

@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "storage",
+    "mocks",
+    "steps"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/wechat-pilot-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "WechatPilotScenario",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9-]{0,79}$",
+      "type": "string"
+    },
+    "storage": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "maxLength": 128,
+            "type": "string"
+          },
+          "value": {}
+        }
+      }
+    },
+    "mocks": {
+      "maxItems": 1,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method",
+          "result"
+        ],
+        "properties": {
+          "method": {
+            "const": "getLocation",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "latitude",
+              "longitude"
+            ],
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "minItems": 3,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "url"
+            ],
+            "properties": {
+              "action": {
+                "const": "navigate",
+                "type": "string"
+              },
+              "url": {
+                "pattern": "^/pages/",
+                "maxLength": 512,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "selector"
+            ],
+            "properties": {
+              "action": {
+                "const": "tap",
+                "type": "string"
+              },
+              "selector": {
+                "minLength": 1,
+                "maxLength": 512,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "selector",
+              "value"
+            ],
+            "properties": {
+              "action": {
+                "const": "input",
+                "type": "string"
+              },
+              "selector": {
+                "minLength": 1,
+                "maxLength": 512,
+                "type": "string"
+              },
+              "value": {
+                "maxLength": 2048,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "selector",
+              "includes"
+            ],
+            "properties": {
+              "action": {
+                "const": "assertText",
+                "type": "string"
+              },
+              "selector": {
+                "minLength": 1,
+                "maxLength": 512,
+                "type": "string"
+              },
+              "includes": {
+                "minLength": 1,
+                "maxLength": 2048,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "path"
+            ],
+            "properties": {
+              "action": {
+                "const": "assertPage",
+                "type": "string"
+              },
+              "path": {
+                "pattern": "^pages/",
+                "maxLength": 512,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "checkpointId"
+            ],
+            "properties": {
+              "action": {
+                "const": "screenshot",
+                "type": "string"
+              },
+              "checkpointId": {
+                "pattern": "^[a-z][a-z0-9-]{0,79}$",
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
