@@ -12,7 +12,7 @@ This document explains ownership, lifecycle, and compatibility. It intentionally
 
 The current repository has four related representations with distinct roles:
 
-1. TypeBox sources under `src/contracts/`, `src/project/`, and `src/agent/` define the wire and active authoring shapes.
+1. TypeBox sources under `src/contracts/`, `src/project/`, `src/agent/`, and the separate experimental `src/native-pilot/` and `src/wechat-pilot/` define the wire and active authoring shapes.
 2. `schemas/*.schema.json` are generated JSON Schema 2020-12 wire artifacts for the current checkout.
 3. TypeScript types are derived from TypeBox with `Static<>`; they must not be maintained as a second handwritten model.
 4. Runtime validators add digest and cross-object invariants that JSON Schema alone cannot express.
@@ -24,6 +24,14 @@ Documentation and examples are explanatory consumers. They must link to schemas 
 This repository does not provide a supported schema API or immutable network endpoint. Use the checked-in `schemas/` files from an exact source revision or the package's `./schemas/*` export from a separately authorized local build. A browsable GitHub file or schema `$id` is not a stable distribution URL.
 
 ## Version dimensions
+
+The isolated [native pilot](native-pilot.md) uses `uieval.io/native-pilot-v1`
+project/scenario/result schemas. It neither consumes generic native forward
+contracts nor emits the Web policy report. Consumers must not interpret a native
+pilot interaction pass as a Web hard-gate or release-readiness pass.
+Its optional boolean `restartApp` defaults to `true`; `false` declares App reuse.
+The flow compiler and evidence validator bind the same value, and the project
+input participates in the native plan digest.
 
 These versions solve different problems and must not be conflated:
 

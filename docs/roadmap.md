@@ -128,6 +128,12 @@ Exit evidence:
 
 ## Milestone 5: Native-app adapters
 
+An experimental iOS Simulator interaction/screenshot pilot now exists under
+`native-pilot`; see [its executable scope and limits](native-pilot.md). It does
+not satisfy the complete evidence, build provenance, governance or platform
+normalization requirements below. A candidate App pilot is not device acceptance
+until its real binary and declared scenarios actually run.
+
 Goal: reuse upper contracts and governance without pretending apps have DOM/CSSOM evidence.
 
 Candidate scope:

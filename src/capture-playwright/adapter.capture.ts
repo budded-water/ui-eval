@@ -125,6 +125,7 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
   let artifactRoot: string | undefined
   let externalRequests = 0
   let traceFinalizationStarted = false
+  let onHangNavigation: (() => void) | undefined
 
   beforeAll(async () => {
     server = createServer((request, response) => {
@@ -260,7 +261,10 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
         return
       }
 
-      if (request.url === "/hang") return
+      if (request.url === "/hang") {
+        onHangNavigation?.()
+        return
+      }
 
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" })
       response.end(`<!doctype html>
@@ -1035,15 +1039,21 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
 
   it("aborts a live navigation and returns only after owned browser resources close", async () => {
     const controller = new AbortController()
-    const startedAt = Date.now()
-    const abortTimer = setTimeout(() => controller.abort(), 100)
+    let startedAt: number | undefined
+    // Abort a confirmed in-flight request, not a machine-dependent browser
+    // startup phase. The five-second budget measures cancellation cleanup.
+    onHangNavigation = () => {
+      startedAt = Date.now()
+      controller.abort()
+    }
     try {
       const bundle = await captureGuardPlan(
         minimalPlan({ baseUrl, path: "/hang" }),
         controller.signal,
       )
 
-      expect(Date.now() - startedAt).toBeLessThan(5_000)
+      expect(startedAt).toBeDefined()
+      expect(Date.now() - startedAt!).toBeLessThan(5_000)
       expect(bundle.status).toBe("failed")
       expect(bundle.completeness.capturedRequired).toBe(0)
       expect(bundle.executionErrors).toEqual(
@@ -1056,7 +1066,8 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
         ]),
       )
     } finally {
-      clearTimeout(abortTimer)
+      onHangNavigation = undefined
+      controller.abort()
     }
   }, 30_000)
 })
