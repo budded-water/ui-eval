@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "executionId",
+    "projectId",
+    "suiteId",
+    "suiteDigest",
+    "engine",
+    "adapter",
+    "startedAt",
+    "durationMs",
+    "exitCode",
+    "status",
+    "stages",
+    "summaryPath",
+    "summaryHtmlPath",
+    "limitations"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/integration-v1alpha1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "IntegrationResult",
+      "type": "string"
+    },
+    "executionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "projectId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "suiteId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "suiteDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "engine": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "repository",
+        "revision"
+      ],
+      "properties": {
+        "repository": {
+          "pattern": "^https://[^/@?#]+/[^?#]+$",
+          "maxLength": 512,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "bunVersion": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        }
+      }
+    },
+    "adapter": {
+      "anyOf": [
+        {
+          "const": "web",
+          "type": "string"
+        },
+        {
+          "const": "wechat-pilot",
+          "type": "string"
+        }
+      ]
+    },
+    "executionProfile": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "browserChannel": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "startedAt": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "durationMs": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "exitCode": {
+      "anyOf": [
+        {
+          "const": 0,
+          "type": "number"
+        },
+        {
+          "const": 1,
+          "type": "number"
+        },
+        {
+          "const": 2,
+          "type": "number"
+        },
+        {
+          "const": 3,
+          "type": "number"
+        },
+        {
+          "const": 130,
+          "type": "number"
+        },
+        {
+          "const": 143,
+          "type": "number"
+        }
+      ]
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "pass",
+          "type": "string"
+        },
+        {
+          "const": "fail",
+          "type": "string"
+        },
+        {
+          "const": "needs-review",
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "type": "string"
+        },
+        {
+          "const": "interrupted",
+          "type": "string"
+        }
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "durationMs",
+          "reason",
+          "reports"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "const": "engine",
+                "type": "string"
+              },
+              {
+                "const": "prepare",
+                "type": "string"
+              },
+              {
+                "const": "check",
+                "type": "string"
+              },
+              {
+                "const": "scenario",
+                "type": "string"
+              },
+              {
+                "const": "source",
+                "type": "string"
+              },
+              {
+                "const": "evidence",
+                "type": "string"
+              }
+            ]
+          },
+          "dimension": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "pass",
+                "type": "string"
+              },
+              {
+                "const": "fail",
+                "type": "string"
+              },
+              {
+                "const": "needs-review",
+                "type": "string"
+              },
+              {
+                "const": "inconclusive",
+                "type": "string"
+              },
+              {
+                "const": "not-run",
+                "type": "string"
+              }
+            ]
+          },
+          "durationMs": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "reason": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cleanupSettled": {
+            "type": "boolean"
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "executionId",
+                "variantKey",
+                "status",
+                "reportPath",
+                "htmlPath",
+                "reportDigest",
+                "htmlDigest",
+                "capabilities"
+              ],
+              "properties": {
+                "executionId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "variantKey": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "pass",
+                      "type": "string"
+                    },
+                    {
+                      "const": "fail",
+                      "type": "string"
+                    },
+                    {
+                      "const": "needs-review",
+                      "type": "string"
+                    },
+                    {
+                      "const": "inconclusive",
+                      "type": "string"
+                    },
+                    {
+                      "const": "not-run",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "reportPath": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "htmlPath": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reportDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "htmlDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "capabilities": {
+                  "type": "array",
+                  "items": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "dimension",
+                      "status",
+                      "detail"
+                    ],
+                    "properties": {
+                      "dimension": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "status": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "detail": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "summaryPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "summaryHtmlPath": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      }
+    }
+  }
+}

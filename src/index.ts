@@ -67,6 +67,10 @@ export { IncompleteCleanupError } from "./runtime/cleanup"
 export { ExecutionProfileSchema, resolveExecutionProfile, type ExecutionProfile } from "./project/execution-profile"
 export { selectAgentScenarios } from "./agent/selection"
 export * as wechatPilot from "./wechat-pilot/index"
+export { runIntegrationSuite, type IntegrationOptions } from "./integration/run"
+export { EnginePinSchema, IntegrationSuiteSchema, type EnginePin, type IntegrationSuite } from "./integration/config"
+export { verifyEnginePin } from "./integration/engine"
+export { IntegrationResultSchema, assertIntegrationResult, type IntegrationResult } from "./integration/model"
 export {
   LocalArtifactStore,
   RunStore,

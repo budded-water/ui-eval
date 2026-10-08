@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "projectId",
+    "adapter",
+    "checks",
+    "scenarios"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/integration-v1alpha1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "IntegrationSuite",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "adapter": {
+      "anyOf": [
+        {
+          "const": "web",
+          "type": "string"
+        },
+        {
+          "const": "wechat-pilot",
+          "type": "string"
+        }
+      ]
+    },
+    "executionProfile": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "browserChannel": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "driver": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "prepare": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "command",
+        "args",
+        "timeoutMs"
+      ],
+      "properties": {
+        "command": {
+          "minLength": 1,
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "args": {
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "maxLength": 4096,
+            "type": "string"
+          }
+        },
+        "timeoutMs": {
+          "minimum": 1,
+          "maximum": 1800000,
+          "type": "integer"
+        }
+      }
+    },
+    "checks": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command",
+          "args",
+          "timeoutMs",
+          "id",
+          "phase",
+          "dimension",
+          "failureOutcome"
+        ],
+        "properties": {
+          "command": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "args": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          "timeoutMs": {
+            "minimum": 1,
+            "maximum": 1800000,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+            "type": "string"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "const": "before",
+                "type": "string"
+              },
+              {
+                "const": "after",
+                "type": "string"
+              }
+            ]
+          },
+          "dimension": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+            "type": "string"
+          },
+          "failureOutcome": {
+            "anyOf": [
+              {
+                "const": "candidate",
+                "type": "string"
+              },
+              {
+                "const": "infrastructure",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "timeoutMs"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+            "type": "string"
+          },
+          "policy": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "reference": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "timeoutMs": {
+            "minimum": 1000,
+            "maximum": 1800000,
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

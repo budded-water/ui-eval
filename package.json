@@ -31,10 +31,12 @@
     "docs/architecture.md",
     "docs/contracts.md",
     "docs/development.md",
+    "docs/design-overview.md",
     "docs/execution-profiles.md",
     "docs/native-pilot.md",
     "docs/index.html",
     "docs/integration.md",
+    "docs/integration-runner.md",
     "docs/limitations.md",
     "docs/release.md",
     "docs/roadmap.md",
@@ -61,6 +63,7 @@
     "test:capture": "vitest run --config vitest.capture.config.ts",
     "typecheck": "tsc --noEmit",
     "verify:dist": "node scripts/verify-dist.mjs",
+    "verify:integration": "node scripts/verify-integration.mjs",
     "ui-eval": "bun src/cli/entry.ts"
   },
   "dependencies": {

@@ -18,6 +18,9 @@ declared mini-program interactions and captures PNG evidence using the installed
 official CLI. It does not extend the Web policy pipeline or real-device coverage.
 
 - Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
+- Shared pinned-engine `integrate` suites with once-per-invocation preparation,
+  required Web/WeChat scenarios and checks, stage durations, and synchronized
+  complete-acceptance JSON/HTML. See [Integration runner](docs/integration-runner.md).
 - Strict JSON authoring for project configuration, web scenarios, and evaluation policies.
 - Matrix expansion into sealed, content-digested run plans.
 - Per-variant, loopback-only mock HTTP fixtures with fixed bounded responses and
@@ -112,6 +115,8 @@ ui-eval/
   project.json
   scenarios/*.json
   policies/*.json
+  engine.json                # exact source pin for integrate
+  integrations/*.json        # reviewed complete acceptance suites
   fixtures/*                 # reviewed, scrubbed inputs only
 ```
 
@@ -134,11 +139,17 @@ Generated state belongs outside Git:
     repair-request-*.json     # only when a repair is requested
     summary.json              # authoritative Agent terminal result
     summary.html              # default human review entry point
+  integration/<execution-id>/
+    suite.json                # reviewed input bound by digest
+    summary.json              # complete integration acceptance record
+    summary.html              # default integration handoff
 ```
 
 Sensitive evidence such as console, network, trace, and crash data remains in the content-addressed store and does not receive a plaintext run alias. `.ui-eval/` is a local working area, not a canonical source of project policy or scenarios, and it is not encrypted at rest.
 
 ## Result and exit semantics
+
+For Web `evaluate`:
 
 | Exit code | Meaning |
 | ---: | --- |
@@ -148,6 +159,12 @@ Sensitive evidence such as console, network, trace, and crash data remains in th
 | `3` | Valid evidence requires human review. |
 | `130` | Interrupted by `SIGINT`. |
 | `143` | Terminated by `SIGTERM`. |
+
+`integrate` uses the same outcome categories across the full declared suite,
+including external candidate checks. Agent terminal results return `0` for
+`accepted` and `1` for other terminal states; inspect the summary status and
+reason to distinguish blocking conditions. Pre-terminal CLI exceptions return
+`2`, and termination signals retain `130`/`143`.
 
 Missing or corrupt required evidence never becomes a pass. Product failures, runner/infrastructure failures, and advisory observations remain separate in the report.
 
@@ -170,7 +187,8 @@ The reference is explicitly `local-unprotected`. A changed image produces `needs
 The package entry point exports executable web contract types/validators, the active
 `ProjectConfigSchema`, `WebScenarioSourceSchema`, and `WebPolicySourceSchema` authoring surfaces with
 their structural validators, `evaluateScenario`, `initUiEvalProject`,
-`runDoctor`, Agent APIs, and the local artifact/run stores. Forward multi-platform,
+`runDoctor`, Agent and Integration APIs, separate experimental `nativePilot` and
+`wechatPilot` namespaces, and the local artifact/run stores. Forward multi-platform,
 design-binding, and governance contracts are available through the explicit
 `forwardContracts` namespace. Its generic `ScenarioSource` contract is not proof that the current
 web CLI can execute native scenarios. This repository currently has no
@@ -182,10 +200,14 @@ Do not import internal `src/*` modules from a consumer. See [Contracts](docs/con
 ## Documentation
 
 - [Browser-readable technical documentation](docs/index.html)
+- [System design and flow diagrams](docs/design-overview.md)
 - [Architecture](docs/architecture.md)
 - [Contracts and canonical truth](docs/contracts.md)
 - [Security model](docs/security-model.md)
 - [Project integration](docs/integration.md)
+- [Integration acceptance runner](docs/integration-runner.md)
+- [Experimental iOS Simulator pilot](docs/native-pilot.md)
+- [WeChat DevTools pilot](docs/wechat-pilot.md)
 - [Development](docs/development.md)
 - [Release process](docs/release.md)
 - [Current limitations](docs/limitations.md)

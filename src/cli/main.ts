@@ -8,6 +8,7 @@ import { evaluationExitCode } from "./exit-code"
 import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
 import { nativePilotCommand } from "../native-pilot/cli"
 import { runWechatPilotCli } from "../wechat-pilot/cli"
+import { runIntegrationSuite } from "../integration/run"
 
 const VERSION = packageJson.version
 const SIGNAL_CLEANUP_TIMEOUT_MS = 10_000
@@ -28,6 +29,7 @@ Usage:
   ui-eval agent <suite> [--repair] [--browser-channel chrome]
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
+  ui-eval integrate <suite> [--project-root path] [--format text|json]
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
   ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
                               [--project-root path] [--format text|json]
@@ -39,6 +41,8 @@ Exit codes:
   3  evidence requires human review
   130 interrupted by SIGINT
   143 terminated by SIGTERM
+
+Agent terminal results: 0 accepted, 1 non-accepted; inspect the summary status.
 `
 
 export interface CliIo {
@@ -52,6 +56,7 @@ export interface CliDependencies {
   evaluate?: typeof evaluateScenario
   agent?: typeof runAgentSuite
   doctor?: typeof runDoctor
+  integrate?: typeof runIntegrationSuite
 }
 
 export interface CliRunOptions {
@@ -391,6 +396,21 @@ export async function runCli(
     }
     if (command === "agent") return await agentCommand(args, io, deps, runOptions)
     if (command === "doctor") return await doctorCommand(args, io, deps, runOptions)
+    if (command === "integrate") {
+      const parsed = parseArgs({ args, allowPositionals: true, strict: true, options: {
+        "project-root": { type: "string" }, format: { type: "string", default: "text" },
+      } })
+      if (parsed.positionals.length !== 1) throw new Error("integrate requires exactly one suite id or path")
+      const format = formatOption(parsed.values.format)
+      const result = await (deps.integrate ?? runIntegrationSuite)({
+        projectRoot: parsed.values["project-root"] ?? io.cwd, suite: parsed.positionals[0], signal: runOptions.signal,
+        onProgress: (message) => io.stderr(`[ui-eval-integration] ${line(message)}`),
+      })
+      throwIfInterrupted(runOptions.signal)
+      if (format === "json") emitJson(io, result)
+      else io.stdout(`${result.status.toUpperCase()} ${result.suiteId}\n  HTML: ${result.summaryHtmlPath}\n  JSON: ${result.summaryPath}\n`)
+      return result.exitCode
+    }
     if (command === "native-pilot") return await nativePilotCommand(args, io, runOptions.signal)
     if (command === "wechat-pilot") return await runWechatPilotCli(args, io, runOptions.signal)
     throw new Error(`Unknown command: ${command}`)
@@ -422,7 +442,7 @@ export async function runCliProcess(
   const runtime = options.runtime ?? defaultSignalRuntime
   const cleanupTimeoutMs = Math.max(
     1,
-    options.cleanupTimeoutMs ?? (argv[0] === "wechat-pilot" ? 25_000 : SIGNAL_CLEANUP_TIMEOUT_MS),
+    options.cleanupTimeoutMs ?? (["wechat-pilot", "integrate"].includes(argv[0]) ? 25_000 : SIGNAL_CLEANUP_TIMEOUT_MS),
   )
   const controller = new AbortController()
   let firstSignal: CliSignal | undefined

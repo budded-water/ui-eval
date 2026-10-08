@@ -917,13 +917,20 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
     expect(bundle.stepResults).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          stepId: "capture",
           status: "failed",
           origin: "runner",
           errorCode: "unsupported-popup-created",
         }),
       ]),
     )
+    // The popup event may reject the click or the following checkpoint.
+    // Either timing must block capture with the same non-retryable failure.
+    const captureStep = bundle.stepResults.find((step) => step.stepId === "capture")
+    expect(captureStep).toMatchObject({
+      origin: "runner",
+      errorCode: "unsupported-popup-created",
+    })
+    expect(["failed", "not-executed"]).toContain(captureStep?.status)
   }, 30_000)
 
   it("blocks authenticated cross-origin fetch before request data can leave", async () => {

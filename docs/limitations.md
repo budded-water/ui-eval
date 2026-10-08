@@ -1,5 +1,13 @@
 # Current Limitations
 
+The [integration runner](integration-runner.md) aggregates required Web or
+experimental WeChat scenarios with reviewed preparation/checks. It does not
+register native iOS, introduce calibrated scoring, waive review, cache builds
+across runs or attest dependencies/build output. Stage durations are measured;
+speedup requires candidate launchers to move builds into prepare. Existing
+wrappers migrate explicitly. Forced termination or storage failure can prevent
+summary publication and cannot establish completion.
+
 UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.
 
 This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.

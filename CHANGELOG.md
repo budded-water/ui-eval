@@ -19,6 +19,23 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- System design overview with Mermaid diagrams for execution modes, the Web
+  evidence pipeline and complete integration acceptance, including the separate
+  iOS Simulator pilot and its exclusion from Integration. README, Agent docs and
+  CLI help clarify the existing Agent terminal exit mapping separately from
+  Web/integration outcomes; runtime exit behavior is unchanged.
+  Real-browser popup assertions accept rejection at either the click or following
+  checkpoint while requiring a failed run and blocked capture.
+- Pinned-source `integrate` suites for mandatory Web and experimental WeChat
+  scenarios, once-per-invocation prepare, before/after checks and stage durations.
+  Canonical `summary.json` and derived `summary.html` include external failures,
+  scope, capability limits and original evidence links. Missing/foreign evidence,
+  unsettled cleanup, and candidate/engine drift cannot pass.
+- Generated engine-pin/integration schemas and a synthetic prepared Web built-CLI
+  verifier. Existing evaluate/Agent/pilot contracts, exit codes and storage formats
+  remain unchanged. Consumer wrappers migrate explicitly; native iOS is not
+  registered by this runner.
+
 - Native-pilot projects may explicitly set `restartApp: false` to reuse an App
   prepared by candidate setup. Omitted values retain stop/relaunch behavior;
   command evidence binds the selected launch policy.
@@ -146,6 +163,10 @@ The source repository is public, but the project has no package release or confi
   multi-platform scenario envelope.
 
 ### Fixed
+
+- Browser cancellation conformance now aborts after its hanging navigation
+  request starts, preserving the cleanup budget while avoiding a startup race
+  on slower CI runners.
 
 - Agent visual acceptance requires each variant's explicit pixel measurement;
   equal screenshots can pass without a finding, while missing measurements and

@@ -1,12 +1,15 @@
 # Architecture
 
+Start with the [system design overview and flow diagrams](design-overview.md)
+for command composition, the Web evidence pipeline and full-suite acceptance.
+
 The experimental [WeChat DevTools pilot](wechat-pilot.md) is an additive module
 under `src/wechat-pilot/` with separate CLI and result contracts. It uses the
 installed official CLI rather than the Web capture/evaluator pipeline below.
 
 UI Eval is currently a local-first TypeScript modular monolith. One CLI process loads project-owned authoring files, seals immutable execution inputs, owns a candidate development server when needed, captures evidence with Playwright, evaluates deterministic rules, and persists machine and human-readable results.
 
-This document describes implemented behavior in the current source tree. Proposed design sync, native-app capture, shared control planes, and baseline governance live in the [roadmap](roadmap.md), not in the current architecture. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.
+This document describes implemented behavior in the current source tree. Proposed design sync, general native-app adapters, shared control planes, and baseline governance live in the [roadmap](roadmap.md). Separate experimental [iOS Simulator](native-pilot.md) and [WeChat DevTools](wechat-pilot.md) pilots have limited interaction/screenshot contracts outside the Web pipeline. The bounded Agent loop described below is implemented; it is not a general or security-isolated autonomous fixing service.
 
 ## System boundary
 
@@ -59,7 +62,8 @@ All modules ship from one package and use relative internal imports. The directo
 | `src/report-html/` | Escaped static HTML rendering; capability labels derive from canonical coverage and actual evaluator provenance. |
 | `src/agent/` | Bounded suite orchestration, constrained repair requests, terminal decision model, and synchronized JSON/HTML Agent summary publication. |
 | `src/design-adapters/` | Reference producers that read declarative design sources into a normalized token set, plus an offline sealed-token drift guard. Not on the evaluation path and never imported by an evaluator. |
-| `src/cli/` | `init`, `doctor`, `evaluate`, and `agent`; stdout/stderr discipline, exit mapping, and signal handling. |
+| `src/cli/` | `init`, `doctor`, `evaluate`, `agent`, `integrate`, and pilot commands; stdout/stderr discipline, exit mapping, and signal handling. |
+| `src/integration/` | Engine pin checks, once-per-invocation prepare, mandatory Web/WeChat suites and external checks, stage timing, and canonical acceptance JSON/HTML. |
 | `src/index.ts` | Supported programmatic exports. |
 
 The dependency intent is inward toward contracts and narrow interfaces:
@@ -228,6 +232,8 @@ Product failures can remain definitive when the browser directly observed an ass
 - `initUiEvalProject`;
 - `runDoctor`;
 - `runAgentSuite`, validated Agent result schemas, and summary rendering;
+- `runIntegrationSuite`, its input/result schemas, validator and derived types;
+- separate experimental `nativePilot` and `wechatPilot` namespaces;
 - the local artifact and run stores.
 
 Internal module paths are not a supported consumer API. The source repository is public, but the package is `UNLICENSED`, private in package metadata, and has no configured package distribution. This boundary supports source development and separately authorized local integration rather than a published SDK compatibility promise.
@@ -259,7 +265,7 @@ The current architecture does not include:
 - online design/Figma sync or authoritative structured design comparison;
 - calibrated geometry, typography, accessibility, or visual release scoring;
 - baseline/waiver ledgers or shared storage;
-- multi-page scenarios, WebKit/Firefox, or native-app adapters;
+- multi-page Web scenarios, WebKit/Firefox, or general native-app adapters;
 - static, seed-script, or remote fixture providers; feature-flag,
   network-profile, or secret providers;
 - MCP, holdout isolation, a web console, or a service API.

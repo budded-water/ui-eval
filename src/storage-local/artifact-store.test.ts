@@ -95,6 +95,16 @@ describe("LocalArtifactStore", () => {
     expect(entries).toEqual([refs[0].digest.slice("sha256:".length)])
   })
 
+  it("references existing sealed inputs without recreating missing bytes or downgrading sensitivity", async () => {
+    const store = new LocalArtifactStore({ root, projectId: "project-a", storeId: "local" })
+    const input = { sealed: true }
+    const ref = await store.put(input, { sensitivity: "sensitive" })
+    expect(await store.referenceExisting(input, { sensitivity: "internal" })).toEqual(ref)
+    await rm(artifactPath(ref))
+    await expect(store.referenceExisting(input)).rejects.toMatchObject({ code: "artifact-missing" })
+    await expect(readFile(artifactPath(ref))).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
   it("uses deterministic JSON bytes for content addressing", async () => {
     const store = new LocalArtifactStore(root, "project-a", "local")
 

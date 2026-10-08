@@ -197,10 +197,10 @@ export class LocalArtifactStore {
     }
   }
 
-  async put(
+  private describe(
     value: unknown,
     options?: ArtifactPutOptions | string,
-  ): Promise<ArtifactRef> {
+  ) {
     const normalizedOptions = normalizeOptions(options)
     validatePutOptions(normalizedOptions)
 
@@ -221,6 +221,20 @@ export class LocalArtifactStore {
         ? { redaction: { ...normalizedOptions.redaction } }
         : {}),
     }
+    return { bytes, baseRef }
+  }
+
+  /** Verify a sealed input without repairing or materializing missing artifacts. */
+  async referenceExisting(value: unknown, options?: ArtifactPutOptions | string): Promise<ArtifactRef> {
+    const { baseRef } = this.describe(value, options)
+    const resolved = await this.resolveWithMetadata(baseRef)
+    return { ...baseRef, sensitivity: resolved.sensitivity }
+  }
+
+  async put(value: unknown, options?: ArtifactPutOptions | string): Promise<ArtifactRef> {
+    const { bytes, baseRef } = this.describe(value, options)
+    const digest = baseRef.digest
+    const requestedSensitivity = baseRef.sensitivity
 
     const target = this.artifactPath(digest)
     const directory = resolve(target, "..")

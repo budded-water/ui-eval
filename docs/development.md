@@ -41,6 +41,7 @@ src/
   report-html/           static report view
   cli/                   commands, output, exits, signals
   agent/                 suite loader, pure assessment, bounded loop and reports
+  integration/           engine pin, preparation, full acceptance and JSON/HTML
   index.ts               supported programmatic exports
 schemas/                 generated JSON Schema artifacts
 docs/                    Markdown source documentation
@@ -62,6 +63,7 @@ Keep internal dependencies directed toward contracts and narrow interfaces. Do n
 | `bun run typecheck` | Run TypeScript without emitting files. |
 | `bun run build` | Build ESM library and CLI artifacts with tsup. |
 | `bun run check` | Check schemas and generated docs, run unit tests, lint and typecheck, build, and verify the direct and symlinked dist CLI. |
+| `bun run verify:integration` | Additional real-Chromium built-CLI check of a temporary prepared Web candidate; requires a clean engine checkout and current build. |
 
 `bun run check` does not replace the real-browser suite. Changes to capture, browser routing, stabilization, auth state, evidence collection, or lifecycle require `bun run test:capture` as an additional gate.
 

@@ -34,3 +34,5 @@ jobs:
           UI_EVAL_REQUIRE_BROWSER: "1"
       - run: bun run ui-eval doctor --project-root examples/basic-web
       - run: bun run ui-eval evaluate home-desktop --project-root examples/basic-web --format json
+      - run: bun run build
+      - run: bun run verify:integration
