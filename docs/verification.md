@@ -91,8 +91,11 @@ bun run ui-eval integrate <suite-id> --project-root /absolute/path/to/candidate 
 
 An integration suite pins the engine revision and requires a clean engine
 checkout. Finish and pin the intended revision before using it for integration.
-Use matching browser and execution-profile options where supported; a suite's
-pinned profile cannot be replaced. A remote run requires reviewed deployment
+`doctor` and `evaluate` accept `--browser-channel` and `--execution-profile`;
+use consistent selections for those direct commands. `integrate` accepts only
+the suite ID/path, `--project-root` and `--format`. Its browser and execution
+profile are configured in the reviewed suite, not forwarded as CLI flags, and
+a suite's pinned profile cannot be replaced. A remote run requires reviewed deployment
 identities, and a failed identity check does not authorize local repair or a
 fallback target. See [Execution profiles](execution-profiles.md).
 

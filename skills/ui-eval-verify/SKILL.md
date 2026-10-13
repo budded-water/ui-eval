@@ -38,7 +38,10 @@ browser; it does not prove the application journey or start the candidate server
 
 For one journey, run its declared `evaluate` scenario. For complete integration
 acceptance, run the reviewed `integrate` suite so preparation and external
-checks also execute. Use `agent` only for a configured bounded suite, with
+checks also execute. `integrate` takes the suite ID/path, `--project-root` and
+`--format`; browser/profile selection belongs in the suite. Do not forward
+`doctor`/`evaluate` browser or profile flags to `integrate`.
+Use `agent` only for a configured bounded suite, with
 repair only when authorized. Preserve mandatory scope; optional suggestions
 can only add reviewed scenario IDs. A smoke result covers that smoke only.
 

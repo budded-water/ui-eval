@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="6bb1afc58e6720bf188d3b046c1a57f136c9c0b8bdce339c0a1531e6f955e0c8">
+  <meta name="source-sha256" content="12a5134ef4fae7e50e37e1c993eeadc10cdc2a9e0567f5062ec6873ed497339e">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -59,7 +59,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 6bb1afc58e6720bf188d3b046c1a57f136c9c0b8bdce339c0a1531e6f955e0c8</footer>
+        <footer>Source set SHA-256: 12a5134ef4fae7e50e37e1c993eeadc10cdc2a9e0567f5062ec6873ed497339e</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1727,8 +1727,11 @@ cleanup; reused servers remain owned by their original caller.</p>
 </code></pre>
 <p>An integration suite pins the engine revision and requires a clean engine
 checkout. Finish and pin the intended revision before using it for integration.
-Use matching browser and execution-profile options where supported; a suite&#39;s
-pinned profile cannot be replaced. A remote run requires reviewed deployment
+<code>doctor</code> and <code>evaluate</code> accept <code>--browser-channel</code> and <code>--execution-profile</code>;
+use consistent selections for those direct commands. <code>integrate</code> accepts only
+the suite ID/path, <code>--project-root</code> and <code>--format</code>. Its browser and execution
+profile are configured in the reviewed suite, not forwarded as CLI flags, and
+a suite&#39;s pinned profile cannot be replaced. A remote run requires reviewed deployment
 identities, and a failed identity check does not authorize local repair or a
 fallback target. See <a href="execution-profiles.md">Execution profiles</a>.</p>
 <p>Use the <a href="agent.md">bounded Agent loop</a> for an explicitly configured Agent suite.
