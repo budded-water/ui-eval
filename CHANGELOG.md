@@ -6,6 +6,11 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+- Browser shutdown shares the remaining cleanup deadline across context and
+  browser close instead of discarding unused timeout slices. Rejected and
+  timed-out close phases are identified without transport error contents;
+  unsuccessful closure still blocks acceptance.
+
 ### Fixed
 
 - Native pilot distinguishes pinned visibility-assertion mismatch diagnostics

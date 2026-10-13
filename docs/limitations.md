@@ -152,6 +152,9 @@ the owned browser context. Abort cleanup instead removes routes with close-race
 errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
 Context and browser close still require successful completion. A close failure
+or timeout reports the affected phase and outcome. Close operations share the
+remaining cleanup deadline rather than receiving fixed equal timeout slices.
+The overall cleanup budget is unchanged. A close failure
 or expired capture cancellation grace raises `OWNED_RESOURCE_CLEANUP_INCOMPLETE`
 and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
 is not proof of resource cleanup. This fail-closed result cannot itself force an

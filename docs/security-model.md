@@ -274,6 +274,11 @@ closes only the owned context and browser.
 Context and browser close must both complete successfully within their bounded
 waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
 and blocks the Agent; successful route teardown alone is not proof of closure.
+Route removal has a bounded slice of the cleanup budget; context and browser
+closure share the remaining total deadline. Unused time from earlier operations
+is available to later closure, without extending the overall deadline. Diagnostic
+messages distinguish rejected and timed-out closure without exposing transport
+error contents.
 
 Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.
 
