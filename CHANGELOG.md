@@ -19,6 +19,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Checkout-local `ui-eval-verify` agent guidance, a candidate feature-verification
+  workflow, and a Basic Web feature map referencing existing assertions and
+  coverage gaps. Maps are review aids only; CLI/report contracts, runtime scope
+  and acceptance are unchanged.
 - System design overview with Mermaid diagrams for execution modes, the Web
   evidence pipeline and complete integration acceptance, including the separate
   iOS Simulator pilot and its exclusion from Integration. README, Agent docs and

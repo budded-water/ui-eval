@@ -12,6 +12,7 @@ const documents = [
   ["contracts", "Contracts", "docs/contracts.md"],
   ["security", "Security model", "docs/security-model.md"],
   ["integration", "Integration", "docs/integration.md"],
+  ["verification", "Feature verification", "docs/verification.md"],
   ["integration-runner", "Integration acceptance runner", "docs/integration-runner.md"],
   ["wechat-pilot", "WeChat DevTools pilot", "docs/wechat-pilot.md"],
   ["execution-profiles", "Local and remote evaluation", "docs/execution-profiles.md"],

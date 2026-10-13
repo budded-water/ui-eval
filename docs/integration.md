@@ -4,6 +4,11 @@ For multiple scenarios, preparation and business checks, use the
 [pinned integration runner](integration-runner.md). Direct commands below
 retain their existing behavior and report semantics.
 
+For agent-driven onboarding and user-journey evidence, use the
+[feature verification workflow](verification.md) and its checkout-local skill.
+Its optional feature map references reviewed scenarios/checks; the engine does
+not interpret it as runtime scope or acceptance.
+
 For compiled mini programs, the separate experimental [WeChat DevTools
 pilot](wechat-pilot.md) uses its own authoring and result schemas. The Web
 integration below does not execute those inputs.
