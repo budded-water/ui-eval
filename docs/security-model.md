@@ -27,6 +27,12 @@ are checked, reads are bounded, output rejects symlinks, and owned-driver cleanu
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
 candidate project's responsibility; the pilot is not a network or OS sandbox.
+Bounded literal text entry/erasure and fixed-duration
+directional swipes are allowed data-only interactions. Expression templates,
+scripts, arbitrary coordinates and optional commands remain rejected. Literal
+input and resulting field state can appear in plans, raw logs and screenshots;
+use synthetic values only. Candidate setup must prevent real business writes;
+the engine cannot identify secrets or enforce backend isolation.
 The trusted project's optional `restartApp` policy is bound to observed launch
 metadata. Omitted values restart; `false` reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying

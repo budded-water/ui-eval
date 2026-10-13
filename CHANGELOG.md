@@ -24,6 +24,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Experimental native pilot supports bounded literal text entry/erasure and
+  directional swipes, with exact command evidence binding. These
+  interactions do not replace visibility assertions or establish release readiness.
+
 - System design overview with Mermaid diagrams for execution modes, the Web
   evidence pipeline and complete integration acceptance, including the separate
   iOS Simulator pilot and its exclusion from Integration. README, Agent docs and

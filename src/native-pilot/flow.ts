@@ -5,6 +5,9 @@ export function compileNativePilotFlow(project: NativePilotProject, scenario: Na
   const commands: unknown[] = [{ launchApp: { appId: project.appId, stopApp: project.restartApp ?? true } }]
   for (const step of scenario.steps) {
     if (step.action === "screenshot") commands.push({ takeScreenshot: step.checkpointId })
+    else if (step.action === "input-text") commands.push({ inputText: step.text })
+    else if (step.action === "erase-text") commands.push({ eraseText: step.characters })
+    else if (step.action === "swipe") commands.push({ swipe: { direction: step.direction, duration: 400, ...(step.selector ? { from: step.selector } : {}) } })
     else {
       const command = { tap: "tapOn", "assert-visible": "assertVisible", "assert-hidden": "assertNotVisible" }[step.action]
       commands.push({ [command]: step.selector })

@@ -20,9 +20,21 @@ bun run ui-eval native-pilot doctor --project-root /path/to/app --device <uuid>
 bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device <uuid> --format json
 ```
 
-Steps are limited to tap, visible/hidden assertions and screenshots. Selectors
+Steps support tap, literal `input-text` (1–512 characters without line breaks or
+expression templates), bounded `erase-text` (1–512 characters),
+and a single `swipe` in UP/DOWN/LEFT/RIGHT at a fixed 400 ms duration, optionally
+starting from an ID/text selector, plus visible/hidden assertions and screenshots.
+Input targets the currently focused field; candidate scenarios must focus it first
+and assert the resulting state afterward. Gestures and text entry are interactions,
+not assertions. Swipes do not certify geometry or successful scrolling. Selectors
 are Maestro ID/text regular expressions. Expression templates, scripts, text
-input and arbitrary driver commands are rejected. Every screenshot must
+substitution and arbitrary driver commands are rejected. Use only synthetic text:
+literal input is persisted in scenario plans and raw command evidence without
+redaction. Do not place real credentials or personal data in scenario files.
+Keyboard dismissal remains candidate-owned: use the App's explicit dismissal
+control or supported outside tap. Generic driver keyboard dismissal can fail on
+iOS numeric inputs and is not an authored action. Inspect keyboard screenshots.
+Every screenshot must
 immediately follow an assertion. Generated flows stop/relaunch the app without
 clearing its state by default. An explicit project `restartApp: false` reuses an
 already running App instead; candidate setup then owns startup readiness and
