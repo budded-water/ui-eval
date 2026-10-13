@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8">
+  <meta name="source-sha256" content="12a5134ef4fae7e50e37e1c993eeadc10cdc2a9e0567f5062ec6873ed497339e">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -43,6 +43,7 @@
 <a href="#contracts">Contracts</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
+<a href="#verification">Feature verification</a>
 <a href="#integration-runner">Integration acceptance runner</a>
 <a href="#wechat-pilot">WeChat DevTools pilot</a>
 <a href="#execution-profiles">Local and remote evaluation</a>
@@ -58,7 +59,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8</footer>
+        <footer>Source set SHA-256: 12a5134ef4fae7e50e37e1c993eeadc10cdc2a9e0567f5062ec6873ed497339e</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1222,6 +1223,10 @@ audit instead of silently disappearing.</p>
 <p>For multiple scenarios, preparation and business checks, use the
 <a href="integration-runner.md">pinned integration runner</a>. Direct commands below
 retain their existing behavior and report semantics.</p>
+<p>For agent-driven onboarding and user-journey evidence, use the
+<a href="verification.md">feature verification workflow</a> and its checkout-local skill.
+Its optional feature map references reviewed scenarios/checks; the engine does
+not interpret it as runtime scope or acceptance.</p>
 <p>For compiled mini programs, the separate experimental <a href="wechat-pilot.md">WeChat DevTools
 pilot</a> uses its own authoring and result schemas. The Web
 integration below does not execute those inputs.</p>
@@ -1635,6 +1640,133 @@ as scales the stylesheet still does not declare.</p>
 <h2>Programmatic integration</h2>
 <p>The root entry point exports contracts, orchestration helpers, initialization, doctor checks, and local storage. Because no package distribution is configured, there is no supported registry install command. Separately authorized source-checkout tools may use the built entry point, but must not import <code>src/*</code> internals or claim compatibility beyond the exact source snapshot they pin.</p>
 <p>When a package distribution channel is introduced, integration documentation must be updated together with package exports, lockfile pinning, clean-install tests, licensing, and release policy. Until then, separately authorized local checkout invocation is the only workflow described here.</p>
+
+      </section>
+<section id="verification" class="document">
+        <div class="source"><span>Feature verification</span><code>docs/verification.md</code></div>
+        <h1>Feature verification workflow</h1>
+<p>Use this workflow to connect a candidate Web project&#39;s user features to reviewed
+UI Eval scenarios and external checks. It reuses the existing CLI and report
+contracts. No feature-map loader, automatic scenario generator or model-based
+acceptance is implemented.</p>
+<p>The checkout includes <a href="../skills/ui-eval-verify/SKILL.md">ui-eval-verify</a>, a small
+agent skill for this workflow. Point an agent at that file, for example:</p>
+<pre><code class="language-text">Read skills/ui-eval-verify/SKILL.md in this engine checkout. Verify the declared
+home journey in examples/basic-web and report the evidence and coverage gaps.
+</code></pre>
+<p>The skill lives in source under <code>skills/</code>; it is not automatically installed or
+registered in another agent runtime. It works through separately authorized
+checkout invocation, without a pstack dependency or a package-install promise.</p>
+<h2>Map features to executable proof</h2>
+<p>Maintain an optional <code>ui-eval/feature-map.md</code> in the candidate repository. Use
+one row per user journey, starting with the features in the requested scope.
+The map points to existing definitions; it does not copy selectors, expected
+values, thresholds, reference images or execution-profile configuration.</p>
+<table>
+<thead>
+<tr>
+<th>User journey</th>
+<th>Preconditions and entry</th>
+<th>Executable proof</th>
+<th>Coverage gaps</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Name the behavior a user needs</td>
+<td>State the required data/auth and UI entry point</td>
+<td>Link scenario file and assertion/checkpoint IDs; link suite and check ID when external state matters</td>
+<td>List missing paths, states or side-effect assertions</td>
+</tr>
+</tbody></table>
+<p>For a save operation, exercise the real form and assert the resulting state.
+If persistence matters, reload and assert the saved value, or run a reviewed
+candidate-owned check against the resulting test data. A success toast or final
+screenshot alone does not prove persistence. Unsupported proof remains a gap.</p>
+<p>The <a href="../examples/basic-web/ui-eval/feature-map.md">Basic Web feature map</a> is a
+small concrete example. It references the existing smoke and explicitly lists
+what that smoke does not prove.</p>
+<h3>Authority and maintenance</h3>
+<ul>
+<li>Scenario/policy/suite configuration is canonical for executable assertions,
+mandatory scope and acceptance. UI Eval seals those inputs for each run.</li>
+<li>The map is a human/agent review aid. The engine neither reads it nor turns its
+rows into coverage, report fields or acceptance decisions.</li>
+<li>Reports are canonical for what actually ran. A row with no matching run and
+assertion evidence remains unverified, regardless of the map&#39;s prose.</li>
+</ul>
+<p>When a journey changes, inspect the live implementation and configuration,
+update the executable proof and its map references together, then rerun it.
+When the map and config disagree, report the drift; a stale map does not
+authorize changing a policy or weakening acceptance. Keep run outcomes in
+generated reports rather than a mutable &quot;passed&quot; column in the map.</p>
+<h2>Discover before authoring</h2>
+<p>Resolve the engine checkout and candidate Git root. Read the candidate&#39;s
+existing startup, test harness, <code>ui-eval/project.json</code>, scenarios and suites.
+Prefer the candidate&#39;s actual user paths and stable semantic locators. Keep
+business-specific setup and configuration in the candidate, outside engine
+modules.</p>
+<p>For new inputs, follow <a href="integration.md">Project Integration</a>, including review
+of <code>init</code> output before execution. Drafting configurations is not evidence that
+their paths work. Run each claimed journey; if only one path has run, leave the
+others explicitly unverified. Do not infer complete acceptance from a smoke.</p>
+<h2>Run the declared path</h2>
+<p>Run commands from the engine checkout. Replace the candidate path and IDs with
+the reviewed project&#39;s values. These are source-checkout commands, not a
+registry installation workflow.</p>
+<pre><code class="language-bash">bun run ui-eval doctor --project-root /absolute/path/to/candidate --format json
+bun run ui-eval evaluate &lt;scenario-id&gt; --project-root /absolute/path/to/candidate --format json
+</code></pre>
+<p>Doctor checks prerequisites, browser launch and server ownership/readiness
+configuration; it does not start the candidate server or prove the user path.
+It may create the artifact directory. Inspect warnings and failed checks before
+driving the app. Evaluation owns the local server it starts and performs bounded
+cleanup; reused servers remain owned by their original caller.</p>
+<p>When setup and external checks are part of acceptance, use an existing reviewed
+<a href="integration-runner.md">integration suite</a>:</p>
+<pre><code class="language-bash">bun run ui-eval integrate &lt;suite-id&gt; --project-root /absolute/path/to/candidate --format json
+</code></pre>
+<p>An integration suite pins the engine revision and requires a clean engine
+checkout. Finish and pin the intended revision before using it for integration.
+<code>doctor</code> and <code>evaluate</code> accept <code>--browser-channel</code> and <code>--execution-profile</code>;
+use consistent selections for those direct commands. <code>integrate</code> accepts only
+the suite ID/path, <code>--project-root</code> and <code>--format</code>. Its browser and execution
+profile are configured in the reviewed suite, not forwarded as CLI flags, and
+a suite&#39;s pinned profile cannot be replaced. A remote run requires reviewed deployment
+identities, and a failed identity check does not authorize local repair or a
+fallback target. See <a href="execution-profiles.md">Execution profiles</a>.</p>
+<p>Use the <a href="agent.md">bounded Agent loop</a> for an explicitly configured Agent suite.
+Retain its mandatory floor and add only declared optional scenarios. Repair is
+a separate authorized action; the verification skill does not enable it.</p>
+<h2>Inspect and hand off evidence</h2>
+<p>Capture the process exit and parse stdout even for failure/review outcomes.
+JSON mode emits one payload on stdout; progress is on stderr. Do not discard
+the result because a shell command returned nonzero.</p>
+<p>For <code>evaluate</code>, inspect every entry in <code>runs</code>, its <code>executionOutcome</code>,
+<code>rawStatus</code>, report gates, capability coverage and evidence references. Read
+canonical <code>report.json</code> via <code>reportPath</code> and open the derived HTML via
+<code>htmlPath</code>. Confirm that assertions for the mapped journey actually executed
+and that required checkpoint evidence exists. Image capture alone is not
+visual equivalence or design conformance.</p>
+<p>For <code>integrate</code> and terminal Agent results, read both <code>summary.json</code> and
+<code>summary.html</code> using the paths returned by the command. Follow the detailed
+reports; successful browser evidence cannot cover a failed external check.
+HTML is a reading view of canonical JSON and does not change acceptance.</p>
+<p>Web evaluation/integration exit codes distinguish pass (<code>0</code>), candidate failure
+(<code>1</code>), infrastructure/invalid/inconclusive (<code>2</code>), and human review (<code>3</code>). Agent
+terminal results use <code>0</code> for accepted and <code>1</code> for other terminal states; inspect
+the summary reason. Pre-terminal exceptions use <code>2</code>, and signals retain
+<code>130</code>/<code>143</code>. See <a href="../README.md#result-and-exit-semantics">README result semantics</a>.</p>
+<p>The handoff names the requested features, actual selected scope/profile,
+command and outcome, source/run identity from the generated records, JSON/HTML
+paths, and remaining gaps. Keep evidence after cleanup, under the candidate&#39;s
+ignored generated directory. Do not commit screenshots, traces or <code>.ui-eval/</code>
+output, or share sensitive artifacts without authorization.</p>
+<h2>Boundaries</h2>
+<p>This workflow covers the current Web pipeline. Experimental native/WeChat
+pilots have separate contracts and limitations. It adds no protected baseline,
+holdout isolation, automatic feature coverage, or calibrated quality score.
+See <a href="limitations.md">Current limitations</a> before treating a result as a release
+gate.</p>
 
       </section>
 <section id="integration-runner" class="document">
@@ -2210,6 +2342,10 @@ crash, network, accessibility or design gates on mini programs.</p>
         <h1>Development</h1>
 <p>UI Eval is a public-source TypeScript ESM project built as a single modular monolith. The package remains private and unpublished. Bun manages the workspace; the built runtime targets Node.js 20 or newer.</p>
 <p>This guide describes how to change the repository. It does not imply that any command has passed on a particular revision; run the required checks against the source you intend to review.</p>
+<p>For candidate-project onboarding and evidence handoff, see the
+<a href="verification.md">feature verification workflow</a>. The checkout-local
+<code>skills/ui-eval-verify/SKILL.md</code> reuses existing CLI commands; it does not add
+runtime configuration or replace the checks below.</p>
 <h2>Prerequisites</h2>
 <ul>
 <li>Node.js satisfying <code>package.json#engines</code>.</li>

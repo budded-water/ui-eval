@@ -8,6 +8,10 @@ Its policy uses the compact `web-default` profile and its smoke checkpoint
 requests screenshot, console, network, and crash evidence. Add structured
 channels or trace explicitly for geometry or additional diagnosis.
 
+The [feature map](ui-eval/feature-map.md) connects the home journey to its
+existing assertions and records coverage gaps. It is a review aid, not an
+additional runtime input. See the [verification workflow](../../docs/verification.md).
+
 From the repository root:
 
 ```bash
