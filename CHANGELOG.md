@@ -8,6 +8,16 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Playwright owned-resource cleanup shares its existing five-second deadline
+  across route removal and context/browser closure, avoiding premature failure
+  when an individual close needs unused time from an earlier phase. Both close
+  promises must still fulfill; failures retain the incomplete-cleanup code and
+  report withholding, with safe per-resource rejection/timeout diagnostics.
+  Monotonic settlement checks reject late fulfillment after an event-loop stall,
+  even when overdue driver callbacks run before overdue timeout callbacks.
+- Real-browser conformance test files run serially to reduce Chromium resource
+  contention during lifecycle checks, without reducing assertions or extending
+  cleanup deadlines.
 - Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
   from infrastructure exceptions and missing/unknown error evidence, even when
   Maestro returns exit 1 with a FAILED assertion command.

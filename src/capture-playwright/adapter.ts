@@ -80,19 +80,29 @@ const SECURITY_BOUNDARY_FAILURE_CODES = new Set([
   "unsupported-popup-created",
 ])
 
+type ResourceCloseStatus = "fulfilled" | "rejected" | "timed-out"
+
+function observeResourceClose(
+  operation: () => Promise<unknown> | undefined,
+  deadline?: number,
+): Promise<ResourceCloseStatus> {
+  return Promise.resolve().then(operation).then(
+    () => deadline === undefined || performance.now() <= deadline
+      ? "fulfilled"
+      : "timed-out",
+    () => "rejected",
+  )
+}
+
 async function settleResourceClose(
-  operation: Promise<unknown> | undefined,
+  operation: Promise<ResourceCloseStatus>,
   timeoutMs: number,
-): Promise<boolean> {
-  if (!operation) return true
+): Promise<ResourceCloseStatus> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const settled = await Promise.race([
-    operation.then(
-      () => true,
-      () => false,
-    ),
-    new Promise<false>((resolve) => {
-      timer = setTimeout(() => resolve(false), timeoutMs)
+    operation,
+    new Promise<"timed-out">((resolve) => {
+      timer = setTimeout(() => resolve("timed-out"), timeoutMs)
     }),
   ])
   if (timer) clearTimeout(timer)
@@ -107,14 +117,31 @@ export async function closePlaywrightResources(
   timeoutMs = PLAYWRIGHT_RESOURCE_CLOSE_TIMEOUT_MS,
 ): Promise<void> {
   const operationTimeoutMs = Math.max(1, Math.floor(timeoutMs / 3))
+  const deadline = performance.now() + timeoutMs
+  const remainingMs = () => Math.max(0, deadline - performance.now())
   await settleResourceClose(
-    browserContext?.unrouteAll({ behavior: "ignoreErrors" }),
-    operationTimeoutMs,
+    observeResourceClose(() => browserContext?.unrouteAll({ behavior: "ignoreErrors" })),
+    Math.min(operationTimeoutMs, remainingMs()),
   )
-  const contextClosed = await settleResourceClose(browserContext?.close(), operationTimeoutMs)
-  const browserClosed = await settleResourceClose(browser?.close(), operationTimeoutMs)
-  if (!contextClosed || !browserClosed) {
-    throw new IncompleteCleanupError("Owned browser cleanup did not settle successfully")
+  // Observe settlement against the monotonic deadline when it happens. An
+  // overdue driver callback can run before an overdue timeout callback after
+  // an event-loop stall; winning a Promise.race is not proof of timely closure.
+  const contextClosing = observeResourceClose(() => browserContext?.close(), deadline)
+  // This wait gives the context a head start, not a separate failure deadline.
+  // Browser shutdown may unblock a pending context close. Both promises still
+  // need to fulfill before the shared deadline; disconnect alone is not proof.
+  await settleResourceClose(contextClosing, Math.min(operationTimeoutMs, remainingMs()))
+  const browserClosing = observeResourceClose(() => browser?.close(), deadline)
+  const [contextClosed, browserClosed] = await Promise.all([
+    settleResourceClose(contextClosing, remainingMs()),
+    settleResourceClose(browserClosing, remainingMs()),
+  ])
+  if (contextClosed !== "fulfilled" || browserClosed !== "fulfilled") {
+    // Fixed status labels retain useful diagnostics without exposing driver
+    // exceptions, which can contain candidate URLs or authentication state.
+    throw new IncompleteCleanupError(
+      `Owned browser cleanup incomplete (context: ${contextClosed}, browser: ${browserClosed})`,
+    )
   }
 }
 
@@ -2326,7 +2353,7 @@ export async function captureWebScenario(
     if (drainTimer) clearTimeout(drainTimer)
     if (!routesDrained) {
       await settleResourceClose(
-        browserContext.unrouteAll({ behavior: "ignoreErrors" }),
+        observeResourceClose(() => browserContext?.unrouteAll({ behavior: "ignoreErrors" })),
         1_000,
       )
     }
