@@ -163,6 +163,8 @@ isolation and an outer job deadline remain necessary for those failure modes.
 This budget handling does not guarantee that host scheduling or browser
 transport failures will disappear; cleanup status labels distinguish rejected
 and timed-out context/browser closes without exposing raw driver messages.
+Late observed fulfillment fails the cleanup deadline even if event-loop stalls
+cause a driver completion callback to run before the overdue timeout callback.
 
 Potential sources of variation remain:
 

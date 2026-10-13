@@ -92,7 +92,10 @@ function context(artifactStore: {
 }
 
 describe("owned Playwright cleanup", () => {
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
 
   it("uses spare cleanup time for a slow browser close", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
@@ -150,6 +153,27 @@ describe("owned Playwright cleanup", () => {
       message: expect.stringContaining("browser: timed-out"),
     })
     expect(performance.now()).toBe(90)
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("rejects late fulfillment when stalled scheduling runs close callbacks before the deadline timer", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+    const browser = { close: vi.fn(() => delay(20)) }
+    const closing = closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => delay(60),
+    } as never, browser as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(45)
+    // After an event-loop stall, earlier close timers can run before the
+    // deadline timer even though monotonic elapsed time exceeds the budget.
+    vi.spyOn(performance, "now").mockReturnValue(145)
+    await vi.advanceTimersByTimeAsync(45)
+    expect(await result).toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: "Owned browser cleanup incomplete (context: timed-out, browser: timed-out)",
+    })
     expect(browser.close).toHaveBeenCalledOnce()
   })
 
