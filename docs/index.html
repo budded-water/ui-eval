@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8">
+  <meta name="source-sha256" content="c6668d6e6431517879dd4488be6b57cd1f68dc36d808440335ca0576899ef6ea">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -58,7 +58,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8</footer>
+        <footer>Source set SHA-256: c6668d6e6431517879dd4488be6b57cd1f68dc36d808440335ca0576899ef6ea</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1131,9 +1131,16 @@ long-lived development-server RSC/HMR requests from blocking finalization while
 still allowing an in-flight origin preflight to settle before context closure.
 Abort cleanup removes the same routes with close-race errors ignored, then
 closes only the owned context and browser.
-Context and browser close must both complete successfully within their bounded
-waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
-and blocks the Agent; successful route teardown alone is not proof of closure.</p>
+Route removal and owned context/browser closure share a five-second cleanup
+deadline. Route removal and the initial context wait each use at most one third
+of that budget; unused time remains available for closure. Browser shutdown is
+attempted even if context close is still pending or has rejected. Both close
+promises must fulfill before the shared deadline; a context close that finishes
+during browser shutdown can satisfy that requirement. Rejection or timeout is
+incomplete cleanup, withholds final run reports, and blocks the Agent;
+successful route teardown or browser disconnection alone is not proof of
+closure. Cleanup errors identify context/browser completion with fixed status
+labels, without including raw driver exceptions.</p>
 <p>Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.</p>
 <h2>CAS sensitivity and aliases</h2>
 <p>The adapter&#39;s <code>ArtifactRef.sensitivity</code> is an input hint, not an authority. The presentation boundary applies an exhaustive minimum by evidence channel:</p>
@@ -2158,12 +2165,18 @@ window. Long-lived development-server RSC/HMR requests are then torn down with
 the owned browser context. Abort cleanup instead removes routes with close-race
 errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
-Context and browser close still require successful completion. A close failure
+The route-removal/context/browser cleanup sequence shares a five-second
+deadline. A slow close can use time left by earlier operations; browser shutdown
+is attempted after a bounded initial context wait. Both close promises still
+require successful completion within that shared deadline. A close failure
 or expired capture cancellation grace raises <code>OWNED_RESOURCE_CLEANUP_INCOMPLETE</code>
 and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
 is not proof of resource cleanup. This fail-closed result cannot itself force an
 unresponsive browser transport or escaped process to terminate; stronger OS
-isolation and an outer job deadline remain necessary for those failure modes.</p>
+isolation and an outer job deadline remain necessary for those failure modes.
+This budget handling does not guarantee that host scheduling or browser
+transport failures will disappear; cleanup status labels distinguish rejected
+and timed-out context/browser closes without exposing raw driver messages.</p>
 <p>Potential sources of variation remain:</p>
 <ul>
 <li>remote data and assets not fixture-backed;</li>

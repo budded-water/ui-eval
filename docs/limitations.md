@@ -151,12 +151,18 @@ window. Long-lived development-server RSC/HMR requests are then torn down with
 the owned browser context. Abort cleanup instead removes routes with close-race
 errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
-Context and browser close still require successful completion. A close failure
+The route-removal/context/browser cleanup sequence shares a five-second
+deadline. A slow close can use time left by earlier operations; browser shutdown
+is attempted after a bounded initial context wait. Both close promises still
+require successful completion within that shared deadline. A close failure
 or expired capture cancellation grace raises `OWNED_RESOURCE_CLEANUP_INCOMPLETE`
 and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
 is not proof of resource cleanup. This fail-closed result cannot itself force an
 unresponsive browser transport or escaped process to terminate; stronger OS
 isolation and an outer job deadline remain necessary for those failure modes.
+This budget handling does not guarantee that host scheduling or browser
+transport failures will disappear; cleanup status labels distinguish rejected
+and timed-out context/browser closes without exposing raw driver messages.
 
 Potential sources of variation remain:
 

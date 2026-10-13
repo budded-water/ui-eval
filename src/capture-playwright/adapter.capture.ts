@@ -120,6 +120,26 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
     }
   })
 
+  it("accepts slow owned Chromium shutdown within the shared cleanup deadline", async () => {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+      await page.setContent("<p>Synthetic delayed shutdown fixture</p>")
+      await closePlaywrightResources(context, {
+        close: async () => {
+          // Model a slow transport without delaying or changing candidate work.
+          await new Promise<void>((resolve) => setTimeout(resolve, 2_000))
+          await browser.close()
+        },
+      })
+      expect(page.isClosed()).toBe(true)
+      expect(browser.isConnected()).toBe(false)
+    } finally {
+      await browser.close()
+    }
+  })
+
   let server: Server | undefined
   let baseUrl: string
   let artifactRoot: string | undefined
