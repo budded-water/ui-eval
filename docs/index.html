@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8">
+  <meta name="source-sha256" content="a879127259d35d019cc2038ff6daa1514a1f7ff838c2e37022812a6b36ec3cb6">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -58,7 +58,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 9290cf4a5f28d19303c855489d468255a5047f5868017553d179ea6f4f98d9e8</footer>
+        <footer>Source set SHA-256: a879127259d35d019cc2038ff6daa1514a1f7ff838c2e37022812a6b36ec3cb6</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -921,6 +921,12 @@ are checked, reads are bounded, output rejects symlinks, and owned-driver cleanu
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
 candidate project&#39;s responsibility; the pilot is not a network or OS sandbox.
+Bounded literal text entry/erasure and fixed-duration
+directional swipes are allowed data-only interactions. Expression templates,
+scripts, arbitrary coordinates and optional commands remain rejected. Literal
+input and resulting field state can appear in plans, raw logs and screenshots;
+use synthetic values only. Candidate setup must prevent real business writes;
+the engine cannot identify secrets or enforce backend isolation.
 The trusted project&#39;s optional <code>restartApp</code> policy is bound to observed launch
 metadata. Omitted values restart; <code>false</code> reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
@@ -1133,7 +1139,12 @@ Abort cleanup removes the same routes with close-race errors ignored, then
 closes only the owned context and browser.
 Context and browser close must both complete successfully within their bounded
 waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
-and blocks the Agent; successful route teardown alone is not proof of closure.</p>
+and blocks the Agent; successful route teardown alone is not proof of closure.
+Route removal has a bounded slice of the cleanup budget; context and browser
+closure share the remaining total deadline. Unused time from earlier operations
+is available to later closure, without extending the overall deadline. Diagnostic
+messages distinguish rejected and timed-out closure without exposing transport
+error contents.</p>
 <p>Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.</p>
 <h2>CAS sensitivity and aliases</h2>
 <p>The adapter&#39;s <code>ArtifactRef.sensitivity</code> is an input hint, not an authority. The presentation boundary applies an exhaustive minimum by evidence channel:</p>
@@ -1906,9 +1917,21 @@ credentials or isolate backend calls.</p>
 <pre><code class="language-sh">bun run ui-eval native-pilot doctor --project-root /path/to/app --device &lt;uuid&gt;
 bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device &lt;uuid&gt; --format json
 </code></pre>
-<p>Steps are limited to tap, visible/hidden assertions and screenshots. Selectors
+<p>Steps support tap, literal <code>input-text</code> (1–512 characters without line breaks or
+expression templates), bounded <code>erase-text</code> (1–512 characters),
+and a single <code>swipe</code> in UP/DOWN/LEFT/RIGHT at a fixed 400 ms duration, optionally
+starting from an ID/text selector, plus visible/hidden assertions and screenshots.
+Input targets the currently focused field; candidate scenarios must focus it first
+and assert the resulting state afterward. Gestures and text entry are interactions,
+not assertions. Swipes do not certify geometry or successful scrolling. Selectors
 are Maestro ID/text regular expressions. Expression templates, scripts, text
-input and arbitrary driver commands are rejected. Every screenshot must
+substitution and arbitrary driver commands are rejected. Use only synthetic text:
+literal input is persisted in scenario plans and raw command evidence without
+redaction. Do not place real credentials or personal data in scenario files.
+Keyboard dismissal remains candidate-owned: use the App&#39;s explicit dismissal
+control or supported outside tap. Generic driver keyboard dismissal can fail on
+iOS numeric inputs and is not an authored action. Inspect keyboard screenshots.
+Every screenshot must
 immediately follow an assertion. Generated flows stop/relaunch the app without
 clearing its state by default. An explicit project <code>restartApp: false</code> reuses an
 already running App instead; candidate setup then owns startup readiness and
@@ -1972,7 +1995,11 @@ summary publication and cannot establish completion.</p>
 <p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
 <p>Native-pilot App reuse (<code>restartApp: false</code>) preserves existing navigation and
 session state. Candidate setup must make that state ready; an interaction pass
-does not establish a fresh launch or isolated account/backend state.</p>
+does not establish a fresh launch or isolated account/backend state.
+Native literal text entry/erasure and directional swipes
+require explicit follow-up assertions; command completion alone does not prove
+field validity, keyboard geometry or scroll reachability. Input is unredacted
+and must be synthetic. The pilot still has no native runtime/network/design gate.</p>
 <h2>Support matrix</h2>
 <table>
 <thead>
@@ -2159,6 +2186,9 @@ the owned browser context. Abort cleanup instead removes routes with close-race
 errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
 Context and browser close still require successful completion. A close failure
+or timeout reports the affected phase and outcome. Close operations share the
+remaining cleanup deadline rather than receiving fixed equal timeout slices.
+The overall cleanup budget is unchanged. A close failure
 or expired capture cancellation grace raises <code>OWNED_RESOURCE_CLEANUP_INCOMPLETE</code>
 and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
 is not proof of resource cleanup. This fail-closed result cannot itself force an

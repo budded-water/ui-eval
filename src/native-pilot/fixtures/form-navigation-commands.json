@@ -1,0 +1,8 @@
+[
+  { "inputTextCommand": { "text": "123", "optional": false } },
+  { "eraseTextCommand": { "charactersToErase": 1, "optional": false } },
+  { "swipeCommand": { "direction": "LEFT", "elementSelector": { "textRegex": "paged-grid", "optional": false }, "duration": 400, "optional": false } },
+  { "swipeCommand": { "direction": "RIGHT", "elementSelector": { "textRegex": "paged-grid", "optional": false }, "duration": 400, "optional": false } },
+  { "swipeCommand": { "direction": "UP", "duration": 400, "optional": false } },
+  { "swipeCommand": { "direction": "DOWN", "duration": 400, "optional": false } }
+]

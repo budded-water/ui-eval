@@ -27,6 +27,12 @@ are checked, reads are bounded, output rejects symlinks, and owned-driver cleanu
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
 candidate project's responsibility; the pilot is not a network or OS sandbox.
+Bounded literal text entry/erasure and fixed-duration
+directional swipes are allowed data-only interactions. Expression templates,
+scripts, arbitrary coordinates and optional commands remain rejected. Literal
+input and resulting field state can appear in plans, raw logs and screenshots;
+use synthetic values only. Candidate setup must prevent real business writes;
+the engine cannot identify secrets or enforce backend isolation.
 The trusted project's optional `restartApp` policy is bound to observed launch
 metadata. Omitted values restart; `false` reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
@@ -274,6 +280,11 @@ closes only the owned context and browser.
 Context and browser close must both complete successfully within their bounded
 waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
 and blocks the Agent; successful route teardown alone is not proof of closure.
+Route removal has a bounded slice of the cleanup budget; context and browser
+closure share the remaining total deadline. Unused time from earlier operations
+is available to later closure, without extending the overall deadline. Diagnostic
+messages distinguish rejected and timed-out closure without exposing transport
+error contents.
 
 Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.
 

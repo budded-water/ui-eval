@@ -6,6 +6,11 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+- Browser shutdown shares the remaining cleanup deadline across context and
+  browser close instead of discarding unused timeout slices. Rejected and
+  timed-out close phases are identified without transport error contents;
+  unsuccessful closure still blocks acceptance.
+
 ### Fixed
 
 - Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
@@ -18,6 +23,10 @@ The source repository is public, but the project has no package release or confi
   timer. Its cancellation-cleanup deadline and evidence assertions are unchanged.
 
 ### Added
+
+- Experimental native pilot supports bounded literal text entry/erasure and
+  directional swipes, with exact command evidence binding. These
+  interactions do not replace visibility assertions or establish release readiness.
 
 - System design overview with Mermaid diagrams for execution modes, the Web
   evidence pipeline and complete integration acceptance, including the separate
