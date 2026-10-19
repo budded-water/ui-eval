@@ -4,6 +4,7 @@ import { resolve } from "node:path"
 import { canonicalDigest } from "../contracts/canonical-json"
 import { collectSourceRevision } from "../orchestrator/identity"
 import { runCommand } from "../runtime/command"
+import { hasIncompleteCleanup } from "../runtime/cleanup"
 import { loadNativePilotProject, loadNativePilotScenario } from "./config"
 import { compileNativePilotFlow } from "./flow"
 import { findNativeCommandFile, inspectNativeCommands, nativeScreenshots, readNativeEvidence } from "./evidence"
@@ -84,6 +85,7 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
       "This experimental result does not establish release readiness; Android and Harmony are unsupported.",
     ],
   }
+  let cleanupFailure: unknown
   try {
     const driver = await (dependencies.command ?? runCommand)("maestro", [
       "--device", device.id, "test", resolve(directory, "flow.yaml"),
@@ -108,7 +110,8 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
       result.status = "inconclusive"
       result.reason = "Candidate source changed during native capture."
     }
-  } catch {
+  } catch (error) {
+    if (hasIncompleteCleanup(error)) cleanupFailure = error
     result.status = "inconclusive"
     result.reason = options.signal?.aborted ? "Native capture was interrupted." : "Native capture or required evidence was unavailable or invalid."
   }
@@ -118,15 +121,21 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
   }
   const interruptedBeforePublication = options.signal?.aborted === true
   if (interruptedBeforePublication) markInterrupted()
-  await writeNativePilotReport(directory, result)
-  if (options.signal?.aborted && !interruptedBeforePublication) {
-    markInterrupted()
-    // Remove only our completed projections, then recreate with exclusive writes;
-    // never follow a replaced/symlinked report destination when updating it.
-    await unlink(resolve(directory, "report.json"))
-    await unlink(resolve(directory, "report.html"))
+  try {
     await writeNativePilotReport(directory, result)
+    if (options.signal?.aborted && !interruptedBeforePublication) {
+      markInterrupted()
+      // Remove only our completed projections, then recreate with exclusive writes;
+      // never follow a replaced/symlinked report destination when updating it.
+      await unlink(resolve(directory, "report.json"))
+      await unlink(resolve(directory, "report.html"))
+      await writeNativePilotReport(directory, result)
+    }
+  } catch (error) {
+    if (cleanupFailure) throw new AggregateError([cleanupFailure, error], "Native cleanup and report publication failed")
+    throw error
   }
+  if (cleanupFailure) throw cleanupFailure
   options.signal?.throwIfAborted()
   return { result, reportPath: resolve(directory, "report.json"), htmlPath: resolve(directory, "report.html") }
 }

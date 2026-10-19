@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="a879127259d35d019cc2038ff6daa1514a1f7ff838c2e37022812a6b36ec3cb6">
+  <meta name="source-sha256" content="3c5111f3657b78530d7b29ea9c8487a2831b9f7791158bab21a1f56fa31ceaae">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -58,7 +58,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: a879127259d35d019cc2038ff6daa1514a1f7ff838c2e37022812a6b36ec3cb6</footer>
+        <footer>Source set SHA-256: 3c5111f3657b78530d7b29ea9c8487a2831b9f7791158bab21a1f56fa31ceaae</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -97,11 +97,13 @@ orchestration modes, not an automatic nested sequence.</p>
   Direct --&gt; Web
   Integration --&gt;|Web suite| Web
   Integration --&gt;|WeChat suite| WeChat
+  Integration --&gt;|native suite and optional owned session| Native
   Agent --&gt; Web
   Pilot --&gt; WeChat
   NativeEntry --&gt; Native
   WebReports --&gt;|integration invocation| IntegrateResult
   WeChatReports --&gt;|integration invocation| IntegrateResult
+  NativeReports --&gt;|integration invocation| IntegrateResult
   WebReports --&gt;|Agent iteration| AgentDecision
   AgentDecision --&gt;|eligible repair within audited scope and budgets| Repair[&quot;Candidate-owned repair command&quot;]
   Repair --&gt;|recheck and reevaluate| Agent
@@ -114,8 +116,8 @@ orchestration modes, not an automatic nested sequence.</p>
 </code></pre>
 <p><code>init</code> produces authoring scaffolding and <code>doctor</code> checks prerequisites. Neither
 substitutes for the evaluation or acceptance paths shown above.</p>
-<p>The iOS Simulator pilot is a separate executable path. It does not extend the
-Web pipeline or Agent, and <code>integrate</code> does not register it. Its interaction/PNG
+<p>The iOS Simulator pilot has a separate executable path and can also be selected
+by a native <code>integrate</code> suite. It does not extend the Web pipeline or Agent. Its interaction/PNG
 evidence does not certify installed binary provenance, runtime health or design
 conformance; see <a href="native-pilot.md">Experimental native evidence pilot</a>.</p>
 <h2>Web: how one scenario becomes evidence and a decision</h2>
@@ -256,11 +258,11 @@ responsibility; see <a href="security-model.md">Security model</a>.</p>
 </tr>
 <tr>
 <td>iOS Simulator pilot</td>
-<td>Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract. It is independent of Web policies, Agent and Integration; installed binary/build-to-source provenance and release assurance remain unproven.</td>
+<td>Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract, optionally aggregated by Integration. It is independent of Web policies and Agent; installed binary/build-to-source provenance and release assurance remain unproven.</td>
 </tr>
 <tr>
 <td><code>integrate</code></td>
-<td>Every declared scenario/check plus evidence and identity verification for a Web or experimental WeChat suite.</td>
+<td>Every declared scenario/check plus evidence and identity verification for a Web, experimental WeChat or native-pilot suite, including declared native session cleanup.</td>
 </tr>
 <tr>
 <td><code>agent</code></td>
@@ -392,7 +394,7 @@ candidate Git state ────────────────────
 </tr>
 <tr>
 <td><code>src/integration/</code></td>
-<td>Engine pin checks, once-per-invocation prepare, mandatory Web/WeChat suites and external checks, stage timing, and canonical acceptance JSON/HTML.</td>
+<td>Engine pin checks, once-per-invocation prepare, mandatory Web/WeChat/native-pilot suites, optional owned native session, external checks, stage timing, and canonical acceptance JSON/HTML.</td>
 </tr>
 <tr>
 <td><code>src/index.ts</code></td>
@@ -574,8 +576,12 @@ network-profile, or secret providers;</li>
         <h1>Contracts and Canonical Truth</h1>
 <p>The additive <a href="integration-runner.md">integration runner</a> has generated engine-pin,
 suite and result schemas derived from <code>src/integration/</code>. Its acceptance record
-adds reviewed checks to original Web/WeChat observations without changing their
-schemas, evaluator versions, store IDs or raw dispositions.</p>
+adds reviewed checks to original Web/WeChat/native-pilot observations without changing their
+schemas, evaluator versions, store IDs or raw dispositions.
+Native suite sessions use separate generated <code>integration-session*</code> schemas.
+Integration results optionally include the observed source object bound by its
+digest; native results additionally identify the selected device. Session
+protocol and evidence are acceptance inputs, never release authorization.</p>
 <p>The separate <a href="wechat-pilot.md">WeChat DevTools pilot</a> exports its project,
 scenario and result schemas through <code>wechatPilot</code>. These do not change the Web
 authoring schemas or enable the forward iOS/Android contracts.</p>
@@ -914,6 +920,21 @@ reject escapes/symlink ancestors; HTML escapes data and links local reports. Bot
 summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.</p>
+<p>Native integration verifies exact device/App/project/scenario, source and plan,
+raw command metadata and CRC-decoded driver/copied PNGs, then rechecks the
+underlying byte digests after external checks. The first trusted native evaluator
+invocation supplies the driver-exit observation; persisted files alone are not
+an independent replay of that exit. Corrupt or changed evidence remains
+inconclusive. Source observations do not attest the installed binary or Metro.</p>
+<p>Optional native session argv is reviewed executable configuration. One owned
+long-lived process exchanges bounded JSON lines with an opaque session ID over
+private stdio. Readiness does not supply new environment or execution scope.
+Unexpected exit aborts evaluation; fresh bounded teardown runs after cancellation.
+Success requires the matching stopped acknowledgement, exit zero and owned
+process settlement. The candidate is responsible for App/fixture cleanup and
+must keep children in its process group. The protocol is not proof against a
+malicious session or escaped processes. Session stdout/stderr is never copied
+into public summaries; startup/cleanup failures stay infrastructure outcomes.</p>
 <h2>iOS Simulator pilot boundary</h2>
 <p>The separate <a href="native-pilot.md">native pilot</a> has a narrower evidence boundary:
 reviewed JSON generates data-only Maestro commands, source and command bindings
@@ -1652,7 +1673,7 @@ as scales the stylesheet still does not declare.</p>
         <div class="source"><span>Integration acceptance runner</span><code>docs/integration-runner.md</code></div>
         <h1>Integration acceptance runner</h1>
 <p><code>ui-eval integrate &lt;suite&gt;</code> verifies the executing engine pin, prepares a candidate
-once, runs required Web or experimental WeChat scenarios and external checks,
+once, runs required Web, experimental WeChat or iOS Simulator scenarios and external checks,
 and publishes complete acceptance JSON/HTML. It does not repair source. Existing
 <code>evaluate</code>, <code>agent</code> and project wrappers retain their behavior.</p>
 <h2>Engine source pin</h2>
@@ -1710,9 +1731,46 @@ and report validation, not separately measured subphases.</p>
 and <code>reference</code>. Raw visual review stays <code>needs-review</code>; this command does not
 apply Agent visual ceilings or waive review. Remote deployment/fixture rules
 remain enforced. WeChat suites may declare <code>driver</code>, but reject Web-only options.
-Their runtime/network/design/real-device gaps stay explicit. Native iOS is not
-registered by the integration runner and is rejected rather than emulated. The
-separate <a href="native-pilot.md">iOS Simulator pilot</a> has its own execution/report path.</p>
+Their runtime/network/design/real-device gaps stay explicit. <code>native-pilot</code>
+suites use the <a href="native-pilot.md">iOS Simulator pilot</a> and require an explicit
+<code>--device &lt;uuid&gt;</code> (or library <code>deviceId</code>). Device selection is invocation input,
+not a persisted suite UUID. Other adapters reject that option. Native suites
+reject Web-only options and <code>driver</code>; they retain the pilot&#39;s existing report
+and scope, including the lack of installed-binary/Metro attestation.</p>
+<h2>Native suite sessions</h2>
+<p>A native suite can declare an optional <code>session</code> with trusted <code>command</code>, <code>args</code>,
+<code>startupTimeoutMs</code> and <code>cleanupTimeoutMs</code>. The schema bounds startup to five
+minutes and cleanup to one minute. The session is one owned long-lived process,
+started after prepare and stopped after checks in a cleanup <code>finally</code>, including
+cancellation. It can own candidate-specific Metro, fixtures and App readiness.
+The engine does not import those implementations or inject business environment
+keys. A suite without a session relies on an externally prepared simulator/App.</p>
+<p>The stdio protocol is <code>uieval.io/integration-session-v1</code>; generated
+<a href="../schemas/integration-session-start.schema.json"><code>start</code></a>,
+<a href="../schemas/integration-session-ready.schema.json"><code>ready</code></a>,
+<a href="../schemas/integration-session-stop.schema.json"><code>stop</code></a> and
+<a href="../schemas/integration-session-stopped.schema.json"><code>stopped</code></a> schemas are
+canonical. Engine stdin supplies a start context with an opaque <code>sessionId</code>,
+execution/project/suite identity, integration directory and selected device.
+The session replies with one matching <code>ready</code> JSON line. On the matching <code>stop</code>
+request it cleans resources, replies with matching <code>stopped</code> and status <code>pass</code>
+or <code>inconclusive</code>, then exits. Stdout is exclusively bounded protocol JSON;
+raw stderr is bounded and withheld. A session cannot inject arbitrary engine
+environment or change mandatory scenarios.</p>
+<p>Pass requires a successful stopped acknowledgement, exit zero and settled owned
+process cleanup. Forced termination alone does not establish App cleanup or
+fixture acceptance. Unexpected session death interrupts active evaluation.
+Children must remain in the owned process group; deliberately escaped processes
+need external OS isolation. Cleanup uses a fresh bounded budget after abort;
+the <code>integrate</code> CLI allows up to 90 seconds for overall signal cleanup before
+forcing the conventional signal exit. A second signal still forces exit.</p>
+<p>The native order is engine/source checks → prepare → session start → before
+checks → scenarios → after checks → session stop → evidence/source/engine
+verification. Unsettled driver cleanup prevents later ordinary commands while
+still attempting session teardown. Candidate session acknowledgements are
+trusted assertions, not a security sandbox or independent device attestation.</p>
+<pre><code class="language-sh">node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate --device &lt;uuid&gt; --format json
+</code></pre>
 <h2>Results and migration</h2>
 <p><code>.ui-eval/integration/&lt;execution-id&gt;/</code> contains sealed <code>suite.json</code>, canonical
 <code>summary.json</code> and default human <code>summary.html</code>. HTML derives from the validated
@@ -1724,7 +1782,16 @@ objects. Verification references existing sealed inputs without recreating missi
 artifacts. Original report digests and underlying evidence are rechecked after
 external checks. Modified, missing or corrupt evidence cannot substantiate
 completion. WeChat passes also require declared steps/assertions and digest-verified
-PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.</p>
+PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.
+Native evidence also binds the exact device, App ID, pinned Maestro, compiled
+flow and source; it rechecks command metadata and both driver/output PNG copies.
+An additional evidence digest detects changes to those underlying bytes after
+checks. It does not retroactively attest driver exit from disk: the first
+evaluation and its returned canonical report remain part of the trust boundary.
+Native summaries record <code>deviceId</code>; newly produced summaries include observed
+<code>source</code> together with its canonical <code>sourceDigest</code>. These are additive alpha
+contract fields; old Web/WeChat records without <code>source</code> remain valid. Native
+support requires the matching reviewed engine pin, not a schema-only upgrade.</p>
 <p>Exit codes are <code>0</code> pass, <code>1</code> candidate failure, <code>2</code> configuration/infrastructure/
 inconclusive scope, and <code>3</code> review. Infrastructure and unexecuted mandatory stages
 take precedence. SIGINT/SIGTERM retain <code>130</code>/<code>143</code>: initialized runs attempt both
@@ -1905,15 +1972,19 @@ reviewed scenarios; remote mode does not make mutating production workflows safe
 <p><code>native-pilot</code> is an additive iOS Simulator experiment. It does not extend Web
 <code>evaluate</code>, Agent suites, Web policies or generic native forward contracts.
 Its separate <code>uieval.io/native-pilot-v1</code> result assesses declared interactions and
-screenshot completeness. It is not a release or design-conformance gate.</p>
+screenshot completeness. It is not a release or design-conformance gate.
+The <a href="integration-runner.md">integration runner</a> can aggregate these original
+reports in a mandatory native suite with candidate-owned session startup and
+cleanup. Standalone doctor/evaluate commands retain their behavior.</p>
 <h2>Inputs and execution</h2>
 <p>Candidate repositories own <code>ui-eval/native.json</code> and referenced scenario JSON.
 TypeBox sources in <code>src/native-pilot/config.ts</code> and generated
 <code>schemas/native-pilot-{project,scenario}.schema.json</code> define these inputs.
 Only Maestro <strong>2.9.0</strong> command evidence is currently supported. Prerequisites are
 macOS, Xcode, an explicitly selected booted iOS Simulator and an installed app.
-The engine does not install/reset apps, boot devices, start Metro, supply
-credentials or isolate backend calls.</p>
+The native adapter does not install/reset apps, boot devices, start Metro, supply
+credentials or isolate backend calls. Reviewed integration prepare/session
+commands may perform candidate setup; those commands own that behavior.</p>
 <pre><code class="language-sh">bun run ui-eval native-pilot doctor --project-root /path/to/app --device &lt;uuid&gt;
 bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device &lt;uuid&gt; --format json
 </code></pre>
@@ -1984,13 +2055,19 @@ does not complete the broader native-adapter roadmap milestone.</p>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
-<p>The <a href="integration-runner.md">integration runner</a> aggregates required Web or
-experimental WeChat scenarios with reviewed preparation/checks. It does not
-register native iOS, introduce calibrated scoring, waive review, cache builds
+<p>The <a href="integration-runner.md">integration runner</a> aggregates required Web,
+experimental WeChat or iOS Simulator scenarios with reviewed preparation/checks.
+Native suites can use a candidate-owned session for startup and cleanup. It does not
+introduce calibrated scoring, waive review, cache builds
 across runs or attest dependencies/build output. Stage durations are measured;
 speedup requires candidate launchers to move builds into prepare. Existing
 wrappers migrate explicitly. Forced termination or storage failure can prevent
-summary publication and cannot establish completion.</p>
+summary publication and cannot establish completion.
+Native integration preserves the pilot&#39;s limited evidence: no installed-binary
+or Metro attestation, real-device/store readiness, Android or Harmony support.
+Session ready/stopped messages assert candidate-owned setup and teardown; they
+do not independently prove device state, backend isolation or cleanup of escaped
+processes. The engine performs no framework-specific bootstrap by itself.</p>
 <p>UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.</p>
 <p>This page is part of the product contract. A schema field or future-facing type does not override these runtime limits.</p>
 <p>Native-pilot App reuse (<code>restartApp: false</code>) preserves existing navigation and
@@ -2618,7 +2695,8 @@ consider a hosted multi-project platform
 <h2>Milestone 1: Standalone hardening</h2>
 <p>Current increment: <a href="integration-runner.md">pinned integration suites</a> consolidate
 engine verification, once-per-invocation preparation and complete acceptance
-reporting for Web/WeChat. A synthetic prepared Web verifier checks the built CLI;
+reporting for Web/WeChat and the experimental native pilot, with optional owned
+native sessions. A synthetic prepared Web verifier checks the built CLI;
 consumer migration and wider framework/device compatibility corpora remain work
 to verify separately.</p>
 <p>Goal: make the current public-source modular monolith self-contained and independently verifiable without implying package publication or open-source licensing.</p>

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "sessionId",
+    "executionId",
+    "projectId",
+    "integrationDirectory",
+    "suiteDigest"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/integration-session-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "start",
+      "type": "string"
+    },
+    "sessionId": {
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "type": "string"
+    },
+    "executionId": {
+      "minLength": 1,
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "integrationDirectory": {
+      "minLength": 1,
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "suiteDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "deviceId": {
+      "minLength": 1,
+      "maxLength": 4096,
+      "type": "string"
+    }
+  }
+}

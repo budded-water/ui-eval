@@ -24,13 +24,19 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- `integrate` accepts experimental `native-pilot` suites with explicit simulator
+  selection, strict original report/command/PNG verification and source metadata.
+  Optional candidate-owned sessions remain alive across scenarios and require
+  bounded ready/stop acknowledgement and process cleanup. Native integration
+  preserves existing pilot evidence limits and does not certify store releases.
+
 - Experimental native pilot supports bounded literal text entry/erasure and
   directional swipes, with exact command evidence binding. These
   interactions do not replace visibility assertions or establish release readiness.
 
 - System design overview with Mermaid diagrams for execution modes, the Web
   evidence pipeline and complete integration acceptance, including the separate
-  iOS Simulator pilot and its exclusion from Integration. README, Agent docs and
+  iOS Simulator pilot. README, Agent docs and
   CLI help clarify the existing Agent terminal exit mapping separately from
   Web/integration outcomes; runtime exit behavior is unchanged.
   Real-browser popup assertions accept rejection at either the click or following
@@ -42,8 +48,8 @@ The source repository is public, but the project has no package release or confi
   unsettled cleanup, and candidate/engine drift cannot pass.
 - Generated engine-pin/integration schemas and a synthetic prepared Web built-CLI
   verifier. Existing evaluate/Agent/pilot contracts, exit codes and storage formats
-  remain unchanged. Consumer wrappers migrate explicitly; native iOS is not
-  registered by this runner.
+  remain unchanged. Consumer wrappers migrate explicitly; native iOS support
+  is added through the experimental native-suite extension described above.
 
 - Native-pilot projects may explicitly set `restartApp: false` to reuse an App
   prepared by candidate setup. Omitted values retain stop/relaunch behavior;

@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import { Type, type Static } from "@sinclair/typebox"
 import { Value } from "@sinclair/typebox/value"
 import { containedPath } from "../wechat-pilot/config"
+import { IntegrationSessionSchema } from "./session-protocol"
 
 const strict = { additionalProperties: false }
 const id = Type.String({ pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$" })
@@ -25,11 +26,12 @@ export const IntegrationSuiteSchema = Type.Object({
   kind: Type.Literal("IntegrationSuite"),
   id,
   projectId: id,
-  adapter: Type.Union([Type.Literal("web"), Type.Literal("wechat-pilot")]),
+  adapter: Type.Union([Type.Literal("web"), Type.Literal("wechat-pilot"), Type.Literal("native-pilot")]),
   executionProfile: Type.Optional(id),
   browserChannel: Type.Optional(text),
   driver: Type.Optional(text),
   prepare: Type.Optional(IntegrationCommandSchema),
+  session: Type.Optional(IntegrationSessionSchema),
   checks: Type.Array(Type.Object({
     ...IntegrationCommandSchema.properties,
     id,
@@ -66,6 +68,9 @@ export async function loadIntegrationSuite(projectRoot: string, suite: string) {
   if (input.adapter === "web" ? input.driver !== undefined :
     input.executionProfile !== undefined || input.browserChannel !== undefined || input.scenarios.some((entry) => entry.policy || entry.reference)) {
     throw new Error("Integration options are not supported by the selected adapter")
+  }
+  if ((input.session && input.adapter !== "native-pilot") || (input.adapter === "native-pilot" && input.driver !== undefined)) {
+    throw new Error("Session and native options are not supported by the selected adapter")
   }
   return { projectRoot: root, path: resolve(root, path), value: input }
 }

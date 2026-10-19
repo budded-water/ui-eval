@@ -72,6 +72,12 @@ export { EnginePinSchema, IntegrationSuiteSchema, type EnginePin, type Integrati
 export { verifyEnginePin } from "./integration/engine"
 export { IntegrationResultSchema, assertIntegrationResult, type IntegrationResult } from "./integration/model"
 export {
+  IntegrationSessionSchema, IntegrationSessionStartSchema, IntegrationSessionReadySchema,
+  IntegrationSessionStopSchema, IntegrationSessionStoppedSchema,
+  type IntegrationSession, type IntegrationSessionStart, type IntegrationSessionReady,
+  type IntegrationSessionStop, type IntegrationSessionStopped,
+} from "./integration/session-protocol"
+export {
   LocalArtifactStore,
   RunStore,
   type ArtifactRef as LocalArtifactRef,
