@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process"
 import { stopOwnedProcess } from "./owned-process"
+import { IncompleteCleanupError } from "./cleanup"
 
 export interface CommandResult {
   exitCode: number | null
@@ -38,7 +39,9 @@ export async function runCommand(command: string, args: readonly string[], optio
     let stopping: Promise<void> | undefined
     const cleanup = () => stopping ??= child.pid === undefined
       ? Promise.resolve()
-      : stopOwnedProcess(child, options.stopTimeoutMs)
+      : stopOwnedProcess(child, options.stopTimeoutMs).catch(() => {
+        throw new IncompleteCleanupError("Owned command process cleanup did not settle")
+      })
     const finish = async (exitCode: number | null) => {
       if (finishing) return
       finishing = true

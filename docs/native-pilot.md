@@ -4,6 +4,9 @@
 `evaluate`, Agent suites, Web policies or generic native forward contracts.
 Its separate `uieval.io/native-pilot-v1` result assesses declared interactions and
 screenshot completeness. It is not a release or design-conformance gate.
+The [integration runner](integration-runner.md) can aggregate these original
+reports in a mandatory native suite with candidate-owned session startup and
+cleanup. Standalone doctor/evaluate commands retain their behavior.
 
 ## Inputs and execution
 
@@ -12,8 +15,9 @@ TypeBox sources in `src/native-pilot/config.ts` and generated
 `schemas/native-pilot-{project,scenario}.schema.json` define these inputs.
 Only Maestro **2.9.0** command evidence is currently supported. Prerequisites are
 macOS, Xcode, an explicitly selected booted iOS Simulator and an installed app.
-The engine does not install/reset apps, boot devices, start Metro, supply
-credentials or isolate backend calls.
+The native adapter does not install/reset apps, boot devices, start Metro, supply
+credentials or isolate backend calls. Reviewed integration prepare/session
+commands may perform candidate setup; those commands own that behavior.
 
 ```sh
 bun run ui-eval native-pilot doctor --project-root /path/to/app --device <uuid>

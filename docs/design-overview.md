@@ -39,11 +39,13 @@ flowchart TB
   Direct --> Web
   Integration -->|Web suite| Web
   Integration -->|WeChat suite| WeChat
+  Integration -->|native suite and optional owned session| Native
   Agent --> Web
   Pilot --> WeChat
   NativeEntry --> Native
   WebReports -->|integration invocation| IntegrateResult
   WeChatReports -->|integration invocation| IntegrateResult
+  NativeReports -->|integration invocation| IntegrateResult
   WebReports -->|Agent iteration| AgentDecision
   AgentDecision -->|eligible repair within audited scope and budgets| Repair["Candidate-owned repair command"]
   Repair -->|recheck and reevaluate| Agent
@@ -58,8 +60,8 @@ flowchart TB
 `init` produces authoring scaffolding and `doctor` checks prerequisites. Neither
 substitutes for the evaluation or acceptance paths shown above.
 
-The iOS Simulator pilot is a separate executable path. It does not extend the
-Web pipeline or Agent, and `integrate` does not register it. Its interaction/PNG
+The iOS Simulator pilot has a separate executable path and can also be selected
+by a native `integrate` suite. It does not extend the Web pipeline or Agent. Its interaction/PNG
 evidence does not certify installed binary provenance, runtime health or design
 conformance; see [Experimental native evidence pilot](native-pilot.md).
 
@@ -178,7 +180,7 @@ responsibility; see [Security model](security-model.md).
 | Web `evaluate` | Declared steps/assertions, runtime observations and configured evidence/evaluators across the scenario matrix. Visual comparison is advisory; geometry requires explicit policy configuration. |
 | WeChat pilot | Declared DevTools interactions, assertions and validated PNG checkpoints with state restoration. It has its own contract and does not execute the Web evaluator/policy pipeline or certify real-device rendering. |
 | iOS Simulator pilot | Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract. It is independent of Web policies, Agent and Integration; installed binary/build-to-source provenance and release assurance remain unproven. |
-| `integrate` | Every declared scenario/check plus evidence and identity verification for a Web or experimental WeChat suite. |
+| `integrate` | Every declared scenario/check plus evidence and identity verification for a Web, experimental WeChat or native-pilot suite, including declared native session cleanup. |
 | `agent` | Declared checks, Web scenarios and acceptance dimensions, with an optional bounded repair loop. |
 | Offline design tools | Tailwind CSS token production, token/config drift checks and offline audits. Evaluators consume reviewed sealed configuration, not the design producer itself. |
 | Generic native/design governance forward contracts | Reserved declarations; the separate iOS Simulator pilot does not enable generic native contracts. Online Figma sync, Android and real-device capture are not registered. |

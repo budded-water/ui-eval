@@ -261,13 +261,13 @@ describe("integration runner", () => {
     expect(() => assertIntegrationResult(result)).toThrow("contradicts")
   })
 
-  it("refuses symlinked authoring and unsupported native or adapter options", async () => {
+  it("refuses symlinked authoring and unsupported adapters or options", async () => {
     const root = await project()
     const suitePath = join(root, "ui-eval/integrations/smoke.json")
     await writeFile(join(root, "suite-copy.json"), await readFile(suitePath)); await rm(suitePath); await symlink(join(root, "suite-copy.json"), suitePath)
     await expect(loadIntegrationSuite(root, "smoke")).rejects.toThrow("symlink")
     await rm(suitePath); await writeFile(suitePath, await readFile(join(root, "suite-copy.json")))
-    await update(root, (suite) => { suite.adapter = "native-pilot" })
+    await update(root, (suite) => { suite.adapter = "android-pilot" })
     await expect(loadIntegrationSuite(root, "smoke")).rejects.toThrow("Invalid")
     await update(root, (suite) => { suite.adapter = "web"; suite.driver = "unrelated-driver" })
     await expect(loadIntegrationSuite(root, "smoke")).rejects.toThrow("not supported")

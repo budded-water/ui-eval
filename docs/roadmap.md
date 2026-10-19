@@ -29,7 +29,8 @@ consider a hosted multi-project platform
 
 Current increment: [pinned integration suites](integration-runner.md) consolidate
 engine verification, once-per-invocation preparation and complete acceptance
-reporting for Web/WeChat. A synthetic prepared Web verifier checks the built CLI;
+reporting for Web/WeChat and the experimental native pilot, with optional owned
+native sessions. A synthetic prepared Web verifier checks the built CLI;
 consumer migration and wider framework/device compatibility corpora remain work
 to verify separately.
 

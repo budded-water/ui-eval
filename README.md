@@ -19,7 +19,8 @@ official CLI. It does not extend the Web policy pipeline or real-device coverage
 
 - Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
 - Shared pinned-engine `integrate` suites with once-per-invocation preparation,
-  required Web/WeChat scenarios and checks, stage durations, and synchronized
+  required Web/WeChat/iOS Simulator scenarios and checks, optional owned native
+  sessions, stage durations, and synchronized
   complete-acceptance JSON/HTML. See [Integration runner](docs/integration-runner.md).
 - Strict JSON authoring for project configuration, web scenarios, and evaluation policies.
 - Matrix expansion into sealed, content-digested run plans.
