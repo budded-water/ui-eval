@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="351da9d13cdb3be34a28e973462b94c6bb1c661f6c333556db05524df73b8cc9">
+  <meta name="source-sha256" content="3c5111f3657b78530d7b29ea9c8487a2831b9f7791158bab21a1f56fa31ceaae">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -58,7 +58,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 351da9d13cdb3be34a28e973462b94c6bb1c661f6c333556db05524df73b8cc9</footer>
+        <footer>Source set SHA-256: 3c5111f3657b78530d7b29ea9c8487a2831b9f7791158bab21a1f56fa31ceaae</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -258,7 +258,7 @@ responsibility; see <a href="security-model.md">Security model</a>.</p>
 </tr>
 <tr>
 <td>iOS Simulator pilot</td>
-<td>Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract. It is independent of Web policies, Agent and Integration; installed binary/build-to-source provenance and release assurance remain unproven.</td>
+<td>Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract, optionally aggregated by Integration. It is independent of Web policies and Agent; installed binary/build-to-source provenance and release assurance remain unproven.</td>
 </tr>
 <tr>
 <td><code>integrate</code></td>

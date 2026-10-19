@@ -179,7 +179,7 @@ responsibility; see [Security model](security-model.md).
 | --- | --- |
 | Web `evaluate` | Declared steps/assertions, runtime observations and configured evidence/evaluators across the scenario matrix. Visual comparison is advisory; geometry requires explicit policy configuration. |
 | WeChat pilot | Declared DevTools interactions, assertions and validated PNG checkpoints with state restoration. It has its own contract and does not execute the Web evaluator/policy pipeline or certify real-device rendering. |
-| iOS Simulator pilot | Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract. It is independent of Web policies, Agent and Integration; installed binary/build-to-source provenance and release assurance remain unproven. |
+| iOS Simulator pilot | Restricted Maestro interactions, bound command evidence and validated PNG checkpoints under its own contract, optionally aggregated by Integration. It is independent of Web policies and Agent; installed binary/build-to-source provenance and release assurance remain unproven. |
 | `integrate` | Every declared scenario/check plus evidence and identity verification for a Web, experimental WeChat or native-pilot suite, including declared native session cleanup. |
 | `agent` | Declared checks, Web scenarios and acceptance dimensions, with an optional bounded repair loop. |
 | Offline design tools | Tailwind CSS token production, token/config drift checks and offline audits. Evaluators consume reviewed sealed configuration, not the design producer itself. |
