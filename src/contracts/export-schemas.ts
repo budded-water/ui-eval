@@ -10,6 +10,10 @@ import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-p
 import { WechatPilotResultSchema } from "../wechat-pilot/report"
 import { EnginePinSchema, IntegrationSuiteSchema } from "../integration/config"
 import { IntegrationResultSchema } from "../integration/model"
+import {
+  IntegrationSessionSchema, IntegrationSessionStartSchema, IntegrationSessionReadySchema,
+  IntegrationSessionStopSchema, IntegrationSessionStoppedSchema,
+} from "../integration/session-protocol"
 
 import {
   ProjectConfigSchema,
@@ -36,6 +40,11 @@ const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
   ["engine-pin.schema.json", EnginePinSchema],
   ["integration-suite.schema.json", IntegrationSuiteSchema],
   ["integration-result.schema.json", IntegrationResultSchema],
+  ["integration-session.schema.json", IntegrationSessionSchema],
+  ["integration-session-start.schema.json", IntegrationSessionStartSchema],
+  ["integration-session-ready.schema.json", IntegrationSessionReadySchema],
+  ["integration-session-stop.schema.json", IntegrationSessionStopSchema],
+  ["integration-session-stopped.schema.json", IntegrationSessionStoppedSchema],
   ["native-pilot-project.schema.json", NativePilotProjectSchema],
   ["native-pilot-scenario.schema.json", NativePilotScenarioSchema],
   ["native-pilot-result.schema.json", NativePilotResultSchema],

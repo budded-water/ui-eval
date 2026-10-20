@@ -14,6 +14,9 @@ export const NativePilotScenarioSchema = Type.Object({
   scenarioId: id,
   steps: Type.Array(Type.Union([
     Type.Object({ action: Type.Literal("tap"), selector }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("input-text"), text: Type.String({ minLength: 1, maxLength: 512, pattern: "^(?![\\s\\S]*\\$\\{)[^\\r\\n]+$" }) }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("erase-text"), characters: Type.Integer({ minimum: 1, maximum: 512 }) }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("swipe"), direction: Type.Union([Type.Literal("UP"), Type.Literal("DOWN"), Type.Literal("LEFT"), Type.Literal("RIGHT")]), selector: Type.Optional(selector) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-visible"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-hidden"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("screenshot"), checkpointId: id }, { additionalProperties: false }),

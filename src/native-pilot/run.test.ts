@@ -10,6 +10,7 @@ import { inspectNativeCommands, findNativeCommandFile } from "./evidence"
 import { compileNativePilotFlow } from "./flow"
 import type { CommandResult } from "../runtime/command"
 import type { runCommand } from "../runtime/command"
+import { hasIncompleteCleanup, IncompleteCleanupError } from "../runtime/cleanup"
 
 const deviceId = "11111111-1111-1111-1111-111111111111"
 const project: NativePilotProject = { apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotProject", projectId: "test-app", platform: "ios-simulator", appId: "test.app", maestroVersion: "2.9.0", timeoutMs: 1000, scenarios: { home: "ui-eval/home.json" } }
@@ -65,6 +66,32 @@ function driver(mode: "pass" | "missing-png" | "bad-png" | "failed" | "assertion
 }
 
 describe("native pilot evidence acceptance", () => {
+  it("publishes inconclusive projections then propagates incomplete owned cleanup", async () => {
+    const root = await candidate()
+    const command = driver()
+    const failure = new IncompleteCleanupError("Synthetic driver cleanup did not settle")
+    await expect(evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home" }, {
+      platform, sourceRevision, command: async (binary, args, options) => {
+        if (args.includes("test")) throw failure
+        return command(binary, args, options)
+      },
+    })).rejects.toBe(failure)
+    const runs = resolve(root, ".ui-eval/native-runs")
+    const [directory] = await readdir(runs)
+    expect(JSON.parse(await readFile(resolve(runs, directory, "report.json"), "utf8")).status).toBe("inconclusive")
+    expect(await readFile(resolve(runs, directory, "report.html"), "utf8")).toContain("home: inconclusive")
+  })
+  it("retains incomplete cleanup when publishing its diagnostic report also fails", async () => {
+    const root = await candidate()
+    const command = driver()
+    vi.spyOn(nativeReport, "writeNativePilotReport").mockRejectedValue(new Error("Synthetic unwritable output"))
+    await expect(evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home" }, {
+      platform, sourceRevision, command: async (binary, args, options) => {
+        if (args.includes("test")) throw new IncompleteCleanupError("Synthetic incomplete cleanup")
+        return command(binary, args, options)
+      },
+    })).rejects.toSatisfy(hasIncompleteCleanup)
+  })
   it("publishes synchronized JSON/HTML only after every assertion and PNG is valid", async () => {
     const root = await candidate()
     const run = await evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home" }, { platform, command: driver(), sourceRevision })

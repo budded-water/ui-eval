@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "sessionId"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/integration-session-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "ready",
+      "type": "string"
+    },
+    "sessionId": {
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "type": "string"
+    }
+  }
+}

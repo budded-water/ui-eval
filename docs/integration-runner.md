@@ -1,7 +1,7 @@
 # Integration acceptance runner
 
 `ui-eval integrate <suite>` verifies the executing engine pin, prepares a candidate
-once, runs required Web or experimental WeChat scenarios and external checks,
+once, runs required Web, experimental WeChat or iOS Simulator scenarios and external checks,
 and publishes complete acceptance JSON/HTML. It does not repair source. Existing
 `evaluate`, `agent` and project wrappers retain their behavior.
 
@@ -70,9 +70,53 @@ Web suites may declare `executionProfile`, `browserChannel`, scenario `policy`
 and `reference`. Raw visual review stays `needs-review`; this command does not
 apply Agent visual ceilings or waive review. Remote deployment/fixture rules
 remain enforced. WeChat suites may declare `driver`, but reject Web-only options.
-Their runtime/network/design/real-device gaps stay explicit. Native iOS is not
-registered by the integration runner and is rejected rather than emulated. The
-separate [iOS Simulator pilot](native-pilot.md) has its own execution/report path.
+Their runtime/network/design/real-device gaps stay explicit. `native-pilot`
+suites use the [iOS Simulator pilot](native-pilot.md) and require an explicit
+`--device <uuid>` (or library `deviceId`). Device selection is invocation input,
+not a persisted suite UUID. Other adapters reject that option. Native suites
+reject Web-only options and `driver`; they retain the pilot's existing report
+and scope, including the lack of installed-binary/Metro attestation.
+
+## Native suite sessions
+
+A native suite can declare an optional `session` with trusted `command`, `args`,
+`startupTimeoutMs` and `cleanupTimeoutMs`. The schema bounds startup to five
+minutes and cleanup to one minute. The session is one owned long-lived process,
+started after prepare and stopped after checks in a cleanup `finally`, including
+cancellation. It can own candidate-specific Metro, fixtures and App readiness.
+The engine does not import those implementations or inject business environment
+keys. A suite without a session relies on an externally prepared simulator/App.
+
+The stdio protocol is `uieval.io/integration-session-v1`; generated
+[`start`](../schemas/integration-session-start.schema.json),
+[`ready`](../schemas/integration-session-ready.schema.json),
+[`stop`](../schemas/integration-session-stop.schema.json) and
+[`stopped`](../schemas/integration-session-stopped.schema.json) schemas are
+canonical. Engine stdin supplies a start context with an opaque `sessionId`,
+execution/project/suite identity, integration directory and selected device.
+The session replies with one matching `ready` JSON line. On the matching `stop`
+request it cleans resources, replies with matching `stopped` and status `pass`
+or `inconclusive`, then exits. Stdout is exclusively bounded protocol JSON;
+raw stderr is bounded and withheld. A session cannot inject arbitrary engine
+environment or change mandatory scenarios.
+
+Pass requires a successful stopped acknowledgement, exit zero and settled owned
+process cleanup. Forced termination alone does not establish App cleanup or
+fixture acceptance. Unexpected session death interrupts active evaluation.
+Children must remain in the owned process group; deliberately escaped processes
+need external OS isolation. Cleanup uses a fresh bounded budget after abort;
+the `integrate` CLI allows up to 90 seconds for overall signal cleanup before
+forcing the conventional signal exit. A second signal still forces exit.
+
+The native order is engine/source checks → prepare → session start → before
+checks → scenarios → after checks → session stop → evidence/source/engine
+verification. Unsettled driver cleanup prevents later ordinary commands while
+still attempting session teardown. Candidate session acknowledgements are
+trusted assertions, not a security sandbox or independent device attestation.
+
+```sh
+node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate --device <uuid> --format json
+```
 
 ## Results and migration
 
@@ -87,6 +131,15 @@ artifacts. Original report digests and underlying evidence are rechecked after
 external checks. Modified, missing or corrupt evidence cannot substantiate
 completion. WeChat passes also require declared steps/assertions and digest-verified
 PNGs. Empty, foreign, contradictory or incomplete evidence cannot pass.
+Native evidence also binds the exact device, App ID, pinned Maestro, compiled
+flow and source; it rechecks command metadata and both driver/output PNG copies.
+An additional evidence digest detects changes to those underlying bytes after
+checks. It does not retroactively attest driver exit from disk: the first
+evaluation and its returned canonical report remain part of the trust boundary.
+Native summaries record `deviceId`; newly produced summaries include observed
+`source` together with its canonical `sourceDigest`. These are additive alpha
+contract fields; old Web/WeChat records without `source` remain valid. Native
+support requires the matching reviewed engine pin, not a schema-only upgrade.
 
 Exit codes are `0` pass, `1` candidate failure, `2` configuration/infrastructure/
 inconclusive scope, and `3` review. Infrastructure and unexecuted mandatory stages

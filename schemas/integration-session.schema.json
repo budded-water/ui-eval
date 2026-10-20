@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "command",
+    "args",
+    "startupTimeoutMs",
+    "cleanupTimeoutMs"
+  ],
+  "properties": {
+    "command": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "args": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "maxLength": 4096,
+        "type": "string"
+      }
+    },
+    "startupTimeoutMs": {
+      "minimum": 1,
+      "maximum": 300000,
+      "type": "integer"
+    },
+    "cleanupTimeoutMs": {
+      "minimum": 1,
+      "maximum": 60000,
+      "type": "integer"
+    }
+  }
+}

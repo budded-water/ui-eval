@@ -19,6 +19,23 @@ summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.
 
+Native integration verifies exact device/App/project/scenario, source and plan,
+raw command metadata and CRC-decoded driver/copied PNGs, then rechecks the
+underlying byte digests after external checks. The first trusted native evaluator
+invocation supplies the driver-exit observation; persisted files alone are not
+an independent replay of that exit. Corrupt or changed evidence remains
+inconclusive. Source observations do not attest the installed binary or Metro.
+
+Optional native session argv is reviewed executable configuration. One owned
+long-lived process exchanges bounded JSON lines with an opaque session ID over
+private stdio. Readiness does not supply new environment or execution scope.
+Unexpected exit aborts evaluation; fresh bounded teardown runs after cancellation.
+Success requires the matching stopped acknowledgement, exit zero and owned
+process settlement. The candidate is responsible for App/fixture cleanup and
+must keep children in its process group. The protocol is not proof against a
+malicious session or escaped processes. Session stdout/stderr is never copied
+into public summaries; startup/cleanup failures stay infrastructure outcomes.
+
 ## iOS Simulator pilot boundary
 
 The separate [native pilot](native-pilot.md) has a narrower evidence boundary:
@@ -27,6 +44,12 @@ are checked, reads are bounded, output rejects symlinks, and owned-driver cleanu
 is bounded. Raw native driver/device logs and screenshots are not Web-redacted
 or stored in Web CAS. Backend isolation and synthetic device state are the
 candidate project's responsibility; the pilot is not a network or OS sandbox.
+Bounded literal text entry/erasure and fixed-duration
+directional swipes are allowed data-only interactions. Expression templates,
+scripts, arbitrary coordinates and optional commands remain rejected. Literal
+input and resulting field state can appear in plans, raw logs and screenshots;
+use synthetic values only. Candidate setup must prevent real business writes;
+the engine cannot identify secrets or enforce backend isolation.
 The trusted project's optional `restartApp` policy is bound to observed launch
 metadata. Omitted values restart; `false` reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying

@@ -89,6 +89,14 @@ function deferred<T>() {
 }
 
 describe("runCli", () => {
+  it("forwards an explicit simulator selection to integration without interpreting it as suite scope", async () => {
+    const stream = output()
+    const integrate = vi.fn(async () => { throw new Error("synthetic preflight") })
+    expect(await runCli(["integrate", "smoke", "--device", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "--format", "json"], stream.io, { integrate })).toBe(2)
+    expect(integrate).toHaveBeenCalledWith(expect.objectContaining({ suite: "smoke", deviceId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" }))
+    expect(JSON.parse(stream.stdout.join(""))).toMatchObject({ error: { message: "synthetic preflight" } })
+  })
+
   it.each(["native-pilot", "wechat-pilot"] as const)("routes %s to its own argument validator", async (command) => {
     const stream = output()
     const args = [command, "unsupported", "--format", "json"]

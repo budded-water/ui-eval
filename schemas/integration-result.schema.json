@@ -77,8 +77,16 @@
         {
           "const": "wechat-pilot",
           "type": "string"
+        },
+        {
+          "const": "native-pilot",
+          "type": "string"
         }
       ]
+    },
+    "deviceId": {
+      "pattern": "^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$",
+      "type": "string"
     },
     "executionProfile": {
       "minLength": 1,
@@ -174,6 +182,10 @@
               },
               {
                 "const": "prepare",
+                "type": "string"
+              },
+              {
+                "const": "session",
                 "type": "string"
               },
               {
@@ -297,6 +309,10 @@
                   "pattern": "^sha256:[a-f0-9]{64}$",
                   "type": "string"
                 },
+                "evidenceDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
                 "capabilities": {
                   "type": "array",
                   "items": {
@@ -332,6 +348,31 @@
     "sourceDigest": {
       "pattern": "^sha256:[a-f0-9]{64}$",
       "type": "string"
+    },
+    "source": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "repository",
+        "commitSha"
+      ],
+      "properties": {
+        "repository": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "commitSha": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dirtyTree": {
+          "type": "boolean"
+        },
+        "diffDigest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
     },
     "summaryPath": {
       "minLength": 1,
