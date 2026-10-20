@@ -72,6 +72,15 @@ Keep internal dependencies directed toward contracts and narrow interfaces. Do n
 
 `bun run check` does not replace the real-browser suite. Changes to capture, browser routing, stabilization, auth state, evidence collection, or lifecycle require `bun run test:capture` as an additional gate.
 
+The capture suite executes test files serially to reduce competition between
+owned Chromium processes during bounded lifecycle checks. This preserves all
+browser assertions and cleanup deadlines; unit tests explicitly cover pending
+closures and delayed deadline callbacks. Host or transport failures can still
+produce incomplete cleanup, and a serial test pass does not prove concurrent
+browser invocations will always close within the budget.
+Run the browser suite after other resource-intensive checks finish on the same
+host; serial test files do not isolate Chromium from unrelated host load.
+
 ## Change workflow
 
 1. Inspect the affected module, its tests, public contract, and related docs.

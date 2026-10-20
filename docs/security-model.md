@@ -294,14 +294,19 @@ long-lived development-server RSC/HMR requests from blocking finalization while
 still allowing an in-flight origin preflight to settle before context closure.
 Abort cleanup removes the same routes with close-race errors ignored, then
 closes only the owned context and browser.
-Context and browser close must both complete successfully within their bounded
-waits. Rejection or timeout is incomplete cleanup, withholds final run reports,
-and blocks the Agent; successful route teardown alone is not proof of closure.
-Route removal has a bounded slice of the cleanup budget; context and browser
-closure share the remaining total deadline. Unused time from earlier operations
-is available to later closure, without extending the overall deadline. Diagnostic
-messages distinguish rejected and timed-out closure without exposing transport
-error contents.
+Route removal and owned context/browser closure share a five-second cleanup
+deadline. Route removal and the initial context wait each use at most one third
+of that budget; unused time remains available for closure. Browser shutdown is
+attempted even if context close is still pending or has rejected. Both close
+promises must fulfill before the shared deadline; a context close that finishes
+during browser shutdown can satisfy that requirement. Closure fulfillment is
+checked against monotonic time when observed, so overdue driver callbacks
+cannot establish timely cleanup by running ahead of overdue timeout callbacks.
+Rejection or timeout is
+incomplete cleanup, withholds final run reports, and blocks the Agent;
+successful route teardown or browser disconnection alone is not proof of
+closure. Cleanup errors identify context/browser completion with fixed status
+labels, without including raw driver exceptions.
 
 Use synthetic accounts and scrubbed fixtures. Never commit production cookies, tokens, customer data, or real authenticated traces.
 

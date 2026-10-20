@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   canonicalDigest,
@@ -91,7 +91,116 @@ function context(artifactStore: {
   }
 }
 
-describe("captureWebScenario preflight", () => {
+describe("owned Playwright cleanup", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it("uses spare cleanup time for a slow browser close", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const closing = closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: async () => {},
+    } as never, {
+      close: () => new Promise<void>((resolve) => setTimeout(resolve, 60)),
+    } as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(90)
+    expect(await result).toBeUndefined()
+  })
+
+  it("allows browser shutdown to finish an already pending context close", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    let finishContext: (() => void) | undefined
+    const browser = { close: vi.fn(async () => finishContext!()) }
+    const closing = closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => new Promise<void>((resolve) => { finishContext = resolve }),
+    } as never, browser as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(90)
+    expect(await result).toBeUndefined()
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("does not treat browser closure as proof that a pending context close succeeded", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const closing = closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => new Promise<void>(() => {}),
+    } as never, { close: async () => {} } as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(90)
+    expect(await result).toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: expect.stringContaining("context: timed-out"),
+    })
+  })
+
+  it("keeps the total deadline when route and context teardown consume time", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+    const browser = { close: vi.fn(() => delay(45)) }
+    const closing = closePlaywrightResources({
+      unrouteAll: () => delay(25),
+      close: () => delay(25),
+    } as never, browser as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(90)
+    expect(await result).toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: expect.stringContaining("browser: timed-out"),
+    })
+    expect(performance.now()).toBe(90)
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("rejects late fulfillment when stalled scheduling runs close callbacks before the deadline timer", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+    const browser = { close: vi.fn(() => delay(20)) }
+    const closing = closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => delay(60),
+    } as never, browser as never, 90)
+    const result = closing.catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(45)
+    // After an event-loop stall, earlier close timers can run before the
+    // deadline timer even though monotonic elapsed time exceeds the budget.
+    vi.spyOn(performance, "now").mockReturnValue(145)
+    await vi.advanceTimersByTimeAsync(45)
+    expect(await result).toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: "Owned browser cleanup incomplete (context: timed-out, browser: timed-out)",
+    })
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("attempts browser closure after a synchronous context close error", async () => {
+    const browser = { close: vi.fn(async () => {}) }
+    await expect(closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => { throw new Error("private transport detail") },
+    } as never, browser as never, 90)).rejects.toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: "Owned browser cleanup incomplete (context: rejected, browser: fulfilled)",
+    })
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
+  it("rejects browser close failure even when the context closed", async () => {
+    await expect(closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: async () => {},
+    } as never, {
+      close: async () => { throw new Error("private browser transport detail") },
+    } as never, 90)).rejects.toMatchObject({
+      code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE",
+      message: "Owned browser cleanup incomplete (context: fulfilled, browser: rejected)",
+    })
+  })
+
   it("bounds Playwright cleanup when Chrome does not settle", async () => {
     const neverSettles = new Promise<void>(() => undefined)
     const browserContext = {
@@ -130,6 +239,9 @@ describe("captureWebScenario preflight", () => {
       close: async () => {},
     } as never, { close: async () => {} } as never, 30)).resolves.toBeUndefined()
   })
+})
+
+describe("captureWebScenario preflight", () => {
 
   it("lets browser close use the unused total cleanup budget", async () => {
     vi.useFakeTimers()
@@ -154,13 +266,14 @@ describe("captureWebScenario preflight", () => {
       close: async () => { throw new Error("private transport detail") },
     } as never, {
       close: () => new Promise<void>(() => {}),
-    } as never, 30)).rejects.toThrow("context: rejected; browser: timed-out")
+    } as never, 30)).rejects.toThrow("context: rejected, browser: timed-out")
   })
 
   it.each([
     [30, 20, true],
-    [40, 30, false],
-  ])("shares a total deadline across sequential delays %s/%s", async (contextDelay, browserDelay, succeeds) => {
+    [40, 30, true],
+    [40, 40, false],
+  ])("shares a total deadline across overlapping closes %s/%s", async (contextDelay, browserDelay, succeeds) => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
     try {
       const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -171,7 +284,7 @@ describe("captureWebScenario preflight", () => {
       } as never, browser as never, 60)
       const assertion = succeeds
         ? expect(result).resolves.toBeUndefined()
-        : expect(result).rejects.toThrow("context: fulfilled; browser: timed-out")
+        : expect(result).rejects.toThrow("context: fulfilled, browser: timed-out")
       await vi.advanceTimersByTimeAsync(60)
       await assertion
       expect(browser.close).toHaveBeenCalledOnce()
@@ -185,7 +298,7 @@ describe("captureWebScenario preflight", () => {
     await expect(closePlaywrightResources({
       unrouteAll: async () => {},
       close: () => { throw new Error("private context error") },
-    } as never, browser as never, 30)).rejects.toThrow("context: rejected; browser: fulfilled")
+    } as never, browser as never, 30)).rejects.toThrow("context: rejected, browser: fulfilled")
     expect(browser.close).toHaveBeenCalledOnce()
   })
 

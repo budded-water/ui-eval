@@ -6,13 +6,18 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
-- Browser shutdown shares the remaining cleanup deadline across context and
-  browser close instead of discarding unused timeout slices. Rejected and
-  timed-out close phases are identified without transport error contents;
-  unsuccessful closure still blocks acceptance.
-
 ### Fixed
 
+- Playwright owned-resource cleanup shares its existing five-second deadline
+  across route removal and context/browser closure, avoiding premature failure
+  when an individual close needs unused time from an earlier phase. Both close
+  promises must still fulfill; failures retain the incomplete-cleanup code and
+  report withholding, with safe per-resource rejection/timeout diagnostics.
+  Monotonic settlement checks reject late fulfillment after an event-loop stall,
+  even when overdue driver callbacks run before overdue timeout callbacks.
+- Real-browser conformance test files run serially to reduce Chromium resource
+  contention during lifecycle checks, without reducing assertions or extending
+  cleanup deadlines.
 - Verification guidance makes command-specific browser/profile selection
   explicit so agents do not forward direct-command flags to `integrate`.
 - Native pilot distinguishes pinned visibility-assertion mismatch diagnostics
