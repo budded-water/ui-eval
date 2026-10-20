@@ -4,6 +4,11 @@ UI Eval is a public-source TypeScript ESM project built as a single modular mono
 
 This guide describes how to change the repository. It does not imply that any command has passed on a particular revision; run the required checks against the source you intend to review.
 
+For candidate-project onboarding and evidence handoff, see the
+[feature verification workflow](verification.md). The checkout-local
+`skills/ui-eval-verify/SKILL.md` reuses existing CLI commands; it does not add
+runtime configuration or replace the checks below.
+
 ## Prerequisites
 
 - Node.js satisfying `package.json#engines`.
