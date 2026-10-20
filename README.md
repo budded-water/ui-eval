@@ -206,6 +206,7 @@ Do not import internal `src/*` modules from a consumer. See [Contracts](docs/con
 - [Contracts and canonical truth](docs/contracts.md)
 - [Security model](docs/security-model.md)
 - [Project integration](docs/integration.md)
+- [Feature verification workflow and checkout-local skill](docs/verification.md)
 - [Integration acceptance runner](docs/integration-runner.md)
 - [Experimental iOS Simulator pilot](docs/native-pilot.md)
 - [WeChat DevTools pilot](docs/wechat-pilot.md)
