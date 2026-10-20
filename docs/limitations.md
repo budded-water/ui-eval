@@ -1,12 +1,18 @@
 # Current Limitations
 
-The [integration runner](integration-runner.md) aggregates required Web or
-experimental WeChat scenarios with reviewed preparation/checks. It does not
-register native iOS, introduce calibrated scoring, waive review, cache builds
+The [integration runner](integration-runner.md) aggregates required Web,
+experimental WeChat or iOS Simulator scenarios with reviewed preparation/checks.
+Native suites can use a candidate-owned session for startup and cleanup. It does not
+introduce calibrated scoring, waive review, cache builds
 across runs or attest dependencies/build output. Stage durations are measured;
 speedup requires candidate launchers to move builds into prepare. Existing
 wrappers migrate explicitly. Forced termination or storage failure can prevent
 summary publication and cannot establish completion.
+Native integration preserves the pilot's limited evidence: no installed-binary
+or Metro attestation, real-device/store readiness, Android or Harmony support.
+Session ready/stopped messages assert candidate-owned setup and teardown; they
+do not independently prove device state, backend isolation or cleanup of escaped
+processes. The engine performs no framework-specific bootstrap by itself.
 
 UI Eval currently proves deterministic execution, explicit interaction assertions, runtime health, required-evidence completeness, and optional raw pixel change for a constrained web scenario. It does not produce a universal UI quality score.
 
@@ -15,6 +21,10 @@ This page is part of the product contract. A schema field or future-facing type 
 Native-pilot App reuse (`restartApp: false`) preserves existing navigation and
 session state. Candidate setup must make that state ready; an interaction pass
 does not establish a fresh launch or isolated account/backend state.
+Native literal text entry/erasure and directional swipes
+require explicit follow-up assertions; command completion alone does not prove
+field validity, keyboard geometry or scroll reachability. Input is unredacted
+and must be synthetic. The pilot still has no native runtime/network/design gate.
 
 ## Support matrix
 
@@ -152,6 +162,9 @@ the owned browser context. Abort cleanup instead removes routes with close-race
 errors ignored so cancellation
 does not manufacture an unhandled response-disposal failure.
 Context and browser close still require successful completion. A close failure
+or timeout reports the affected phase and outcome. Close operations share the
+remaining cleanup deadline rather than receiving fixed equal timeout slices.
+The overall cleanup budget is unchanged. A close failure
 or expired capture cancellation grace raises `OWNED_RESOURCE_CLEANUP_INCOMPLETE`
 and blocks Agent retries, repairs, and acceptance. An outer evaluator rejection
 is not proof of resource cleanup. This fail-closed result cannot itself force an

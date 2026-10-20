@@ -1,9 +1,26 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { runCommand } from "./command"
+import { ownedProcessTree } from "./owned-process"
+import { IncompleteCleanupError } from "./cleanup"
 
 describe("owned argv commands", () => {
+  it("marks unconfirmed process cleanup so later integration commands cannot proceed", async () => {
+    const alive = vi.spyOn(ownedProcessTree, "isAlive").mockResolvedValue(true)
+    const signal = vi.spyOn(ownedProcessTree, "signal").mockRejectedValue(new Error("sensitive-process-diagnostics"))
+    try {
+      const operation = runCommand(process.execPath, ["-e", "process.exit(0)"], {
+        cwd: process.cwd(), timeoutMs: 5000, stopTimeoutMs: 1,
+      })
+      await expect(operation).rejects.toBeInstanceOf(IncompleteCleanupError)
+      await expect(operation).rejects.not.toThrow("sensitive-process-diagnostics")
+    } finally {
+      alive.mockRestore()
+      signal.mockRestore()
+    }
+  })
+
   it("fails oversized metadata rather than returning a truncated success", async () => {
     await expect(runCommand(process.execPath, ["-e", "process.stdout.write('x'.repeat(4 * 1024 * 1024 + 1)); setInterval(() => {}, 10)"], {
       cwd: process.cwd(), timeoutMs: 5000, truncateOutput: false, stopTimeoutMs: 100,

@@ -83,16 +83,22 @@ const SECURITY_BOUNDARY_FAILURE_CODES = new Set([
 async function settleResourceClose(
   operation: Promise<unknown> | undefined,
   timeoutMs: number,
-): Promise<boolean> {
-  if (!operation) return true
+): Promise<"fulfilled" | "rejected" | "timed-out" | "absent"> {
+  if (!operation) return "absent"
+  if (timeoutMs <= 0) {
+    // Shutdown was still initiated, but late settlement cannot prove closure
+    // within the budget. Observe rejection without granting extra wait time.
+    void operation.catch(() => undefined)
+    return "timed-out"
+  }
   let timer: ReturnType<typeof setTimeout> | undefined
   const settled = await Promise.race([
     operation.then(
-      () => true,
-      () => false,
+      () => "fulfilled" as const,
+      () => "rejected" as const,
     ),
-    new Promise<false>((resolve) => {
-      timer = setTimeout(() => resolve(false), timeoutMs)
+    new Promise<"timed-out">((resolve) => {
+      timer = setTimeout(() => resolve("timed-out"), timeoutMs)
     }),
   ])
   if (timer) clearTimeout(timer)
@@ -106,15 +112,27 @@ export async function closePlaywrightResources(
   browser: Pick<Browser, "close"> | undefined,
   timeoutMs = PLAYWRIGHT_RESOURCE_CLOSE_TIMEOUT_MS,
 ): Promise<void> {
+  const deadline = performance.now() + timeoutMs
+  const remainingMs = () => Math.max(0, Math.ceil(deadline - performance.now()))
   const operationTimeoutMs = Math.max(1, Math.floor(timeoutMs / 3))
   await settleResourceClose(
-    browserContext?.unrouteAll({ behavior: "ignoreErrors" }),
+    browserContext ? Promise.resolve().then(() => browserContext.unrouteAll({ behavior: "ignoreErrors" })) : undefined,
     operationTimeoutMs,
   )
-  const contextClosed = await settleResourceClose(browserContext?.close(), operationTimeoutMs)
-  const browserClosed = await settleResourceClose(browser?.close(), operationTimeoutMs)
-  if (!contextClosed || !browserClosed) {
-    throw new IncompleteCleanupError("Owned browser cleanup did not settle successfully")
+  const contextClosed = await settleResourceClose(
+    browserContext ? Promise.resolve().then(() => browserContext.close()) : undefined,
+    remainingMs(),
+  )
+  const browserClosed = await settleResourceClose(
+    browser ? Promise.resolve().then(() => browser.close()) : undefined,
+    remainingMs(),
+  )
+  const successful = (outcome: Awaited<ReturnType<typeof settleResourceClose>>) =>
+    outcome === "fulfilled" || outcome === "absent"
+  if (!successful(contextClosed) || !successful(browserClosed)) {
+    throw new IncompleteCleanupError(
+      `Owned browser cleanup did not settle successfully (context: ${contextClosed}; browser: ${browserClosed})`,
+    )
   }
 }
 

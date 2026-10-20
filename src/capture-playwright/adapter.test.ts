@@ -131,6 +131,64 @@ describe("captureWebScenario preflight", () => {
     } as never, { close: async () => {} } as never, 30)).resolves.toBeUndefined()
   })
 
+  it("lets browser close use the unused total cleanup budget", async () => {
+    vi.useFakeTimers()
+    try {
+      const result = closePlaywrightResources({
+        unrouteAll: async () => {},
+        close: async () => {},
+      } as never, {
+        close: () => new Promise<void>((resolve) => setTimeout(resolve, 40)),
+      } as never, 60)
+      const assertion = expect(result).resolves.toBeUndefined()
+      await vi.advanceTimersByTimeAsync(40)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("identifies rejected context close and timed-out browser close", async () => {
+    await expect(closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: async () => { throw new Error("private transport detail") },
+    } as never, {
+      close: () => new Promise<void>(() => {}),
+    } as never, 30)).rejects.toThrow("context: rejected; browser: timed-out")
+  })
+
+  it.each([
+    [30, 20, true],
+    [40, 30, false],
+  ])("shares a total deadline across sequential delays %s/%s", async (contextDelay, browserDelay, succeeds) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    try {
+      const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+      const browser = { close: vi.fn(() => delay(browserDelay)) }
+      const result = closePlaywrightResources({
+        unrouteAll: () => delay(5),
+        close: () => delay(contextDelay),
+      } as never, browser as never, 60)
+      const assertion = succeeds
+        ? expect(result).resolves.toBeUndefined()
+        : expect(result).rejects.toThrow("context: fulfilled; browser: timed-out")
+      await vi.advanceTimersByTimeAsync(60)
+      await assertion
+      expect(browser.close).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("attempts browser shutdown after a synchronous context throw", async () => {
+    const browser = { close: vi.fn(async () => {}) }
+    await expect(closePlaywrightResources({
+      unrouteAll: async () => {},
+      close: () => { throw new Error("private context error") },
+    } as never, browser as never, 30)).rejects.toThrow("context: rejected; browser: fulfilled")
+    expect(browser.close).toHaveBeenCalledOnce()
+  })
+
   it("fails closed before browser launch when screenshot dimensions exceed the budget", async () => {
     const plan = planWithCapability("screenshot")
     plan.device.renderSpace.logicalWidth =

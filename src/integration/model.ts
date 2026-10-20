@@ -1,6 +1,8 @@
 import { Type, type Static } from "@sinclair/typebox"
 import { Value } from "@sinclair/typebox/value"
 import { EnginePinSchema } from "./config"
+import { SourceRevisionSchema } from "../contracts/schemas"
+import { canonicalDigest } from "../contracts/canonical-json"
 
 const strict = { additionalProperties: false }
 const text = Type.String({ minLength: 1 })
@@ -16,7 +18,8 @@ export const IntegrationResultSchema = Type.Object({
   suiteId: text,
   suiteDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
   engine: EnginePinSchema,
-  adapter: Type.Union([Type.Literal("web"), Type.Literal("wechat-pilot")]),
+  adapter: Type.Union([Type.Literal("web"), Type.Literal("wechat-pilot"), Type.Literal("native-pilot")]),
+  deviceId: Type.Optional(Type.String({ pattern: "^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$" })),
   executionProfile: Type.Optional(text),
   browserChannel: Type.Optional(text),
   startedAt: text,
@@ -25,7 +28,7 @@ export const IntegrationResultSchema = Type.Object({
   status: Type.Union([Type.Literal("pass"), Type.Literal("fail"), Type.Literal("needs-review"), Type.Literal("inconclusive"), Type.Literal("interrupted")]),
   stages: Type.Array(Type.Object({
     id: text,
-    kind: Type.Union([Type.Literal("engine"), Type.Literal("prepare"), Type.Literal("check"), Type.Literal("scenario"), Type.Literal("source"), Type.Literal("evidence")]),
+    kind: Type.Union([Type.Literal("engine"), Type.Literal("prepare"), Type.Literal("session"), Type.Literal("check"), Type.Literal("scenario"), Type.Literal("source"), Type.Literal("evidence")]),
     dimension: Type.Optional(text),
     status,
     durationMs: duration,
@@ -36,10 +39,12 @@ export const IntegrationResultSchema = Type.Object({
       reportPath: text, htmlPath: text,
       reportDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
       htmlDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
+      evidenceDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
       capabilities: Type.Array(Type.Object({ dimension: text, status: text, detail: text }, strict)),
     }, strict)),
   }, strict)),
   sourceDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
+  source: Type.Optional(SourceRevisionSchema),
   summaryPath: text,
   summaryHtmlPath: text,
   limitations: Type.Array(text),
@@ -57,6 +62,8 @@ export function integrationExitCode(stages: readonly IntegrationStage[]): 0 | 1 
 
 export function assertIntegrationResult(input: unknown): asserts input is IntegrationResult {
   if (!Value.Check(IntegrationResultSchema, input)) throw new Error("Invalid integration result")
+  if (input.source && canonicalDigest(input.source) !== input.sourceDigest) throw new Error("Integration source digest mismatch")
+  if ((input.adapter === "native-pilot") !== (input.deviceId !== undefined)) throw new Error("Integration device does not match adapter")
   const ids = input.stages.map((stage) => `${stage.kind}:${stage.id}`)
   if (new Set(ids).size !== ids.length) throw new Error("Duplicate integration stages")
   for (const stage of input.stages) {

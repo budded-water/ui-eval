@@ -80,6 +80,113 @@
             "type": "object",
             "required": [
               "action",
+              "text"
+            ],
+            "properties": {
+              "action": {
+                "const": "input-text",
+                "type": "string"
+              },
+              "text": {
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^(?![\\s\\S]*\\$\\{)[^\\r\\n]+$",
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "characters"
+            ],
+            "properties": {
+              "action": {
+                "const": "erase-text",
+                "type": "string"
+              },
+              "characters": {
+                "minimum": 1,
+                "maximum": 512,
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "direction"
+            ],
+            "properties": {
+              "action": {
+                "const": "swipe",
+                "type": "string"
+              },
+              "direction": {
+                "anyOf": [
+                  {
+                    "const": "UP",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DOWN",
+                    "type": "string"
+                  },
+                  {
+                    "const": "LEFT",
+                    "type": "string"
+                  },
+                  {
+                    "const": "RIGHT",
+                    "type": "string"
+                  }
+                ]
+              },
+              "selector": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^(?!.*\\$\\{)[^\\r\\n]+$",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "text"
+                    ],
+                    "properties": {
+                      "text": {
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^(?!.*\\$\\{)[^\\r\\n]+$",
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
               "selector"
             ],
             "properties": {
