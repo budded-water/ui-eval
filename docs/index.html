@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="efdf5c4bd96eb1d5f605b81ea07d9c7e1dd891d9fa3e930399df33aee7f14171">
+  <meta name="source-sha256" content="a5d2b8c0b2fcd7a3a483bfd58867ca932f4d4ded0882bc9c8041320d768b67cf">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -59,7 +59,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: efdf5c4bd96eb1d5f605b81ea07d9c7e1dd891d9fa3e930399df33aee7f14171</footer>
+        <footer>Source set SHA-256: a5d2b8c0b2fcd7a3a483bfd58867ca932f4d4ded0882bc9c8041320d768b67cf</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1935,7 +1935,9 @@ trusted assertions, not a security sandbox or independent device attestation.</p
 <h2>Results and migration</h2>
 <h3>Bounded native recovery</h3>
 <p>Native suites may opt into <code>recovery: {maxAttempts, context}</code> where maxAttempts
-is 1–3 and context is a trusted read-only argv command. It receives JSON stdin
+is 1–3 and context is a trusted read-only argv command. User check IDs
+<code>recovery-context-before</code> and <code>recovery-context-after</code> are reserved in these suites.
+It receives JSON stdin
 with <code>apiVersion: uieval.io/native-recovery-v1</code>, <code>projectId</code> and selected <code>deviceId</code>.
 It must return exactly one <code>sha256:</code> digest of the relevant installed App,
 fixture/account/backend state; raw stdout/stderr are not retained in summaries.
@@ -1957,7 +1959,8 @@ both PNG copies. Invalid or changed evidence blocks instead of silently rerunnin
 and hiding the discrepancy. Other scenarios execute normally. Preparation,
 session startup/teardown, external checks and final source/engine/evidence/state
 checks always run. A changed fixture or binary requires a fresh invocation.
-Report <code>resumedFrom</code>, stage <code>reusedFrom</code>, <code>attempts</code> and <code>recoveryContextDigest</code>
+Every retained attempt&#39;s evidence is rechecked after candidate checks, including
+superseded inconclusive attempts. Report <code>resumedFrom</code>, stage <code>reusedFrom</code>, <code>attempts</code> and <code>recoveryContextDigest</code>
 make provenance explicit. Reused evidence remains a historical observation under
 the declared state witness; it is not a new live screenshot or human review.</p>
 <p>The sealed suite fixes this run&#39;s completion boundary. New optional checks belong

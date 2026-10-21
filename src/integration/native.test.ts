@@ -204,6 +204,34 @@ async function recoveryFixture(mode: "passed" | "failed" = "passed") {
 }
 
 describe("bounded native recovery", () => {
+  it("revalidates superseded inconclusive attempt evidence after candidate checks", async () => {
+    const { options, dependencies, command, config, save, root } = await recoveryFixture()
+    config.checks.push(afterCheck); await save()
+    let calls = 0
+    dependencies.native = (input) => evaluateNativePilot(input, {
+      platform: "darwin", sourceRevision: async () => source,
+      command: async (binary, args, config) => {
+        if (binary === "maestro" && args.includes("test") && calls++ === 0) throw new Error("Synthetic driver unavailable")
+        return command(binary, args, config)
+      },
+    })
+    dependencies.command = async (binary, _args, input) => {
+      if (binary === "synthetic-context") return { exitCode: 0, stdout: `sha256:${"b".repeat(64)}`, stderr: "" }
+      const context = JSON.parse(input.input!)
+      const stage = context.stages.find((stage: { id: string }) => stage.id === "home")
+      await writeFile(join(root, stage.attempts[0].reports[0].reportPath), "changed")
+      return { exitCode: 0, stdout: "", stderr: "" }
+    }
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.status).toBe("inconclusive")
+    expect(result.stages.find((stage) => stage.id === "evidence-after")?.status).toBe("inconclusive")
+  })
+  it.each(["recovery-context-before", "recovery-context-after"])("rejects reserved user check ID %s before creating a run", async (id) => {
+    const { root, config, save } = await recoveryFixture()
+    config.checks.push({ id, phase: "before", dimension: "fixture", failureOutcome: "infrastructure", command: "synthetic-check", args: [], timeoutMs: 1000 })
+    await save()
+    await expect(loadIntegrationSuite(root, "smoke")).rejects.toThrow(/reserved/)
+  })
   it("exhausts the declared budget and does not turn recurring infrastructure failure into pass", async () => {
     const { options, dependencies, command } = await recoveryFixture()
     let calls = 0

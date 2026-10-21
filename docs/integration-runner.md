@@ -123,7 +123,9 @@ node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candida
 ### Bounded native recovery
 
 Native suites may opt into `recovery: {maxAttempts, context}` where maxAttempts
-is 1–3 and context is a trusted read-only argv command. It receives JSON stdin
+is 1–3 and context is a trusted read-only argv command. User check IDs
+`recovery-context-before` and `recovery-context-after` are reserved in these suites.
+It receives JSON stdin
 with `apiVersion: uieval.io/native-recovery-v1`, `projectId` and selected `deviceId`.
 It must return exactly one `sha256:` digest of the relevant installed App,
 fixture/account/backend state; raw stdout/stderr are not retained in summaries.
@@ -149,7 +151,8 @@ both PNG copies. Invalid or changed evidence blocks instead of silently rerunnin
 and hiding the discrepancy. Other scenarios execute normally. Preparation,
 session startup/teardown, external checks and final source/engine/evidence/state
 checks always run. A changed fixture or binary requires a fresh invocation.
-Report `resumedFrom`, stage `reusedFrom`, `attempts` and `recoveryContextDigest`
+Every retained attempt's evidence is rechecked after candidate checks, including
+superseded inconclusive attempts. Report `resumedFrom`, stage `reusedFrom`, `attempts` and `recoveryContextDigest`
 make provenance explicit. Reused evidence remains a historical observation under
 the declared state witness; it is not a new live screenshot or human review.
 

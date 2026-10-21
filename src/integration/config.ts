@@ -70,6 +70,9 @@ export async function loadIntegrationSuite(projectRoot: string, suite: string) {
   if (!unique(input.scenarios.map((entry) => entry.id)) || !unique(input.checks.map((entry) => entry.id))) {
     throw new Error("Integration scenario and check IDs must be unique")
   }
+  if (input.recovery && input.checks.some((check) => ["recovery-context-before", "recovery-context-after"].includes(check.id))) {
+    throw new Error("Native recovery check IDs are reserved")
+  }
   if (input.adapter === "web" ? input.driver !== undefined :
     input.executionProfile !== undefined || input.browserChannel !== undefined || input.scenarios.some((entry) => entry.policy || entry.reference)) {
     throw new Error("Integration options are not supported by the selected adapter")

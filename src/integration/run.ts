@@ -102,7 +102,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   let cleanupSettled = true
   let session: Awaited<ReturnType<typeof startIntegrationSession>> | undefined
   let activeSignal = options.signal
-  const revalidate = new Map<string, () => Promise<void>>()
+  const revalidate = new Map<string, Array<() => Promise<void>>>()
   const execute = async (entry: IntegrationStage, operation: () => Promise<void>, cleanup = false) => {
     options.onProgress?.(`Integration ${suite.id}: ${entry.kind} ${entry.id}`)
     const start = performance.now()
@@ -171,7 +171,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
             entry.reason = "Reused exact verified evidence with matching source, suite, engine, device and candidate state"
             entry.reports = structuredClone(reusable.reports)
             entry.reusedFrom = previous!.executionId
-            revalidate.set(entry.id, () => revalidateNativeStage(root, suite, reusable, result))
+            revalidate.set(entry.id, [() => revalidateNativeStage(root, suite, reusable, result)])
           })
           continue
         }
@@ -197,9 +197,9 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
               verify = () => nativeIntegrationEvidence(root, suite, config.id, output, result.sourceDigest!, options.deviceId!)
             }
             const validated = await verify()
-            revalidate.set(entry.id, async () => {
+            revalidate.set(entry.id, [...(revalidate.get(entry.id) ?? []), async () => {
               if (canonicalDigest(await verify()) !== canonicalDigest(validated)) throw new Error("Original adapter evidence changed after acceptance checks")
-            })
+            }])
             return validated
           }, config.timeoutMs, activeSignal, deps.cleanupTimeoutMs)
           entry.reports = reports
@@ -242,7 +242,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
       activeSignal = options.signal
     }
     if (cleanupSettled && revalidate.size === suite.scenarios.length) await execute(evidenceAfter, async () => {
-      for (const verify of revalidate.values()) await verify()
+      for (const attempts of revalidate.values()) for (const verify of attempts) await verify()
     })
     if (cleanupSettled && result.sourceDigest) await execute(sourceAfter, async () => {
       if (canonicalDigest(await (deps.source ?? collectSourceRevision)(root)) !== result.sourceDigest) throw new Error("Candidate source changed during integration")
