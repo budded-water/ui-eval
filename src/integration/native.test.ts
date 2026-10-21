@@ -12,6 +12,13 @@ import { findNativeCommandFile } from "../native-pilot/evidence"
 import { nativeIntegrationEvidence } from "./native-evidence"
 import { loadIntegrationSuite, type IntegrationSuite } from "./config"
 import { runIntegrationSuite, type IntegrationDependencies } from "./run"
+import { recordNativeReview } from "../native-pilot/review"
+import { relative } from "node:path"
+
+vi.mock("../native-pilot/preflight", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../native-pilot/preflight")>(),
+  nativeStorage: vi.fn(async () => ({ availableBytes: 2 * 1024 ** 3, minimumBytes: 1024 ** 3 })),
+}))
 
 const deviceId = "11111111-1111-1111-1111-111111111111"
 const source = { repository: "synthetic", commitSha: "a".repeat(40), dirtyTree: false }
@@ -49,10 +56,12 @@ function commandRecords(failed: boolean) {
   } }))
 }
 
-async function fixture(mode: "passed" | "failed" | "inconclusive" = "passed") {
+async function fixture(mode: "passed" | "failed" | "inconclusive" = "passed", withReview = false) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "native-integration-"))); roots.push(root)
   await mkdir(join(root, "ui-eval"))
-  await writeFile(join(root, "ui-eval/native.json"), JSON.stringify(project))
+  await writeFile(join(root, "ui-eval/native.json"), JSON.stringify({ ...project, ...(withReview ? {
+    reviews: [{ id: "header", scenarioId: "home", checkpointId: "home", criterion: "Header controls remain legible over scrolled content" }],
+  } : {}) }))
   await writeFile(join(root, "ui-eval/home.json"), JSON.stringify(scenario))
   let commandPath = ""
   const command: typeof runCommand = async (binary, args) => {
@@ -82,6 +91,21 @@ async function fixture(mode: "passed" | "failed" | "inconclusive" = "passed") {
 }
 
 describe("native integration evidence", () => {
+  it("records human observations separately and binds them to unchanged validated screenshot evidence", async () => {
+    const { root, output } = await fixture("passed", true)
+    const before = await readFile(output.reportPath, "utf8")
+    const review = await recordNativeReview({ projectRoot: root, report: relative(root, output.reportPath), review: "header", decision: "pass", reviewer: "owner", note: "Synthetic header checked at the declared checkpoint" }, async () => source)
+    expect(review.result.method).toBe("human-observation")
+    expect(review.result.screenshotDigest).toBe(output.result.screenshots[0].digest)
+    expect(await readFile(output.reportPath, "utf8")).toBe(before)
+    expect(JSON.parse(await readFile(review.reportPath, "utf8"))).toEqual(review.result)
+    expect(await readFile(review.htmlPath, "utf8")).toContain("Human observation")
+  })
+  it.each(["failed", "source", "checkpoint", "undeclared"])("refuses a human review with %s evidence", async (defect) => {
+    const { root, output, directory } = await fixture(defect === "failed" ? "failed" : "passed", true)
+    if (defect === "checkpoint") await writeFile(join(directory, "home.png"), "corrupt")
+    await expect(recordNativeReview({ projectRoot: root, report: relative(root, output.reportPath), review: defect === "undeclared" ? "unknown" : "header", decision: "pass", reviewer: "owner", note: "Synthetic observation" }, async () => defect === "source" ? { ...source, commitSha: "d".repeat(40) } : source)).rejects.toThrow()
+  })
   it.each(["passed", "failed", "inconclusive"] as const)("preserves %s evidence without claiming broader native coverage", async (mode) => {
     const { verify } = await fixture(mode)
     const [report] = await verify()
@@ -169,6 +193,148 @@ const afterCheck: IntegrationSuite["checks"][number] = {
   id: "session-observations", phase: "after", dimension: "fixture", failureOutcome: "infrastructure",
   command: "synthetic-check", args: [], timeoutMs: 1000,
 }
+
+async function recoveryFixture(mode: "passed" | "failed" = "passed") {
+  const data = await integrationFixture(mode)
+  data.config.recovery = { maxAttempts: 2, context: { command: "synthetic-context", args: [], timeoutMs: 1000 } }
+  data.config.scenarios[0].replaySafe = true
+  await data.save()
+  data.dependencies.command = async () => ({ exitCode: 0, stdout: `sha256:${"b".repeat(64)}`, stderr: "" })
+  return data
+}
+
+describe("bounded native recovery", () => {
+  it("revalidates superseded inconclusive attempt evidence after candidate checks", async () => {
+    const { options, dependencies, command, config, save, root } = await recoveryFixture()
+    config.checks.push(afterCheck); await save()
+    let calls = 0
+    dependencies.native = (input) => evaluateNativePilot(input, {
+      platform: "darwin", sourceRevision: async () => source,
+      command: async (binary, args, config) => {
+        if (binary === "maestro" && args.includes("test") && calls++ === 0) throw new Error("Synthetic driver unavailable")
+        return command(binary, args, config)
+      },
+    })
+    dependencies.command = async (binary, _args, input) => {
+      if (binary === "synthetic-context") return { exitCode: 0, stdout: `sha256:${"b".repeat(64)}`, stderr: "" }
+      const context = JSON.parse(input.input!)
+      const stage = context.stages.find((stage: { id: string }) => stage.id === "home")
+      await writeFile(join(root, stage.attempts[0].reports[0].reportPath), "changed")
+      return { exitCode: 0, stdout: "", stderr: "" }
+    }
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.status).toBe("inconclusive")
+    expect(result.stages.find((stage) => stage.id === "evidence-after")?.status).toBe("inconclusive")
+  })
+  it.each(["recovery-context-before", "recovery-context-after"])("rejects reserved user check ID %s before creating a run", async (id) => {
+    const { root, config, save } = await recoveryFixture()
+    config.checks.push({ id, phase: "before", dimension: "fixture", failureOutcome: "infrastructure", command: "synthetic-check", args: [], timeoutMs: 1000 })
+    await save()
+    await expect(loadIntegrationSuite(root, "smoke")).rejects.toThrow(/reserved/)
+  })
+  it("exhausts the declared budget and does not turn recurring infrastructure failure into pass", async () => {
+    const { options, dependencies, command } = await recoveryFixture()
+    let calls = 0
+    dependencies.native = (input) => evaluateNativePilot(input, {
+      platform: "darwin", sourceRevision: async () => source,
+      command: async (binary, args, config) => {
+        if (binary === "maestro" && args.includes("test")) { calls++; throw new Error("Synthetic unavailable driver") }
+        return command(binary, args, config)
+      },
+    })
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.status).toBe("inconclusive")
+    expect(calls).toBe(2)
+    expect(result.stages.find((stage) => stage.id === "home")?.attempts?.map((attempt) => attempt.status)).toEqual(["inconclusive", "inconclusive"])
+  })
+  it("does not retry when the context witness changes after inconclusive evidence", async () => {
+    const { options, dependencies, command } = await recoveryFixture()
+    let captures = 0, contexts = 0
+    dependencies.command = async () => ({ exitCode: 0, stdout: `sha256:${(contexts++ === 0 ? "b" : "c").repeat(64)}`, stderr: "" })
+    dependencies.native = (input) => evaluateNativePilot(input, {
+      platform: "darwin", sourceRevision: async () => source,
+      command: async (binary, args, config) => {
+        if (binary === "maestro" && args.includes("test")) { captures++; throw new Error("Synthetic unavailable driver") }
+        return command(binary, args, config)
+      },
+    })
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.status).toBe("inconclusive")
+    expect(captures).toBe(1)
+  })
+  it("never retries an unsettled driver cleanup", async () => {
+    const { options, dependencies } = await recoveryFixture()
+    const native = vi.fn(async () => { throw new IncompleteCleanupError("Synthetic unsettled driver") })
+    const result = await runIntegrationSuite(options, { ...dependencies, native })
+    expect(result.status).toBe("inconclusive")
+    expect(result.stages.find((stage) => stage.id === "home")?.cleanupSettled).toBe(false)
+    expect(native).toHaveBeenCalledTimes(1)
+  })
+  it("retries only replay-safe inconclusive evidence and retains both immutable attempts", async () => {
+    const { options, dependencies, command } = await recoveryFixture()
+    let calls = 0
+    dependencies.native = async (input) => evaluateNativePilot(input, {
+      platform: "darwin", sourceRevision: async () => source,
+      command: async (binary, args, config) => {
+        if (binary === "maestro" && args.includes("test") && calls++ === 0) throw new Error("Synthetic driver unavailable")
+        return command(binary, args, config)
+      },
+    })
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.status).toBe("pass")
+    const stage = result.stages.find((stage) => stage.id === "home")!
+    expect(stage.attempts?.map((attempt) => attempt.status)).toEqual(["inconclusive", "pass"])
+    expect(stage.attempts?.[0].reports[0].executionId).not.toBe(stage.reports[0].executionId)
+    expect(calls).toBe(2)
+    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("inconclusive")
+  })
+
+  it("does not retry a product failure or a scenario without replay authorization", async () => {
+    for (const mode of ["failed", "passed"] as const) {
+      const { options, dependencies, config, save } = await recoveryFixture(mode)
+      config.scenarios[0].replaySafe = false
+      await save()
+      const native = vi.fn(dependencies.native!)
+      await runIntegrationSuite(options, { ...dependencies, native })
+      expect(native).toHaveBeenCalledTimes(1)
+    }
+    const { options, dependencies } = await recoveryFixture("failed")
+    const native = vi.fn(dependencies.native!)
+    expect((await runIntegrationSuite(options, { ...dependencies, native })).status).toBe("fail")
+    expect(native).toHaveBeenCalledTimes(1)
+  })
+
+  it("reuses verified native evidence across invocations without rerunning the passed interaction", async () => {
+    const { options, dependencies } = await recoveryFixture()
+    const first = await runIntegrationSuite(options, dependencies)
+    const native = vi.fn(dependencies.native!)
+    const resumed = await runIntegrationSuite({ ...options, resume: first.executionId }, { ...dependencies, native })
+    expect(resumed.status).toBe("pass")
+    expect(resumed.resumedFrom).toBe(first.executionId)
+    expect(resumed.stages.find((stage) => stage.id === "home")?.reusedFrom).toBe(first.executionId)
+    expect(native).not.toHaveBeenCalled()
+  })
+
+  it.each(["source", "state", "evidence", "suite", "cleanup"])("refuses resume after changed %s", async (defect) => {
+    const { options, dependencies, root, config, save } = await recoveryFixture()
+    const first = await runIntegrationSuite(options, dependencies)
+    if (defect === "source") dependencies.source = async () => ({ ...source, commitSha: "c".repeat(40) })
+    if (defect === "state") dependencies.command = async () => ({ exitCode: 0, stdout: `sha256:${"c".repeat(64)}`, stderr: "" })
+    if (defect === "suite") { config.scenarios[0].timeoutMs++; await save() }
+    if (defect === "evidence") await writeFile(join(root, first.stages.find((stage) => stage.id === "home")!.reports[0].htmlPath), "changed")
+    if (defect === "cleanup") {
+      first.stages.find((stage) => stage.id === "home")!.cleanupSettled = false
+      first.stages.find((stage) => stage.id === "home")!.status = "inconclusive"
+      first.stages.find((stage) => stage.id === "home")!.attempts = undefined
+      first.status = "inconclusive"; first.exitCode = 2
+      await writeFile(first.summaryPath, JSON.stringify(first))
+    }
+    const native = vi.fn(dependencies.native!)
+    const result = await runIntegrationSuite({ ...options, resume: first.executionId }, { ...dependencies, native })
+    expect(result.status).toBe("inconclusive")
+    expect(native).not.toHaveBeenCalled()
+  })
+})
 
 describe("native integration execution", () => {
   it.each(["passed", "failed", "inconclusive"] as const)("aggregates %s native observations into synchronized integration JSON and HTML", async (mode) => {

@@ -1,5 +1,44 @@
 # Experimental native evidence pilot
 
+## Preflight, gestures and human review
+
+Doctor checks writable candidate storage and requires 1 GiB free by default,
+before any Maestro command. A reviewed `minimumFreeBytes` project override may
+select 64 MiB–64 GiB. `NATIVE_DISK_LOW`, driver/version and unavailable-device
+errors include a recovery action; doctor never deletes files, resets an App,
+boots a simulator or logs in. Maestro does not depend on a visible Device Hub
+window. App readiness, picker availability and backend access require their own
+candidate assertions; a doctor pass does not establish those states.
+
+`drag` accepts integer percentage `start`/`end` points (`x`, `y`, 0–100) and
+`durationMs` (400–2000). Equal points are rejected, and the next step must assert
+an observable outcome. It compiles to Maestro's point-to-point swipe and binds
+the exact pinned command metadata. Driver completion is not a geometry check.
+Movement/resize requires an actual changed-state assertion or separate human
+review; neither a screenshot nor an unchanged visible control proves movement.
+
+Optional project `reviews` declare a fixed list of `{id, scenarioId,
+checkpointId, criterion}`. Scenario/checkpoint references are validated.
+After inspecting complete native evidence, an operator can record a bounded,
+synthetic-data observation with a local reviewer alias:
+
+```sh
+bun run ui-eval native-pilot review --project-root /path/to/app \
+  --report .ui-eval/native-runs/EXECUTION/report.json --review header-legibility \
+  --decision pass --reviewer owner --note 'Controls remain readable at this checkpoint'
+```
+
+This creates new `review.json`/`review.html` under `.ui-eval/native-reviews/`,
+bound to current source and verified original report/PNG digests. Method is
+explicitly `human-observation`; reviewer identity is self-reported, not authenticated.
+Missing, changed, failed or inconclusive evidence cannot be waived. Neither the
+original automatic report nor its status changes. No observation is generated
+automatically, and missing reviews remain pending in the candidate's handoff.
+Notes and screenshots are private local artifacts, not safe-to-publish by default.
+
+See [integration recovery](integration-runner.md#bounded-native-recovery) for
+limited retry and cross-invocation evidence reuse.
+
 `native-pilot` is an additive iOS Simulator experiment. It does not extend Web
 `evaluate`, Agent suites, Web policies or generic native forward contracts.
 Its separate `uieval.io/native-pilot-v1` result assesses declared interactions and
@@ -24,7 +63,7 @@ bun run ui-eval native-pilot doctor --project-root /path/to/app --device <uuid>
 bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device <uuid> --format json
 ```
 
-Steps support tap, literal `input-text` (1–512 characters without line breaks or
+Steps support tap, bounded point-to-point `drag`, literal `input-text` (1–512 characters without line breaks or
 expression templates), bounded `erase-text` (1–512 characters),
 and a single `swipe` in UP/DOWN/LEFT/RIGHT at a fixed 400 ms duration, optionally
 starting from an ID/text selector, plus visible/hidden assertions and screenshots.

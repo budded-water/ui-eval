@@ -18,6 +18,9 @@ declared mini-program interactions and captures PNG evidence using the installed
 official CLI. It does not extend the Web policy pipeline or real-device coverage.
 
 - Non-destructive `init`, environment/configuration `doctor`, and end-to-end `evaluate` commands.
+- Native storage/recovery diagnostics, opt-in bounded infrastructure retry and
+  verified resume for replay-safe integration scenarios. Declared human reviews
+  create separate evidence-bound JSON/HTML observations without rewriting automated results.
 - Shared pinned-engine `integrate` suites with once-per-invocation preparation,
   required Web/WeChat/iOS Simulator scenarios and checks, optional owned native
   sessions, stage durations, and synchronized

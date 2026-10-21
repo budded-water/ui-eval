@@ -9,6 +9,14 @@ const text = Type.String({ minLength: 1 })
 const duration = Type.Number({ minimum: 0 })
 const status = Type.Union([Type.Literal("pass"), Type.Literal("fail"), Type.Literal("needs-review"), Type.Literal("inconclusive"), Type.Literal("not-run")])
 const exit = Type.Union([Type.Literal(0), Type.Literal(1), Type.Literal(2), Type.Literal(3), Type.Literal(130), Type.Literal(143)])
+const report = Type.Object({
+  executionId: text, variantKey: text, status,
+  reportPath: text, htmlPath: text,
+  reportDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
+  htmlDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
+  evidenceDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
+  capabilities: Type.Array(Type.Object({ dimension: text, status: text, detail: text }, strict)),
+}, strict)
 
 export const IntegrationResultSchema = Type.Object({
   apiVersion: Type.Literal("uieval.io/integration-v1alpha1"),
@@ -34,17 +42,14 @@ export const IntegrationResultSchema = Type.Object({
     durationMs: duration,
     reason: text,
     cleanupSettled: Type.Optional(Type.Boolean()),
-    reports: Type.Array(Type.Object({
-      executionId: text, variantKey: text, status,
-      reportPath: text, htmlPath: text,
-      reportDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
-      htmlDigest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }),
-      evidenceDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
-      capabilities: Type.Array(Type.Object({ dimension: text, status: text, detail: text }, strict)),
-    }, strict)),
+    reports: Type.Array(report),
+    reusedFrom: Type.Optional(text),
+    attempts: Type.Optional(Type.Array(Type.Object({ status, durationMs: duration, reason: text, reports: Type.Array(report) }, strict), { minItems: 1, maxItems: 3 })),
   }, strict)),
   sourceDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
   source: Type.Optional(SourceRevisionSchema),
+  recoveryContextDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
+  resumedFrom: Type.Optional(text),
   summaryPath: text,
   summaryHtmlPath: text,
   limitations: Type.Array(text),
@@ -67,6 +72,13 @@ export function assertIntegrationResult(input: unknown): asserts input is Integr
   const ids = input.stages.map((stage) => `${stage.kind}:${stage.id}`)
   if (new Set(ids).size !== ids.length) throw new Error("Duplicate integration stages")
   for (const stage of input.stages) {
+    if ((stage.reusedFrom || stage.attempts) && (input.adapter !== "native-pilot" || stage.kind !== "scenario")) throw new Error("Recovery metadata is native scenario evidence only")
+    if (stage.reusedFrom && (stage.status !== "pass" || stage.attempts)) throw new Error("Only an accepted native scenario may be reused")
+    if (stage.attempts) {
+      const last = stage.attempts.at(-1)!
+      if (last.status !== stage.status || canonicalDigest(last.reports) !== canonicalDigest(stage.reports)) throw new Error("Native attempt metadata contradicts final evidence")
+      if (stage.attempts.slice(0, -1).some((attempt) => attempt.status !== "inconclusive")) throw new Error("Only infrastructure attempts may be retried")
+    }
     if (stage.cleanupSettled === false && stage.status !== "inconclusive") throw new Error("Incomplete cleanup cannot pass")
     if (stage.kind !== "scenario" && stage.reports.length) throw new Error("Only scenario stages can carry adapter reports")
     if (stage.kind === "scenario" && ["pass", "fail", "needs-review"].includes(stage.status)) {

@@ -341,6 +341,156 @@
                 }
               }
             }
+          },
+          "reusedFrom": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "attempts": {
+            "minItems": 1,
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "status",
+                "durationMs",
+                "reason",
+                "reports"
+              ],
+              "properties": {
+                "status": {
+                  "anyOf": [
+                    {
+                      "const": "pass",
+                      "type": "string"
+                    },
+                    {
+                      "const": "fail",
+                      "type": "string"
+                    },
+                    {
+                      "const": "needs-review",
+                      "type": "string"
+                    },
+                    {
+                      "const": "inconclusive",
+                      "type": "string"
+                    },
+                    {
+                      "const": "not-run",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "durationMs": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "reason": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reports": {
+                  "type": "array",
+                  "items": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "executionId",
+                      "variantKey",
+                      "status",
+                      "reportPath",
+                      "htmlPath",
+                      "reportDigest",
+                      "htmlDigest",
+                      "capabilities"
+                    ],
+                    "properties": {
+                      "executionId": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "variantKey": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "status": {
+                        "anyOf": [
+                          {
+                            "const": "pass",
+                            "type": "string"
+                          },
+                          {
+                            "const": "fail",
+                            "type": "string"
+                          },
+                          {
+                            "const": "needs-review",
+                            "type": "string"
+                          },
+                          {
+                            "const": "inconclusive",
+                            "type": "string"
+                          },
+                          {
+                            "const": "not-run",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "reportPath": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "htmlPath": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "reportDigest": {
+                        "pattern": "^sha256:[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "htmlDigest": {
+                        "pattern": "^sha256:[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "evidenceDigest": {
+                        "pattern": "^sha256:[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "capabilities": {
+                        "type": "array",
+                        "items": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "dimension",
+                            "status",
+                            "detail"
+                          ],
+                          "properties": {
+                            "dimension": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "status": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "detail": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -373,6 +523,14 @@
           "type": "string"
         }
       }
+    },
+    "recoveryContextDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "resumedFrom": {
+      "minLength": 1,
+      "type": "string"
     },
     "summaryPath": {
       "minLength": 1,

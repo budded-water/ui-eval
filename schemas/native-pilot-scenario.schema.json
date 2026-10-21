@@ -187,6 +187,67 @@
             "type": "object",
             "required": [
               "action",
+              "start",
+              "end",
+              "durationMs"
+            ],
+            "properties": {
+              "action": {
+                "const": "drag",
+                "type": "string"
+              },
+              "start": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "type": "integer"
+                  },
+                  "y": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "type": "integer"
+                  }
+                }
+              },
+              "end": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "type": "integer"
+                  },
+                  "y": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "type": "integer"
+                  }
+                }
+              },
+              "durationMs": {
+                "minimum": 400,
+                "maximum": 2000,
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
               "selector"
             ],
             "properties": {

@@ -8,6 +8,7 @@ export function compileNativePilotFlow(project: NativePilotProject, scenario: Na
     else if (step.action === "input-text") commands.push({ inputText: step.text })
     else if (step.action === "erase-text") commands.push({ eraseText: step.characters })
     else if (step.action === "swipe") commands.push({ swipe: { direction: step.direction, duration: 400, ...(step.selector ? { from: step.selector } : {}) } })
+    else if (step.action === "drag") commands.push({ swipe: { start: `${step.start.x}%,${step.start.y}%`, end: `${step.end.x}%,${step.end.y}%`, duration: step.durationMs } })
     else {
       const command = { tap: "tapOn", "assert-visible": "assertVisible", "assert-hidden": "assertNotVisible" }[step.action]
       commands.push({ [command]: step.selector })

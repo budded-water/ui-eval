@@ -120,6 +120,47 @@ node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candida
 
 ## Results and migration
 
+### Bounded native recovery
+
+Native suites may opt into `recovery: {maxAttempts, context}` where maxAttempts
+is 1–3 and context is a trusted read-only argv command. User check IDs
+`recovery-context-before` and `recovery-context-after` are reserved in these suites.
+It receives JSON stdin
+with `apiVersion: uieval.io/native-recovery-v1`, `projectId` and selected `deviceId`.
+It must return exactly one `sha256:` digest of the relevant installed App,
+fixture/account/backend state; raw stdout/stderr are not retained in summaries.
+This is a candidate-owned assertion, not independent App or backend attestation.
+Do not enable reuse when the candidate cannot account for external state changes.
+
+Only scenarios explicitly declaring `replaySafe: true` may retry. A returned,
+validated inconclusive native report can retry within that finite budget after
+source/context rechecks. Product assertion failures, thrown prerequisites,
+deadlines, cancellation and incomplete cleanup do not authorize an interaction
+retry. Every attempt retains its original report and appears in JSON/HTML;
+successful earlier scenarios are not rerun within the invocation.
+
+```sh
+node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/app \
+  --device SELECTED-UUID --resume PREVIOUS-EXECUTION --format json
+```
+
+Resume requires exact source, suite, engine, device and context identity plus
+both previous report projections and settled cleanup. Passed replay-safe stages
+are reused only after revalidating original inputs, flow, command metadata and
+both PNG copies. Invalid or changed evidence blocks instead of silently rerunning
+and hiding the discrepancy. Other scenarios execute normally. Preparation,
+session startup/teardown, external checks and final source/engine/evidence/state
+checks always run. A changed fixture or binary requires a fresh invocation.
+Every retained attempt's evidence is rechecked after candidate checks, including
+superseded inconclusive attempts. Report `resumedFrom`, stage `reusedFrom`, `attempts` and `recoveryContextDigest`
+make provenance explicit. Reused evidence remains a historical observation under
+the declared state witness; it is not a new live screenshot or human review.
+
+The sealed suite fixes this run's completion boundary. New optional checks belong
+in a reviewed future suite revision, not an unbounded continuation of this run.
+Simulation, human visual review, store upload/processing and physical-device
+launch are separate outcomes. An integration pass closes only its declared scope.
+
 `.ui-eval/integration/<execution-id>/` contains sealed `suite.json`, canonical
 `summary.json` and default human `summary.html`. HTML derives from the validated
 record and publishes before terminal JSON; failure to write either fails the

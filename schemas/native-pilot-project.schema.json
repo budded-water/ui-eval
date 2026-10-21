@@ -40,6 +40,44 @@
     "restartApp": {
       "type": "boolean"
     },
+    "minimumFreeBytes": {
+      "minimum": 67108864,
+      "maximum": 68719476736,
+      "type": "integer"
+    },
+    "reviews": {
+      "maxItems": 40,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "scenarioId",
+          "checkpointId",
+          "criterion"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "scenarioId": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "checkpointId": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "criterion": {
+            "minLength": 1,
+            "maxLength": 1000,
+            "type": "string"
+          }
+        }
+      }
+    },
     "timeoutMs": {
       "minimum": 1000,
       "maximum": 600000,

@@ -32,6 +32,10 @@ export const IntegrationSuiteSchema = Type.Object({
   driver: Type.Optional(text),
   prepare: Type.Optional(IntegrationCommandSchema),
   session: Type.Optional(IntegrationSessionSchema),
+  recovery: Type.Optional(Type.Object({
+    maxAttempts: Type.Integer({ minimum: 1, maximum: 3 }),
+    context: IntegrationCommandSchema,
+  }, strict)),
   checks: Type.Array(Type.Object({
     ...IntegrationCommandSchema.properties,
     id,
@@ -43,6 +47,7 @@ export const IntegrationSuiteSchema = Type.Object({
     id,
     policy: Type.Optional(text),
     reference: Type.Optional(text),
+    replaySafe: Type.Optional(Type.Boolean()),
     timeoutMs: Type.Integer({ minimum: 1000, maximum: 1_800_000 }),
   }, strict), { minItems: 1, maxItems: 100 }),
 }, strict)
@@ -65,12 +70,18 @@ export async function loadIntegrationSuite(projectRoot: string, suite: string) {
   if (!unique(input.scenarios.map((entry) => entry.id)) || !unique(input.checks.map((entry) => entry.id))) {
     throw new Error("Integration scenario and check IDs must be unique")
   }
+  if (input.recovery && input.checks.some((check) => ["recovery-context-before", "recovery-context-after"].includes(check.id))) {
+    throw new Error("Native recovery check IDs are reserved")
+  }
   if (input.adapter === "web" ? input.driver !== undefined :
     input.executionProfile !== undefined || input.browserChannel !== undefined || input.scenarios.some((entry) => entry.policy || entry.reference)) {
     throw new Error("Integration options are not supported by the selected adapter")
   }
   if ((input.session && input.adapter !== "native-pilot") || (input.adapter === "native-pilot" && input.driver !== undefined)) {
     throw new Error("Session and native options are not supported by the selected adapter")
+  }
+  if (input.adapter !== "native-pilot" && (input.recovery || input.scenarios.some((scenario) => scenario.replaySafe !== undefined))) {
+    throw new Error("Recovery and replay safety are supported only for native integration")
   }
   return { projectRoot: root, path: resolve(root, path), value: input }
 }

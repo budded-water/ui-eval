@@ -12,6 +12,11 @@ import type { CommandResult } from "../runtime/command"
 import type { runCommand } from "../runtime/command"
 import { hasIncompleteCleanup, IncompleteCleanupError } from "../runtime/cleanup"
 
+vi.mock("./preflight", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./preflight")>(),
+  nativeStorage: vi.fn(async () => ({ availableBytes: 2 * 1024 ** 3, minimumBytes: 1024 ** 3 })),
+}))
+
 const deviceId = "11111111-1111-1111-1111-111111111111"
 const project: NativePilotProject = { apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotProject", projectId: "test-app", platform: "ios-simulator", appId: "test.app", maestroVersion: "2.9.0", timeoutMs: 1000, scenarios: { home: "ui-eval/home.json" } }
 const scenario: NativePilotScenario = { apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotScenario", scenarioId: "home", steps: [{ action: "assert-visible", selector: { id: "home-title" } }, { action: "screenshot", checkpointId: "home" }] }

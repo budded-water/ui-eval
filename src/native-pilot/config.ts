@@ -4,6 +4,7 @@ import { lstat, readFile, realpath } from "node:fs/promises"
 import { isAbsolute, relative, resolve } from "node:path"
 
 const id = Type.String({ pattern: "^[a-z][a-z0-9-]{0,63}$" })
+const point = Type.Object({ x: Type.Integer({ minimum: 0, maximum: 100 }), y: Type.Integer({ minimum: 0, maximum: 100 }) }, { additionalProperties: false })
 const selector = Type.Union([
   Type.Object({ id: Type.String({ minLength: 1, maxLength: 200, pattern: "^(?!.*\\$\\{)[^\\r\\n]+$" }) }, { additionalProperties: false }),
   Type.Object({ text: Type.String({ minLength: 1, maxLength: 200, pattern: "^(?!.*\\$\\{)[^\\r\\n]+$" }) }, { additionalProperties: false }),
@@ -17,6 +18,7 @@ export const NativePilotScenarioSchema = Type.Object({
     Type.Object({ action: Type.Literal("input-text"), text: Type.String({ minLength: 1, maxLength: 512, pattern: "^(?![\\s\\S]*\\$\\{)[^\\r\\n]+$" }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("erase-text"), characters: Type.Integer({ minimum: 1, maximum: 512 }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("swipe"), direction: Type.Union([Type.Literal("UP"), Type.Literal("DOWN"), Type.Literal("LEFT"), Type.Literal("RIGHT")]), selector: Type.Optional(selector) }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("drag"), start: point, end: point, durationMs: Type.Integer({ minimum: 400, maximum: 2000 }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-visible"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-hidden"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("screenshot"), checkpointId: id }, { additionalProperties: false }),
@@ -31,6 +33,11 @@ export const NativePilotProjectSchema = Type.Object({
   appId: Type.String({ pattern: "^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)+$" }),
   maestroVersion: Type.Literal("2.9.0"),
   restartApp: Type.Optional(Type.Boolean()),
+  minimumFreeBytes: Type.Optional(Type.Integer({ minimum: 64 * 1024 ** 2, maximum: 64 * 1024 ** 3 })),
+  reviews: Type.Optional(Type.Array(Type.Object({
+    id, scenarioId: id, checkpointId: id,
+    criterion: Type.String({ minLength: 1, maxLength: 1000 }),
+  }, { additionalProperties: false }), { maxItems: 40 })),
   timeoutMs: Type.Integer({ minimum: 1000, maximum: 600000 }),
   scenarios: Type.Record(id, Type.String({ pattern: "^[a-zA-Z0-9/_-]+\\.json$" })),
 }, { additionalProperties: false })
@@ -55,6 +62,8 @@ export async function loadNativePilotProject(root: string): Promise<NativePilotP
   const data: unknown = JSON.parse(await readFile(await containedFile(root, "ui-eval/native.json"), "utf8"))
   if (!Value.Check(NativePilotProjectSchema, data)) throw new Error("Invalid native pilot project")
   if (!Object.keys(data.scenarios).length) throw new Error("Native pilot requires scenarios")
+  if (new Set(data.reviews?.map((review) => review.id)).size !== (data.reviews?.length ?? 0) ||
+    data.reviews?.some((review) => !Object.hasOwn(data.scenarios, review.scenarioId))) throw new Error("Native review IDs and scenario references must be valid")
   return data
 }
 
@@ -64,8 +73,12 @@ export async function loadNativePilotScenario(root: string, project: NativePilot
   if (!Value.Check(NativePilotScenarioSchema, data) || data.scenarioId !== name) throw new Error("Invalid native pilot scenario")
   const checkpoints = data.steps.filter((step) => step.action === "screenshot").map((step) => step.checkpointId)
   if (!checkpoints.length || new Set(checkpoints).size !== checkpoints.length) throw new Error("Native pilot needs unique screenshot checkpoints")
+  if (project.reviews?.some((review) => review.scenarioId === name && !checkpoints.includes(review.checkpointId))) throw new Error("Native review checkpoint must exist in its declared scenario")
   if (!data.steps.some((step) => step.action === "assert-visible")) throw new Error("Native pilot needs a visibility assertion")
   for (let index = 0; index < data.steps.length; index++) {
+    const step = data.steps[index]
+    if (step.action === "drag" && ((step.start.x === step.end.x && step.start.y === step.end.y) ||
+      !["assert-visible", "assert-hidden"].includes(data.steps[index + 1]?.action))) throw new Error("Native drag needs displacement and an immediate outcome assertion")
     if (data.steps[index].action === "screenshot" && !["assert-visible", "assert-hidden"].includes(data.steps[index - 1]?.action)) {
       throw new Error("Every native screenshot must immediately follow an assertion")
     }

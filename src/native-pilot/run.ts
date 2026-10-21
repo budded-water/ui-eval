@@ -9,23 +9,33 @@ import { loadNativePilotProject, loadNativePilotScenario } from "./config"
 import { compileNativePilotFlow } from "./flow"
 import { findNativeCommandFile, inspectNativeCommands, nativeScreenshots, readNativeEvidence } from "./evidence"
 import { writeNativePilotReport, type NativePilotResult } from "./report"
+import { NativePrerequisiteError, nativeStorage } from "./preflight"
 
 export interface NativePilotOptions { projectRoot: string; deviceId: string; scenario?: string; signal?: AbortSignal }
-export interface NativePilotDependencies { command?: typeof runCommand; sourceRevision?: typeof collectSourceRevision; platform?: NodeJS.Platform }
+export interface NativePilotDependencies { command?: typeof runCommand; sourceRevision?: typeof collectSourceRevision; platform?: NodeJS.Platform; storage?: typeof nativeStorage }
 
 export async function doctorNativePilot(options: NativePilotOptions, dependencies: NativePilotDependencies = {}) {
-  if ((dependencies.platform ?? process.platform) !== "darwin") throw new Error("Native pilot requires macOS and iOS Simulator")
+  if ((dependencies.platform ?? process.platform) !== "darwin") throw new NativePrerequisiteError("NATIVE_PLATFORM_UNSUPPORTED", "Native pilot requires macOS and iOS Simulator; select a supported runner.")
   if (!/^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/.test(options.deviceId)) throw new Error("Native pilot requires an explicit simulator UUID")
   const project = await loadNativePilotProject(options.projectRoot)
+  const storage = await (dependencies.storage ?? nativeStorage)(options.projectRoot, project.minimumFreeBytes)
   if (project.maestroVersion !== "2.9.0") throw new Error("Native pilot supports the Maestro 2.9.0 evidence format only")
   const command = dependencies.command ?? runCommand
   const run = async (binary: string, args: string[]) => {
-    const result = await command(binary, args, { cwd: options.projectRoot, timeoutMs: 30000, signal: options.signal, truncateOutput: false })
-    if (result.exitCode !== 0) throw new Error(`Native pilot prerequisite command failed: ${binary} ${args.slice(0, 2).join(" ")}`)
-    return result.stdout
+    try {
+      const result = await command(binary, args, { cwd: options.projectRoot, timeoutMs: 30000, signal: options.signal, truncateOutput: false })
+      if (result.exitCode !== 0) throw new Error("Prerequisite unavailable")
+      return result.stdout
+    } catch (error) {
+      if (hasIncompleteCleanup(error) || options.signal?.aborted) throw error
+      const recovery = binary === "maestro" ? "Install the pinned Maestro version and verify it is on PATH."
+        : args.includes("get_app_container") ? "Install the declared App on the selected simulator; do not reset its data."
+        : "Restore Xcode command-line tools and the selected simulator."
+      throw new NativePrerequisiteError("NATIVE_PREREQUISITE_UNAVAILABLE", `${recovery} Then rerun doctor.`)
+    }
   }
   const version = (await run("maestro", ["--version"])).trim()
-  if (version !== project.maestroVersion) throw new Error("Native pilot Maestro version differs from project pin")
+  if (version !== project.maestroVersion) throw new NativePrerequisiteError("NATIVE_DRIVER_VERSION", "Maestro version differs from project pin; use the declared version and rerun doctor.")
   const devices: unknown = JSON.parse(await run("xcrun", ["simctl", "list", "devices", "available", "-j"]))
   if (!devices || typeof devices !== "object" || !("devices" in devices) || !devices.devices || typeof devices.devices !== "object") throw new Error("Invalid simulator inventory")
   const matches: Array<{ id: string; name: string; runtime: string; maestroVersion: string }> = []
@@ -37,11 +47,11 @@ export async function doctorNativePilot(options: NativePilotOptions, dependencie
       }
     }
   }
-  if (matches.length !== 1) throw new Error("Selected native simulator must be booted and available")
+  if (matches.length !== 1) throw new NativePrerequisiteError("NATIVE_DEVICE_UNAVAILABLE", "Selected native simulator must be booted and available; restore that device and rerun doctor.")
   await run("xcrun", ["simctl", "get_app_container", options.deviceId, project.appId, "app"])
   // Validate the entire configured suite even when doctor has no selected scenario.
   for (const name of Object.keys(project.scenarios)) await loadNativePilotScenario(options.projectRoot, project, name)
-  return { project, device: matches[0] }
+  return { project, device: matches[0], storage }
 }
 
 async function outputDirectory(root: string): Promise<string> {

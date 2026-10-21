@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "executionId",
+    "projectId",
+    "reviewId",
+    "scenarioId",
+    "checkpointId",
+    "criterion",
+    "method",
+    "decision",
+    "reviewerAlias",
+    "note",
+    "sourceDigest",
+    "reportDigest",
+    "screenshotDigest",
+    "reportPath",
+    "recordedAt"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/native-review-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeReviewResult",
+      "type": "string"
+    },
+    "executionId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "scenarioId": {
+      "type": "string"
+    },
+    "checkpointId": {
+      "type": "string"
+    },
+    "criterion": {
+      "type": "string"
+    },
+    "method": {
+      "const": "human-observation",
+      "type": "string"
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "const": "pass",
+          "type": "string"
+        },
+        {
+          "const": "fail",
+          "type": "string"
+        }
+      ]
+    },
+    "reviewerAlias": {
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "type": "string"
+    },
+    "note": {
+      "minLength": 1,
+      "maxLength": 1000,
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "reportDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "screenshotDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "reportPath": {
+      "type": "string"
+    },
+    "recordedAt": {
+      "type": "string"
+    }
+  }
+}

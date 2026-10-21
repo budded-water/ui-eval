@@ -112,6 +112,14 @@ descendants that escape the group still require OS/container isolation.
 
 ## Evidence and privacy limits
 
+Native doctor now checks candidate-volume free space, but does not reserve space,
+monitor every volume, prune evidence or enforce a global retention quota. Another
+process can exhaust storage after preflight. Native retry/resume requires an
+explicit replay-safety declaration and candidate-owned context witness; neither
+independently verifies backend state or installed-binary provenance. Human review
+records use self-reported aliases and do not certify geometry, accessibility or
+device release readiness. See [native pilot](native-pilot.md).
+
 UI Eval bounds and redacts structured evidence, but:
 
 - redaction is pattern- and marker-based, not general DLP;
