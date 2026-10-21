@@ -40,10 +40,11 @@ export function inspectNativeCommands(data: unknown, project: NativePilotProject
       const step = scenario.steps[index - 3]
       if (step.action === "screenshot") {
         if (canonicalDigest(command) !== canonicalDigest({ takeScreenshotCommand: { path: step.checkpointId, optional: false } })) throw new Error("Native screenshot binding mismatch")
-      } else if (step.action === "input-text" || step.action === "erase-text" || step.action === "swipe") {
+      } else if (step.action === "input-text" || step.action === "erase-text" || step.action === "swipe" || step.action === "drag") {
         let expected: JsonObject
         if (step.action === "input-text") expected = { inputTextCommand: { text: step.text, optional: false } }
         else if (step.action === "erase-text") expected = { eraseTextCommand: { charactersToErase: step.characters, optional: false } }
+        else if (step.action === "drag") expected = { swipeCommand: { startRelative: `${step.start.x}%,${step.start.y}%`, endRelative: `${step.end.x}%,${step.end.y}%`, duration: step.durationMs, optional: false } }
         else if (step.action === "swipe") {
           const elementSelector = step.selector ? { ["id" in step.selector ? "idRegex" : "textRegex"]: "id" in step.selector ? step.selector.id : step.selector.text, optional: false } : undefined
           expected = { swipeCommand: { direction: step.direction, duration: 400, ...(elementSelector ? { elementSelector } : {}), optional: false } }

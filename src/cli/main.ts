@@ -29,8 +29,9 @@ Usage:
   ui-eval agent <suite> [--repair] [--browser-channel chrome]
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
-  ui-eval integrate <suite> [--project-root path] [--device uuid] [--format text|json]
+  ui-eval integrate <suite> [--project-root path] [--device uuid] [--resume execution-id] [--format text|json]
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
+  ui-eval native-pilot review --report <path> --review <id> --decision pass|fail --reviewer <alias> --note <observation>
   ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
                               [--project-root path] [--format text|json]
 
@@ -398,13 +399,14 @@ export async function runCli(
     if (command === "doctor") return await doctorCommand(args, io, deps, runOptions)
     if (command === "integrate") {
       const parsed = parseArgs({ args, allowPositionals: true, strict: true, options: {
-        "project-root": { type: "string" }, device: { type: "string" }, format: { type: "string", default: "text" },
+        "project-root": { type: "string" }, device: { type: "string" }, resume: { type: "string" }, format: { type: "string", default: "text" },
       } })
       if (parsed.positionals.length !== 1) throw new Error("integrate requires exactly one suite id or path")
       const format = formatOption(parsed.values.format)
       const result = await (deps.integrate ?? runIntegrationSuite)({
         projectRoot: parsed.values["project-root"] ?? io.cwd, suite: parsed.positionals[0], signal: runOptions.signal,
         deviceId: parsed.values.device,
+        resume: parsed.values.resume,
         onProgress: (message) => io.stderr(`[ui-eval-integration] ${line(message)}`),
       })
       throwIfInterrupted(runOptions.signal)

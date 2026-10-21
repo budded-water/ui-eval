@@ -17,11 +17,14 @@ import { nativeIntegrationEvidence } from "./native-evidence"
 import { startIntegrationSession } from "./session"
 import { integrationExitCode, type IntegrationResult, type IntegrationStage } from "./model"
 import { writeIntegrationArtifacts } from "./report"
+import { NativePrerequisiteError } from "../native-pilot/preflight"
+import { loadNativeResume, recoveryContext, revalidateNativeStage } from "./recovery"
 
 export interface IntegrationOptions {
   projectRoot: string
   suite: string
   deviceId?: string
+  resume?: string
   signal?: AbortSignal
   onProgress?: (message: string) => void
 }
@@ -42,6 +45,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   const loaded = await loadIntegrationSuite(options.projectRoot, options.suite)
   const root = loaded.projectRoot
   const suite = loaded.value
+  if (options.resume && (suite.adapter !== "native-pilot" || !suite.recovery)) throw new Error("Resume requires a native suite with a recovery context")
   if (suite.adapter === "native-pilot") {
     if (!options.deviceId || !/^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/.test(options.deviceId)) {
       throw new Error("Native integration requires an explicit simulator UUID")
@@ -64,6 +68,8 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   const sessionStop = suite.session ? stage("session-stop", "session") : undefined
   const before = suite.checks.filter((check) => check.phase === "before").map((check) => stage(check.id, "check", check.dimension))
   const scenarios = suite.scenarios.map((scenario) => stage(scenario.id, "scenario"))
+  const contextBefore = suite.recovery ? stage("recovery-context-before", "check", "fixture-state") : undefined
+  const contextAfter = suite.recovery ? stage("recovery-context-after", "check", "fixture-state") : undefined
   const after = suite.checks.filter((check) => check.phase === "after").map((check) => stage(check.id, "check", check.dimension))
   const sourceAfter = stage("source-after", "source")
   const evidenceAfter = stage("evidence-after", "evidence")
@@ -75,7 +81,8 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
     ...(options.deviceId ? { deviceId: options.deviceId } : {}),
     ...(suite.browserChannel ? { browserChannel: suite.browserChannel } : {}),
     startedAt: new Date().toISOString(), durationMs: 0, exitCode: 2, status: "inconclusive",
-    stages: [engineBefore, sourceBefore, ...(prepare ? [prepare] : []), ...(sessionStart ? [sessionStart] : []), ...before, ...scenarios, ...after,
+    stages: [engineBefore, sourceBefore, ...(prepare ? [prepare] : []), ...(sessionStart ? [sessionStart] : []), ...before,
+      ...(contextBefore ? [contextBefore] : []), ...scenarios, ...after, ...(contextAfter ? [contextAfter] : []),
       ...(sessionStop ? [sessionStop] : []), evidenceAfter, sourceAfter, engineAfter],
     summaryPath: resolve(directory, "summary.json"), summaryHtmlPath: resolve(directory, "summary.html"),
     limitations: [
@@ -87,6 +94,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
         "Experimental iOS Simulator interaction and screenshot evidence only; no Android, Harmony or store release acceptance.",
         "Source and installed App presence are observed; the binary and loaded JavaScript are not cryptographically bound to source.",
         "Candidate-owned session readiness and cleanup are protocol assertions, not an OS/network sandbox or device-state attestation.",
+        "Recovery context is a candidate-owned state assertion. Only explicitly replay-safe scenarios may retry or reuse evidence; manual review and device launch remain separate.",
       ] : suite.adapter === "wechat-pilot" ? ["WeChat DevTools acceptance does not certify runtime/network, design or actual phone rendering."] : ["A Web pass does not certify unconfigured visual, geometry, accessibility or production API behavior."]),
     ],
   }
@@ -94,7 +102,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   let cleanupSettled = true
   let session: Awaited<ReturnType<typeof startIntegrationSession>> | undefined
   let activeSignal = options.signal
-  const revalidate: Array<() => Promise<void>> = []
+  const revalidate = new Map<string, () => Promise<void>>()
   const execute = async (entry: IntegrationStage, operation: () => Promise<void>, cleanup = false) => {
     options.onProgress?.(`Integration ${suite.id}: ${entry.kind} ${entry.id}`)
     const start = performance.now()
@@ -105,7 +113,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
       if (entry.status === "not-run") { entry.status = "pass"; entry.reason = "Required stage completed" }
     } catch (error) {
       entry.status = "inconclusive"
-      entry.reason = "Required stage failed, timed out, or returned invalid evidence"
+      entry.reason = error instanceof NativePrerequisiteError ? error.message : "Required stage failed, timed out, or returned invalid evidence"
       entry.cleanupSettled = !hasIncompleteCleanup(error)
       cleanupSettled &&= entry.cleanupSettled
       stopped = true
@@ -144,10 +152,34 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
         const config = suite.checks.find((check) => check.id === entry.id)!
         await command(entry, config, config.failureOutcome)
       }
+      let previous: IntegrationResult | undefined
+      if (!stopped && contextBefore) await execute(contextBefore, async () => {
+        result.recoveryContextDigest = await recoveryContext(root, suite, deps.command ?? runCommand, activeSignal, options.deviceId)
+        if (options.resume) {
+          previous = await loadNativeResume(root, options.resume, result)
+          result.resumedFrom = previous.executionId
+        }
+      })
       for (const [index, config] of suite.scenarios.entries()) {
         if (stopped) break
         const entry = scenarios[index]
-        await execute(entry, async () => {
+        const reusable = config.replaySafe && previous?.stages.find((candidate) => candidate.kind === "scenario" && candidate.id === config.id && candidate.status === "pass")
+        if (reusable) {
+          await execute(entry, async () => {
+            await revalidateNativeStage(root, suite, reusable, result)
+            entry.status = "pass"
+            entry.reason = "Reused exact verified evidence with matching source, suite, engine, device and candidate state"
+            entry.reports = structuredClone(reusable.reports)
+            entry.reusedFrom = previous!.executionId
+            revalidate.set(entry.id, () => revalidateNativeStage(root, suite, reusable, result))
+          })
+          continue
+        }
+        const maxAttempts = config.replaySafe ? suite.recovery?.maxAttempts ?? 1 : 1
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          entry.status = "not-run"
+          entry.reports = []
+          await execute(entry, async () => {
           const reports = await withOwnedDeadline(async (signal) => {
             let verify: () => Promise<IntegrationStage["reports"]>
             if (suite.adapter === "web") {
@@ -165,7 +197,7 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
               verify = () => nativeIntegrationEvidence(root, suite, config.id, output, result.sourceDigest!, options.deviceId!)
             }
             const validated = await verify()
-            revalidate.push(async () => {
+            revalidate.set(entry.id, async () => {
               if (canonicalDigest(await verify()) !== canonicalDigest(validated)) throw new Error("Original adapter evidence changed after acceptance checks")
             })
             return validated
@@ -174,20 +206,43 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
           entry.status = statusForExit(integrationExitCode(reports.map((report) => ({ ...entry, status: report.status }))))
           entry.reason = "Derived from validated canonical adapter reports"
           if (entry.status === "inconclusive") stopped = true
-        })
+          })
+          if (suite.recovery) {
+            entry.attempts ??= []
+            entry.attempts.push({ status: entry.status, durationMs: entry.durationMs, reason: entry.reason, reports: structuredClone(entry.reports) })
+          }
+          if (String(entry.status) !== "inconclusive" || !cleanupSettled || entry.reports.length !== 1 || attempt + 1 === maxAttempts) break
+          // A timeout/throw/cleanup failure does not authorize another interaction.
+          // Only a returned, validated inconclusive report is eligible for retry.
+          let safe = false
+          await execute(contextBefore!, async () => {
+            if (canonicalDigest(await (deps.source ?? collectSourceRevision)(root)) !== result.sourceDigest ||
+              await recoveryContext(root, suite, deps.command ?? runCommand, activeSignal, options.deviceId) !== result.recoveryContextDigest) {
+              throw new Error("Native retry source or fixture changed")
+            }
+            safe = true
+          })
+          if (!safe) break
+          stopped = false
+          options.onProgress?.(`Native ${config.id}: retry ${attempt + 2}/${maxAttempts} after inconclusive evidence`)
+        }
+        if (entry.attempts) entry.durationMs = entry.attempts.reduce((sum, attempt) => sum + attempt.durationMs, 0)
       }
       for (const entry of after) {
         if (!cleanupSettled || !result.sourceDigest || session?.signal.aborted) break
         const config = suite.checks.find((check) => check.id === entry.id)!
         await command(entry, config, config.failureOutcome)
       }
+      if (cleanupSettled && contextAfter && result.recoveryContextDigest && !session?.signal.aborted) await execute(contextAfter, async () => {
+        if (await recoveryContext(root, suite, deps.command ?? runCommand, activeSignal, options.deviceId) !== result.recoveryContextDigest) throw new Error("Native fixture/App state changed; evidence cannot be reused")
+      })
     } finally {
       // Resource cleanup gets its own bounded budget, even after caller/session cancellation.
       if (session && sessionStop) await execute(sessionStop, () => session!.stop(), true)
       activeSignal = options.signal
     }
-    if (cleanupSettled && revalidate.length === suite.scenarios.length) await execute(evidenceAfter, async () => {
-      for (const verify of revalidate) await verify()
+    if (cleanupSettled && revalidate.size === suite.scenarios.length) await execute(evidenceAfter, async () => {
+      for (const verify of revalidate.values()) await verify()
     })
     if (cleanupSettled && result.sourceDigest) await execute(sourceAfter, async () => {
       if (canonicalDigest(await (deps.source ?? collectSourceRevision)(root)) !== result.sourceDigest) throw new Error("Candidate source changed during integration")

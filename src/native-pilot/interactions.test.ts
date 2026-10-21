@@ -30,6 +30,23 @@ function records() {
   return commands.map((command, index) => ({ command, metadata: { evaluatedCommand: command, sequenceNumber: index, depth: 0, status: "COMPLETED" } }))
 }
 describe("native form and navigation commands", () => {
+  it("binds bounded point-to-point drags without treating driver completion as a geometry assertion", () => {
+    const drag: NativePilotScenario = { ...scenario, steps: [
+      { action: "drag", start: { x: 60, y: 70 }, end: { x: 40, y: 40 }, durationMs: 800 },
+      ...scenario.steps.slice(4),
+    ] }
+    // Actual Maestro 2.9.0 serialization observed on iOS Simulator; no App payloads.
+    const command = JSON.parse(readFileSync(new URL("./fixtures/drag-command.json", import.meta.url), "utf8")) as { swipeCommand: Record<string, unknown> }
+    const data = [...records().slice(0, 3), { command, metadata: { evaluatedCommand: command, sequenceNumber: 3, depth: 0, status: "COMPLETED" } },
+      ...records().slice(-2).map((row, index) => ({ ...row, metadata: { ...row.metadata, sequenceNumber: index + 4 } }))]
+    expect(Value.Check(NativePilotScenarioSchema, drag)).toBe(true)
+    expect(compileNativePilotFlow(project, drag)).toContain('"start":"60%,70%","end":"40%,40%","duration":800')
+    expect(inspectNativeCommands(data, project, drag, device)).toEqual({ passed: 1, failed: 0, complete: true })
+    expect(inspectNativeCommands(data.slice(0, 4), project, drag, device).passed).toBe(0)
+    const corrupt = structuredClone(data)
+    Object.assign(corrupt[3].command.swipeCommand!, { endRelative: "60%,50%" })
+    expect(() => inspectNativeCommands(corrupt, project, drag, device)).toThrow(/binding/)
+  })
   it("accepts real Maestro 2.9.0 form and swipe records with candidate labels normalized", () => {
     // Observed iOS Simulator command objects; only candidate text labels were
     // normalized. Preserve serialized field names/defaults, not App inputs.

@@ -1,5 +1,16 @@
 # Security Model
 
+Native recovery context commands are reviewed candidate executable input, not
+an independent security authority. A context must account for relevant App,
+account/backend and fixture changes before replay is enabled. Reuse rechecks
+the same pinned source/suite/engine/device and original native evidence;
+unsettled cleanup, corrupt evidence and identity drift block continuation.
+No recovery command receives credentials from the engine. Context stdout must
+be one digest; reports withhold raw output. Human review notes and aliases are
+self-reported, private local input and HTML-escaped, with bounded schema fields
+and verified contained evidence paths. Human observations cannot waive failed
+or missing automatic evidence or establish release readiness.
+
 ## Integration command boundary
 
 The [integration runner](integration-runner.md) treats pins, suites and

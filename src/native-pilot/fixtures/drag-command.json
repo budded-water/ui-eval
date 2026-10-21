@@ -1,0 +1,8 @@
+{
+  "swipeCommand": {
+    "startRelative": "60%,70%",
+    "endRelative": "40%,40%",
+    "duration": 800,
+    "optional": false
+  }
+}

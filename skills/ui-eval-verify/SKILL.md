@@ -32,6 +32,13 @@ not install a plugin, register a command, or authorize new external actions.
 
 ## Drive and inspect
 
+Select the requested platform before starting a server. For iOS Simulator,
+use native doctor/integration commands and read docs/native-pilot.md. Fix the
+suite and human review scope before running. Observe bounded recovery rules;
+use resume only with an explicit replay-safe scenario and valid context witness.
+Record human gesture/visual confirmation with native-pilot review, separately
+from automatic evidence. Do not count store upload or simulation as phone acceptance.
+
 Run `doctor` first with the intended browser/profile. Inspect warnings as well
 as failures. Doctor may create the artifact directory and briefly launch a
 browser; it does not prove the application journey or start the candidate server.

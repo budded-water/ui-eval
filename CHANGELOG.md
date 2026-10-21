@@ -31,6 +31,14 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Native storage preflight and sanitized prerequisite recovery actions;
+  point-to-point drag authoring with exact command binding and required outcome
+  assertion; separate evidence-bound human review JSON/HTML records.
+- Native integration opt-in finite infrastructure retries and `--resume` for
+  explicitly replay-safe scenarios, with source/engine/device/suite/context and
+  original-evidence verification. Attempt and reuse provenance is present in
+  synchronized JSON/HTML, without certifying real-device or release readiness.
+
 - Checkout-local `ui-eval-verify` agent guidance, a candidate feature-verification
   workflow, and a Basic Web feature map referencing existing assertions and
   coverage gaps. Maps are review aids only; CLI/report contracts, runtime scope

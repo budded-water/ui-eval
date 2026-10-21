@@ -4,7 +4,7 @@ import { assertIntegrationResult, type IntegrationResult } from "./model"
 
 const escape = (value: unknown) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)
 
-export function renderIntegrationHtml(result: IntegrationResult, projectRoot: string): string {
+function renderBaseHtml(result: IntegrationResult, projectRoot: string): string {
   const link = (path: string, label: string) => {
     assertPathContained(projectRoot, resolve(projectRoot, path))
     const href = relative(dirname(result.summaryHtmlPath), resolve(projectRoot, path)).split(sep)
@@ -12,6 +12,15 @@ export function renderIntegrationHtml(result: IntegrationResult, projectRoot: st
     return `<a href="${escape(href)}">${escape(label)}</a>`
   }
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>UI Eval integration</title><style>body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ccc;text-align:left;vertical-align:top}code{overflow-wrap:anywhere}.table{overflow:auto}li{margin:8px 0}</style><h1>${escape(result.suiteId)}: ${escape(result.status)}</h1><p>Project: ${escape(result.projectId)} · Adapter: ${escape(result.adapter)} · Exit: ${result.exitCode} · Duration: ${Math.round(result.durationMs)} ms</p><p>Engine: <code>${escape(result.engine.revision)}</code> · Profile: ${escape(result.executionProfile ?? "default")} · Browser: ${escape(result.browserChannel ?? "adapter default")}</p><div class="table"><table><thead><tr><th>Stage</th><th>Result</th><th>Duration</th><th>Evidence and coverage</th></tr></thead><tbody>${result.stages.map((stage) => `<tr><td>${escape(stage.kind)}: ${escape(stage.id)}${stage.dimension ? `<br>${escape(stage.dimension)}` : ""}</td><td>${escape(stage.status)}<br>${escape(stage.reason)}</td><td>${Math.round(stage.durationMs)} ms</td><td>${stage.reports.map((report) => `${escape(report.variantKey)}: ${escape(report.status)} ${link(report.htmlPath, "HTML")} · ${link(report.reportPath, "JSON")}<ul>${report.capabilities.map((capability) => `<li>${escape(capability.dimension)}: ${escape(capability.status)} — ${escape(capability.detail)}</li>`).join("")}</ul>`).join("")}</td></tr>`).join("")}</tbody></table></div><h2>Acceptance limits</h2><ul>${result.limitations.map((item) => `<li>${escape(item)}</li>`).join("")}</ul><p>${link(relative(projectRoot, result.summaryPath), "Canonical integration JSON")}</p></html>\n`
+}
+
+export function renderIntegrationHtml(result: IntegrationResult, projectRoot: string): string {
+  const remaining = result.stages.filter((stage) => stage.status !== "pass").map((stage) => escape(stage.id)).join(", ") || "none"
+  const recovery = `<h2>Scope and recovery</h2><p>Scope is fixed by the sealed suite. Remaining stages: ${remaining}.</p>${result.stages.map((stage) =>
+    `${stage.reusedFrom ? `<p>${escape(stage.id)} reused from <code>${escape(stage.reusedFrom)}</code>.</p>` : ""}${stage.attempts ?
+      `<details><summary>${escape(stage.id)} attempts (${stage.attempts.length})</summary><ol>${stage.attempts.map((attempt) =>
+        `<li>${escape(attempt.status)} · ${Math.round(attempt.durationMs)} ms — ${escape(attempt.reason)}</li>`).join("")}</ol></details>` : ""}`).join("")}`
+  return renderBaseHtml(result, projectRoot).replace("<h2>Acceptance limits</h2>", `${recovery}<h2>Acceptance limits</h2>`)
 }
 
 /** Publish the human view first; only a complete pair is a completed integration. */

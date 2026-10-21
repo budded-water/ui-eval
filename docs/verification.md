@@ -54,6 +54,14 @@ generated reports rather than a mutable "passed" column in the map.
 
 ## Discover before authoring
 
+Choose the target platform first. An iOS request uses `native-pilot doctor` and
+a native integration suite, rather than starting Web as a prerequisite. See
+[native recovery](integration-runner.md#bounded-native-recovery) and the
+[separate human review record](native-pilot.md#preflight-gestures-and-human-review).
+Fix the required suite and remaining human observations before starting. When a
+driver is blocked, report its recovery action and remaining item without adding
+new acceptance scope or repeating already valid work.
+
 Resolve the engine checkout and candidate Git root. Read the candidate's
 existing startup, test harness, `ui-eval/project.json`, scenarios and suites.
 Prefer the candidate's actual user paths and stable semantic locators. Keep

@@ -1,5 +1,13 @@
 # Contracts and Canonical Truth
 
+Native recovery adds optional `recovery`/`replaySafe` authoring and
+`resumedFrom`, `recoveryContextDigest`, stage `attempts`/`reusedFrom` provenance
+to integration alpha contracts. Original adapter reports remain unchanged.
+`native-review-result.schema.json` is generated from the separate
+`uieval.io/native-review-v1` human-observation record. It binds declared review
+criteria and verified source/report/PNG digests, never rewrites an automated
+result, and is not an authenticated reviewer decision or release attestation.
+
 The additive [integration runner](integration-runner.md) has generated engine-pin,
 suite and result schemas derived from `src/integration/`. Its acceptance record
 adds reviewed checks to original Web/WeChat/native-pilot observations without changing their
