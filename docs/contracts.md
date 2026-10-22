@@ -302,6 +302,16 @@ using older strict schemas need the updated source revision to read new output.
 
 ## Change discipline
 
+Native results optionally carry `diagnostic` supplemental observations derived
+from original failed-step artifacts. Their cause is always undetermined; they
+cannot change a visibility failure into a pass. Existing records without the
+field remain readable; older strict readers need the updated source revision.
+The new `native-progress-scope.schema.json` and
+`native-progress-result.schema.json` contracts use `uieval.io/native-progress-v1`.
+They describe explicit source-bound scenario/human-review selections and offline
+progress projections, separately from integration acceptance. See
+[native pilot](native-pilot.md#explicit-acceptance-progress).
+
 A contract change is incomplete unless all affected surfaces move together:
 
 1. Update the TypeBox authoring source.

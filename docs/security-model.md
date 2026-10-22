@@ -404,6 +404,21 @@ For meaningful CI security, the operator should:
 
 ## Security change checklist
 
+Native failure diagnostics consume bounded regular files under the originating
+run's driver directory, reject symlink traversal and compare decoded PNGs.
+Selectors are matched literally for optional post-failure hierarchy bounds;
+diagnostics do not evaluate candidate regular expressions or copy raw tree/error
+text into reports. Original screenshot links stay local and sensitive. Final
+integration verification recomputes diagnostics and includes retained artifact
+bytes in its evidence digest. Missing diagnostics never waive an assertion.
+
+Native progress uses explicit, bounded scope selections, with no search for
+passing history or driver execution. Original native evidence is revalidated;
+self-reported human decisions bind to current declarations and the exact selected
+capture. Paths remain candidate-contained, and changed verified inputs abort
+publication. Both output projections are required. Progress authenticates neither
+the reviewer nor binary/backend state and is not an integration or release gate.
+
 A change to paths, process lifecycle, browser routing, auth state, evidence payloads, redaction, CAS metadata, capture status, or report binding requires:
 
 1. a focused threat analysis;

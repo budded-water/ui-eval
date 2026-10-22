@@ -6,6 +6,7 @@ import { loadNativePilotProject, loadNativePilotScenario } from "../native-pilot
 import { findNativeCommandFile, inspectNativeCommands } from "../native-pilot/evidence"
 import { compileNativePilotFlow } from "../native-pilot/flow"
 import { NativePilotResultSchema } from "../native-pilot/report"
+import { nativeFailureDiagnostic } from "../native-pilot/diagnostics"
 import type { evaluateNativePilot } from "../native-pilot/run"
 import { assertSafeSegment } from "../storage-local/filesystem"
 import { containedPath } from "../wechat-pilot/config"
@@ -59,7 +60,7 @@ export async function nativeIntegrationEvidence(
     throw new Error("Native sealed source or flow does not match its report")
   }
 
-  if (result.status !== "inconclusive" || result.screenshots.length) {
+  if (result.status !== "inconclusive" || result.screenshots.length || result.diagnostic) {
     const driverRoot = await containedPath(root, relative(root, resolve(directory, "driver")))
     const commandPath = await findNativeCommandFile(driverRoot)
     const commands: unknown = JSON.parse((await read(commandPath)).toString("utf8"))
@@ -73,6 +74,15 @@ export async function nativeIntegrationEvidence(
       result.screenshots.length !== checkpoints.length)) throw new Error("Native pass is missing declared evidence")
     if (result.status === "failed" && (evidence.failed < 1 || result.screenshots.length !== 0)) {
       throw new Error("Native failure is not a bound visibility assertion failure")
+    }
+    if (result.diagnostic) {
+      if (evidence.failed < 1 || !Array.isArray(commands)) throw new Error("Native diagnostic requires a bound failed assertion")
+      const observed = await nativeFailureDiagnostic(directory, commandPath, commands, scenario)
+      if (canonicalDigest(observed.diagnostic) !== canonicalDigest(result.diagnostic)) throw new Error("Native diagnostic contradicts its original artifacts")
+      for (const file of observed.files) {
+        const bytes = await read(resolve(directory, file.path), 32 * 1024 * 1024)
+        if (byteDigest(bytes) !== file.digest) throw new Error("Native diagnostic artifact changed")
+      }
     }
     const seen = new Set<string>()
     for (const shot of result.screenshots) {
@@ -88,6 +98,7 @@ export async function nativeIntegrationEvidence(
       }
     }
   }
+  if (result.diagnostic && result.status === "passed") throw new Error("Native pass cannot carry a failure diagnostic")
   return [{
     executionId: result.executionId, variantKey: "ios-simulator", status: statusForExit({ passed: 0, failed: 1, inconclusive: 2 }[result.status]),
     reportPath: relative(root, output.reportPath), htmlPath: relative(root, output.htmlPath),

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "projectId",
+    "deviceId",
+    "scenarios",
+    "reports",
+    "reviews"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/native-progress-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeProgressScope",
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "type": "string"
+    },
+    "deviceId": {
+      "pattern": "^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$",
+      "type": "string"
+    },
+    "scenarios": {
+      "minItems": 1,
+      "maxItems": 40,
+      "uniqueItems": true,
+      "type": "array",
+      "items": {
+        "pattern": "^[a-z][a-z0-9-]{0,63}$",
+        "type": "string"
+      }
+    },
+    "reports": {
+      "maxItems": 40,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scenarioId",
+          "path"
+        ],
+        "properties": {
+          "scenarioId": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "maxLength": 1024,
+            "type": "string"
+          }
+        }
+      }
+    },
+    "reviews": {
+      "maxItems": 40,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reviewId",
+          "path"
+        ],
+        "properties": {
+          "reviewId": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "maxLength": 1024,
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

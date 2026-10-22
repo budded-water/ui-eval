@@ -162,6 +162,194 @@
       "items": {
         "type": "string"
       }
+    },
+    "diagnostic": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "method",
+        "failedStep",
+        "imageComparison",
+        "targetBoundsBasis",
+        "cause",
+        "nextAction"
+      ],
+      "properties": {
+        "method": {
+          "const": "existing-driver-artifacts",
+          "type": "string"
+        },
+        "failedStep": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "precedingInteraction": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "step",
+            "action"
+          ],
+          "properties": {
+            "step": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "action": {
+              "anyOf": [
+                {
+                  "const": "tap",
+                  "type": "string"
+                },
+                {
+                  "const": "swipe",
+                  "type": "string"
+                },
+                {
+                  "const": "drag",
+                  "type": "string"
+                },
+                {
+                  "const": "input-text",
+                  "type": "string"
+                },
+                {
+                  "const": "erase-text",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        "before": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "path",
+            "digest",
+            "widthPx",
+            "heightPx"
+          ],
+          "properties": {
+            "path": {
+              "pattern": "^driver/(?:[A-Za-z0-9][A-Za-z0-9_-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            "digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "widthPx": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "heightPx": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        },
+        "after": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "path",
+            "digest",
+            "widthPx",
+            "heightPx"
+          ],
+          "properties": {
+            "path": {
+              "pattern": "^driver/(?:[A-Za-z0-9][A-Za-z0-9_-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            "digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "widthPx": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "heightPx": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        },
+        "hierarchy": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "path",
+            "digest"
+          ],
+          "properties": {
+            "path": {
+              "pattern": "^driver/(?:[A-Za-z0-9][A-Za-z0-9_-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*$",
+              "type": "string"
+            },
+            "digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        },
+        "imageComparison": {
+          "anyOf": [
+            {
+              "const": "identical-pixels",
+              "type": "string"
+            },
+            {
+              "const": "different-pixels",
+              "type": "string"
+            },
+            {
+              "const": "unavailable",
+              "type": "string"
+            }
+          ]
+        },
+        "targetBounds": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "properties": {
+            "x": {
+              "type": "integer"
+            },
+            "y": {
+              "type": "integer"
+            },
+            "width": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "height": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        },
+        "targetBoundsBasis": {
+          "const": "unique-exact-selector-in-post-failure-hierarchy-only",
+          "type": "string"
+        },
+        "cause": {
+          "const": "undetermined",
+          "type": "string"
+        },
+        "nextAction": {
+          "const": "Inspect the selected App state, overlays and input delivery; a completed command does not prove the intended UI changed.",
+          "type": "string"
+        }
+      }
     }
   }
 }
