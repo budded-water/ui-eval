@@ -102,6 +102,20 @@ describe("native failure diagnostics", () => {
     expect(output.diagnostic.targetBounds).toBeUndefined()
     expect(output.diagnostic.imageComparison).toBe("unavailable")
   })
+  it.each([undefined, 123, "[40,50][60,70]"])("does not claim unique target bounds when another matching node has bounds %j", async (bounds) => {
+    const { run } = await fixture("fail")
+    const directory = dirname(run.reportPath)
+    const path = resolve(directory, run.result.diagnostic!.hierarchy!.path)
+    const tree = JSON.parse(await readFile(path, "utf8"))
+    tree.children.push({ attributes: { accessibilityText: "Safety", bounds } })
+    await writeFile(path, JSON.stringify(tree))
+    const commandPath = resolve(directory, "driver/stamp/home/commands.json")
+    const commands = JSON.parse(await readFile(commandPath, "utf8"))
+    const output = await nativeFailureDiagnostic(directory, commandPath, commands, scenario)
+    expect(output.diagnostic.targetBounds).toBeUndefined()
+    expect(output.diagnostic.hierarchy).toBeDefined()
+    expect(output.diagnostic.cause).toBe("undetermined")
+  })
 })
 
 describe("explicit native acceptance progress", () => {

@@ -81,20 +81,20 @@ export async function nativeFailureDiagnostic(directory: string, commandPath: st
     const tree: unknown = JSON.parse(value.bytes.toString("utf8"))
     const interaction = scenario.steps[diagnostic.precedingInteraction?.step ?? -1]
     const selector = interaction?.action === "tap" ? interaction.selector : undefined
-    const matches: string[] = []
+    const matches: unknown[] = []
     let nodes = 0
     const visit = (node: unknown, depth: number) => {
       if (++nodes > 10000 || depth > 100) throw new Error("Diagnostic hierarchy budget exceeded")
       if (!node || typeof node !== "object" || Array.isArray(node)) return
       const item = node as { attributes?: Record<string, unknown>; children?: unknown[] }
       const attrs = item.attributes
-      if (selector && attrs && ("id" in selector ? attrs["resource-id"] === selector.id : attrs.accessibilityText === selector.text || attrs.text === selector.text) && typeof attrs.bounds === "string") matches.push(attrs.bounds)
+      if (selector && attrs && ("id" in selector ? attrs["resource-id"] === selector.id : attrs.accessibilityText === selector.text || attrs.text === selector.text)) matches.push(attrs.bounds)
       if (Array.isArray(item.children)) item.children.forEach((child) => visit(child, depth + 1))
     }
     visit(tree, 0)
     diagnostic.hierarchy = value.reference
     files.push(value.reference)
-    const bounds = matches.length === 1 ? /^\[(-?\d{1,6}),(-?\d{1,6})\]\[(-?\d{1,6}),(-?\d{1,6})\]$/.exec(matches[0]) : null
+    const bounds = matches.length === 1 && typeof matches[0] === "string" ? /^\[(-?\d{1,6}),(-?\d{1,6})\]\[(-?\d{1,6}),(-?\d{1,6})\]$/.exec(matches[0]) : null
     if (bounds) {
       const [x, y, right, bottom] = bounds.slice(1).map(Number)
       if (right > x && bottom > y) diagnostic.targetBounds = { x, y, width: right - x, height: bottom - y }
