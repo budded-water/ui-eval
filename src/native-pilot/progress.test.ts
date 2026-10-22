@@ -18,7 +18,7 @@ const scenario: NativePilotScenario = { apiVersion: "uieval.io/native-pilot-v1",
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
 const source = async () => ({ repository: "test", commitSha: "abc", dirtyTree: false })
-async function fixture(mode: "pass" | "fail" | "missing" | "changed" = "pass") {
+async function fixture(mode: "pass" | "fail" | "missing" | "changed" | "unsafe-spaces" | "unsafe-unicode" = "pass") {
   const root = await mkdtemp(resolve(tmpdir(), "native-progress-")); roots.push(root)
   await mkdir(resolve(root, "ui-eval"))
   await writeFile(resolve(root, "ui-eval/native.json"), JSON.stringify(project))
@@ -48,8 +48,9 @@ async function fixture(mode: "pass" | "fail" | "missing" | "changed" = "pass") {
     if (mode !== "missing") {
       await mkdir(resolve(directory, "screenshots")); await mkdir(resolve(directory, "screen-hierarchy"))
       if (mode === "changed") png.data[0] = 0
-      await writeFile(resolve(directory, "screenshots/step-007-assertCondition-Opened.png"), PNG.sync.write(png))
-      await writeFile(resolve(directory, "screen-hierarchy/step-007-assertCondition-Opened.json"), JSON.stringify({ children: [{ attributes: { accessibilityText: "Safety", bounds: "[10,20][30,60]" } }, { attributes: { accessibilityText: "PRIVATE SYNTHETIC TEXT" } }] }))
+      const label = mode === "unsafe-spaces" ? "Opened state" : mode === "unsafe-unicode" ? "Opened状态" : "Opened"
+      await writeFile(resolve(directory, `screenshots/step-007-assertCondition-${label}.png`), PNG.sync.write(png))
+      await writeFile(resolve(directory, `screen-hierarchy/step-007-assertCondition-${label}.json`), JSON.stringify({ children: [{ attributes: { accessibilityText: "Safety", bounds: "[10,20][30,60]" } }, { attributes: { accessibilityText: "PRIVATE SYNTHETIC TEXT" } }] }))
     }
     return { exitCode: mode === "pass" ? 0 : 1, stdout: "", stderr: "" }
   }
@@ -82,6 +83,15 @@ describe("native failure diagnostics", () => {
     expect(run.result.status).toBe("failed")
     expect(run.result.diagnostic).toMatchObject({ imageComparison: "unavailable", cause: "undetermined" })
     expect(run.result.diagnostic?.after).toBeUndefined()
+  })
+  it.each(["unsafe-spaces", "unsafe-unicode"] as const)("publishes the original failed result when optional PNG/hierarchy paths are %s", async (mode) => {
+    const { run } = await fixture(mode)
+    expect(run.result.status).toBe("failed")
+    expect(run.result.diagnostic?.after).toBeUndefined()
+    expect(run.result.diagnostic?.hierarchy).toBeUndefined()
+    expect(run.result.diagnostic?.imageComparison).toBe("unavailable")
+    expect(JSON.parse(await readFile(run.reportPath, "utf8")).status).toBe("failed")
+    expect(await readFile(run.htmlPath, "utf8")).toContain("home: failed")
   })
   it("rejects changed diagnostic artifacts on final evidence revalidation", async () => {
     const { root, run } = await fixture("fail")

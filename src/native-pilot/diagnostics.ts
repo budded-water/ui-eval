@@ -8,7 +8,8 @@ import { boundedFile, inspectWechatPng } from "../wechat-pilot/evidence"
 import type { NativePilotScenario } from "./config"
 
 const strict = { additionalProperties: false }
-const file = Type.Object({ path: Type.String({ pattern: "^driver/(?:[A-Za-z0-9][A-Za-z0-9_-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*$" }), digest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }) }, strict)
+const artifactPathPattern = "^driver/(?:[A-Za-z0-9][A-Za-z0-9_-]*/)*[A-Za-z0-9][A-Za-z0-9_.-]*$"
+const file = Type.Object({ path: Type.String({ pattern: artifactPathPattern }), digest: Type.String({ pattern: "^sha256:[a-f0-9]{64}$" }) }, strict)
 const image = Type.Object({ ...file.properties, widthPx: Type.Integer({ minimum: 1 }), heightPx: Type.Integer({ minimum: 1 }) }, strict)
 export const NativeFailureDiagnosticSchema = Type.Object({
   method: Type.Literal("existing-driver-artifacts"),
@@ -34,6 +35,7 @@ export async function nativeFailureDiagnostic(directory: string, commandPath: st
   const files: Array<{ path: string; digest: string }> = []
   const read = async (path: string, maximum: number) => {
     const name = relative(directory, path)
+    if (!new RegExp(artifactPathPattern).test(name)) throw new Error("Unsupported diagnostic artifact path")
     const bytes = await boundedFile(await containedPath(directory, name), maximum)
     return { bytes, reference: { path: name, digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}` } }
   }
