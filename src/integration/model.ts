@@ -1,8 +1,11 @@
 import { Type, type Static } from "@sinclair/typebox"
-import { Value } from "@sinclair/typebox/value"
+import { isSchema } from "../contracts/validation"
 import { EnginePinSchema } from "./config"
 import { SourceRevisionSchema } from "../contracts/schemas"
 import { canonicalDigest } from "../contracts/canonical-json"
+import { VerificationRecordSchema } from "../contracts/verification"
+import { assertVerificationRecord } from "../verification/assess"
+import { assertIntegrationVerification, integrationVerificationSource, verificationExitCode } from "./verification"
 
 const strict = { additionalProperties: false }
 const text = Type.String({ minLength: 1 })
@@ -50,6 +53,8 @@ export const IntegrationResultSchema = Type.Object({
   source: Type.Optional(SourceRevisionSchema),
   recoveryContextDigest: Type.Optional(Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })),
   resumedFrom: Type.Optional(text),
+
+  verification: Type.Optional(VerificationRecordSchema),
   summaryPath: text,
   summaryHtmlPath: text,
   limitations: Type.Array(text),
@@ -66,7 +71,7 @@ export function integrationExitCode(stages: readonly IntegrationStage[]): 0 | 1 
 }
 
 export function assertIntegrationResult(input: unknown): asserts input is IntegrationResult {
-  if (!Value.Check(IntegrationResultSchema, input)) throw new Error("Invalid integration result")
+  if (!isSchema(IntegrationResultSchema, input)) throw new Error("Invalid integration result")
   if (input.source && canonicalDigest(input.source) !== input.sourceDigest) throw new Error("Integration source digest mismatch")
   if ((input.adapter === "native-pilot") !== (input.deviceId !== undefined)) throw new Error("Integration device does not match adapter")
   const ids = input.stages.map((stage) => `${stage.kind}:${stage.id}`)
@@ -88,9 +93,15 @@ export function assertIntegrationResult(input: unknown): asserts input is Integr
       }
     }
   }
+  if (input.verification) {
+    assertVerificationRecord(input.verification)
+    assertIntegrationVerification(input)
+    if (input.verification.plan.projectId !== input.projectId || input.verification.assessment.sourceDigest !== integrationVerificationSource(input)) throw new Error("Verification scope contradicts integration")
+  }
+  const expectedExit = verificationExitCode(integrationExitCode(input.stages), input.verification?.assessment.exitCode ?? 0)
   const expected = input.exitCode === 130 || input.exitCode === 143 ? "interrupted"
-    : ({ 0: "pass", 1: "fail", 2: "inconclusive", 3: "needs-review" } as const)[integrationExitCode(input.stages)]
-  if (input.status !== expected || (input.status !== "interrupted" && input.exitCode !== integrationExitCode(input.stages))) {
+    : ({ 0: "pass", 1: "fail", 2: "inconclusive", 3: "needs-review" } as const)[expectedExit]
+  if (input.status !== expected || (input.status !== "interrupted" && input.exitCode !== expectedExit)) {
     throw new Error("Integration disposition contradicts its stages")
   }
 }

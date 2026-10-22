@@ -2,8 +2,10 @@
 
 This synthetic candidate builds a page once with `prepare.mjs`, serves generated
 output with `server.mjs`, and runs a post-capture digest check. The checked-in
-integration suite is its acceptance configuration. The engine pin and standard
-Web project/scenario are generated into a temporary independent candidate by
+integration suite is its acceptance configuration. The optional verification plan
+declares runtime-only acceptance; visual/device requirements are outside this
+synthetic example's scope. The engine pin and standard Web project/scenario are
+generated into a temporary independent candidate by
 `scripts/verify-integration.mjs`; no stale revision is copied into this example.
 
 From a clean authorized engine checkout with locked dependencies and Chromium:

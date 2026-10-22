@@ -31,6 +31,7 @@ export const IntegrationSuiteSchema = Type.Object({
   browserChannel: Type.Optional(text),
   driver: Type.Optional(text),
   prepare: Type.Optional(IntegrationCommandSchema),
+  verificationPlan: Type.Optional(text),
   session: Type.Optional(IntegrationSessionSchema),
   recovery: Type.Optional(Type.Object({
     maxAttempts: Type.Integer({ minimum: 1, maximum: 3 }),
@@ -42,6 +43,7 @@ export const IntegrationSuiteSchema = Type.Object({
     phase: Type.Union([Type.Literal("before"), Type.Literal("after")]),
     dimension: id,
     failureOutcome: Type.Union([Type.Literal("candidate"), Type.Literal("infrastructure")]),
+    verificationLevel: Type.Optional(Type.Union([Type.Literal("L1"), Type.Literal("L2"), Type.Literal("L3")])),
   }, strict), { maxItems: 100 }),
   scenarios: Type.Array(Type.Object({
     id,

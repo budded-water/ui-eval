@@ -9,6 +9,12 @@ declared human criteria. It does not include integration lifecycle/check stages,
 authenticate human decisions, or attest to installed binaries and backend state.
 It never auto-selects a passing historical run or rewrites an original failure.
 
+Optional [verification plans](verification-plans.md) reconcile declared requirements only.
+Risk selection, command levels and assertion adequacy are trusted project decisions.
+Physical-device/manual approvals are not ingested; required visual inspection stays
+review and missing external evidence stays unrun. Plan-free suite success does not
+establish acceptance of an unspecified feature scope.
+
 The [integration runner](integration-runner.md) aggregates required Web,
 experimental WeChat or iOS Simulator scenarios with reviewed preparation/checks.
 Native suites can use a candidate-owned session for startup and cleanup. It does not

@@ -42,6 +42,8 @@ try {
   await exec("git", ["add", "."], { cwd: root })
   await exec("git", ["-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "-qm", "synthetic candidate"], { cwd: root })
   const passed = JSON.parse((await invoke(["integrate", "smoke", "--format", "json"], 0)).stdout)
+  assert.equal(passed.verification.assessment.conclusions.ui, "pass")
+  assert.equal(passed.verification.assessment.conclusions.release, "not-assessed")
   assert.equal(passed.exitCode, 0)
   assert.equal(passed.stages.filter((stage) => stage.kind === "prepare").length, 1)
   assert.equal(passed.stages.find((stage) => stage.kind === "scenario").reports.length, 2)
@@ -57,5 +59,19 @@ try {
     assert.equal(JSON.parse(await readFile(resolve(root, report.reportPath), "utf8")).spec.rawStatus, "pass")
   }
   assert.match(await readFile(failed.summaryHtmlPath, "utf8"), /injected-defect/)
-  process.stdout.write("Verified prepared Web integration, two variants, and post-check rejection.\n")
+  suite.checks.pop()
+  await writeFile(suitePath, JSON.stringify(suite))
+  const verificationPath = resolve(root, "ui-eval/verification.json")
+  const plan = JSON.parse(await readFile(verificationPath, "utf8"))
+  plan.requirements.push({
+    id: "real-phone", category: "release", rationale: "Exercise missing environment handling", expectedOutcome: "Real phone flow works",
+    level: "L5", environment: { platform: "physical-device" }, selector: { kind: "external", id: "real-phone" }, visualReview: false,
+  })
+  await writeFile(verificationPath, JSON.stringify(plan))
+  const incomplete = JSON.parse((await invoke(["integrate", "smoke", "--format", "json"], 2)).stdout)
+  assert.equal(incomplete.verification.assessment.conclusions.ui, "pass")
+  assert.equal(incomplete.verification.assessment.conclusions.release, "not-run")
+  assert.equal(incomplete.stages.every((stage) => stage.status === "pass"), true)
+  assert.match(await readFile(incomplete.summaryHtmlPath, "utf8"), /Release readiness: not-run/)
+  process.stdout.write("Verified planned Web integration, two variants, post-check rejection and missing-device acceptance gap.\n")
 } finally { await rm(root, { recursive: true, force: true }) }

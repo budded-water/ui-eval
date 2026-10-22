@@ -1,0 +1,24 @@
+{
+  "apiVersion": "uieval.io/verification-v1alpha1",
+  "kind": "VerificationPlan",
+  "id": "prepared-page",
+  "projectId": "prepared-web",
+  "outcome": "The prepared page serves successfully in each declared browser variant.",
+  "plannedAt": "2026-10-22T00:00:00.000Z",
+  "planningContext": "Synthetic example authored before execution, not a historical product acceptance record.",
+  "requirements": [
+    {
+      "id": "page-runtime",
+      "category": "ui",
+      "rationale": "Validate the prepared page through the existing browser scenario.",
+      "expectedOutcome": "All declared home runtime assertions pass.",
+      "level": "L4",
+      "environment": { "platform": "web" },
+      "selector": { "kind": "scenario", "id": "home" },
+      "visualReview": false
+    }
+  ],
+  "omissions": [
+    { "scope": "Visual design and physical devices", "reason": "This synthetic example exercises preparation and runtime contracts only." }
+  ]
+}

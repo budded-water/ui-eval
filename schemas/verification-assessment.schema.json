@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "planDigest",
+    "sourceDigest",
+    "requirements",
+    "conclusions",
+    "exitCode"
+  ],
+  "properties": {
+    "planDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "evidenceIds",
+          "reasons"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "pass",
+                "type": "string"
+              },
+              {
+                "const": "fail",
+                "type": "string"
+              },
+              {
+                "const": "needs-review",
+                "type": "string"
+              },
+              {
+                "const": "inconclusive",
+                "type": "string"
+              },
+              {
+                "const": "not-run",
+                "type": "string"
+              },
+              {
+                "const": "invalid-evidence",
+                "type": "string"
+              },
+              {
+                "const": "not-assessed",
+                "type": "string"
+              }
+            ]
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "maxLength": 2048,
+              "type": "string"
+            }
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "minLength": 1,
+              "maxLength": 2048,
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "conclusions": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "code",
+        "ui",
+        "release"
+      ],
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "const": "pass",
+              "type": "string"
+            },
+            {
+              "const": "fail",
+              "type": "string"
+            },
+            {
+              "const": "needs-review",
+              "type": "string"
+            },
+            {
+              "const": "inconclusive",
+              "type": "string"
+            },
+            {
+              "const": "not-run",
+              "type": "string"
+            },
+            {
+              "const": "invalid-evidence",
+              "type": "string"
+            },
+            {
+              "const": "not-assessed",
+              "type": "string"
+            }
+          ]
+        },
+        "ui": {
+          "anyOf": [
+            {
+              "const": "pass",
+              "type": "string"
+            },
+            {
+              "const": "fail",
+              "type": "string"
+            },
+            {
+              "const": "needs-review",
+              "type": "string"
+            },
+            {
+              "const": "inconclusive",
+              "type": "string"
+            },
+            {
+              "const": "not-run",
+              "type": "string"
+            },
+            {
+              "const": "invalid-evidence",
+              "type": "string"
+            },
+            {
+              "const": "not-assessed",
+              "type": "string"
+            }
+          ]
+        },
+        "release": {
+          "anyOf": [
+            {
+              "const": "pass",
+              "type": "string"
+            },
+            {
+              "const": "fail",
+              "type": "string"
+            },
+            {
+              "const": "needs-review",
+              "type": "string"
+            },
+            {
+              "const": "inconclusive",
+              "type": "string"
+            },
+            {
+              "const": "not-run",
+              "type": "string"
+            },
+            {
+              "const": "invalid-evidence",
+              "type": "string"
+            },
+            {
+              "const": "not-assessed",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "exitCode": {
+      "anyOf": [
+        {
+          "const": 0,
+          "type": "number"
+        },
+        {
+          "const": 1,
+          "type": "number"
+        },
+        {
+          "const": 2,
+          "type": "number"
+        },
+        {
+          "const": 3,
+          "type": "number"
+        }
+      ]
+    }
+  }
+}

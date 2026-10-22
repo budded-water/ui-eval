@@ -1,5 +1,10 @@
 # Integration acceptance runner
 
+Suites may opt into [verification plans](verification-plans.md) using `verificationPlan`.
+Host checks can declare `verificationLevel` for L1/L2/L3 mapping. Missing required
+environments or visual inspection prevent declared acceptance even when executed
+stages passed. Suites without these fields retain their original behavior.
+
 `ui-eval integrate <suite>` verifies the executing engine pin, prepares a candidate
 once, runs required Web, experimental WeChat or iOS Simulator scenarios and external checks,
 and publishes complete acceptance JSON/HTML. It does not repair source. Existing

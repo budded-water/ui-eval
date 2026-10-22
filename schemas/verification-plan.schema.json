@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "projectId",
+    "outcome",
+    "plannedAt",
+    "planningContext",
+    "requirements",
+    "omissions"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/verification-v1alpha1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "VerificationPlan",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "outcome": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "plannedAt": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "planningContext": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "requirements": {
+      "minItems": 1,
+      "maxItems": 200,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "rationale",
+          "expectedOutcome",
+          "level",
+          "environment",
+          "selector",
+          "visualReview"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "const": "code",
+                "type": "string"
+              },
+              {
+                "const": "ui",
+                "type": "string"
+              },
+              {
+                "const": "release",
+                "type": "string"
+              }
+            ]
+          },
+          "rationale": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "expectedOutcome": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "const": "L1",
+                "type": "string"
+              },
+              {
+                "const": "L2",
+                "type": "string"
+              },
+              {
+                "const": "L3",
+                "type": "string"
+              },
+              {
+                "const": "L4",
+                "type": "string"
+              },
+              {
+                "const": "L5",
+                "type": "string"
+              }
+            ]
+          },
+          "environment": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "anyOf": [
+                  {
+                    "const": "host",
+                    "type": "string"
+                  },
+                  {
+                    "const": "web",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ios-simulator",
+                    "type": "string"
+                  },
+                  {
+                    "const": "wechat-devtools",
+                    "type": "string"
+                  },
+                  {
+                    "const": "physical-device",
+                    "type": "string"
+                  }
+                ]
+              },
+              "profile": {
+                "minLength": 1,
+                "maxLength": 2048,
+                "type": "string"
+              },
+              "deviceId": {
+                "minLength": 1,
+                "maxLength": 2048,
+                "type": "string"
+              },
+              "variantKey": {
+                "minLength": 1,
+                "maxLength": 2048,
+                "type": "string"
+              }
+            }
+          },
+          "selector": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "const": "check",
+                    "type": "string"
+                  },
+                  {
+                    "const": "scenario",
+                    "type": "string"
+                  },
+                  {
+                    "const": "external",
+                    "type": "string"
+                  }
+                ]
+              },
+              "id": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+                "type": "string"
+              }
+            }
+          },
+          "visualReview": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "omissions": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scope",
+          "reason"
+        ],
+        "properties": {
+          "scope": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -35,6 +35,7 @@ On Linux CI, Playwright may require its documented system dependencies in additi
 ```text
 src/
   contracts/             schemas, types, canonical JSON, validators
+  verification/          pure requirement/evidence reconciliation
   project/               authoring loaders and containment
   manifest-compiler/     scenario/policy materialization
   capture-playwright/    browser adapter and evidence collection

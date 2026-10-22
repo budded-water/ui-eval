@@ -3,6 +3,11 @@
 export * as forwardContracts from "./contracts/index"
 // Experimental native evidence is a separate contract, not a Web policy pass.
 export * as nativePilot from "./native-pilot/index"
+export {
+  VerificationPlanSchema, VerificationEvidenceSchema, VerificationAssessmentSchema, VerificationRecordSchema,
+  assertVerificationPlan, type VerificationPlan, type VerificationEvidence, type VerificationAssessment, type VerificationRecord,
+} from "./contracts/verification"
+export { assessVerification, assertVerificationRecord } from "./verification/assess"
 export { canonicalJson, canonicalDigest, canonicalSpecDigest, DigestExclusionProfiles } from "./contracts/canonical-json"
 export {
   ArtifactRefSchema, CaptureBundleSchema, EvaluationPlanSchema,

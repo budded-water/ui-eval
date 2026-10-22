@@ -13,6 +13,7 @@ import { runIntegrationSuite, type IntegrationDependencies } from "./run"
 import { loadIntegrationSuite } from "./config"
 import { assertIntegrationResult } from "./model"
 import { writeIntegrationArtifacts, renderIntegrationHtml } from "./report"
+import { assessVerification } from "../verification/assess"
 
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
@@ -70,6 +71,117 @@ async function update(root: string, fn: (value: ReturnType<typeof JSON.parse>) =
 }
 
 describe("integration runner", () => {
+  async function plan(root: string, options: { visual?: boolean; external?: boolean } = {}) {
+    const path = join(root, "ui-eval/integrations/smoke.json")
+    const suite = JSON.parse(await readFile(path, "utf8"))
+    const value = {
+      apiVersion: "uieval.io/verification-v1alpha1", kind: "VerificationPlan", id: "preference-change", projectId: suite.projectId,
+      outcome: "The page remains usable", plannedAt: "2026-10-22T00:00:00.000Z", planningContext: "Synthetic test plan before execution",
+      requirements: [{ id: "page", category: "ui", rationale: "Changed interaction", expectedOutcome: "Declared page assertions pass in every variant",
+        level: "L4", environment: { platform: "web" }, selector: { kind: "scenario", id: "home" }, visualReview: options.visual ?? false },
+        ...(options.external ? [{ id: "phone", category: "release", rationale: "Real service behavior", expectedOutcome: "Physical flow works",
+          level: "L5", environment: { platform: "physical-device" }, selector: { kind: "external", id: "phone" }, visualReview: false }] : [])],
+      omissions: [],
+    }
+    await writeFile(join(root, "ui-eval/verification.json"), JSON.stringify(value))
+    await update(root, (suite) => { suite.verificationPlan = "ui-eval/verification.json" })
+    return value
+  }
+
+  it("opt-in plans reconcile actual Web evidence and publish synchronized scoped conclusions", async () => {
+    const root = await project(); await plan(root)
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
+    expect(result.status).toBe("pass")
+    expect(result.verification?.assessment.conclusions).toEqual({ code: "not-assessed", ui: "pass", release: "not-assessed" })
+    expect(result.verification?.evidence).toHaveLength(2)
+    expect(JSON.parse(await readFile(result.summaryPath, "utf8"))).toEqual(result)
+    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("UI acceptance: pass")
+    assertIntegrationResult(result)
+    result.verification!.evidence[0].environment.platform = "ios-simulator"
+    result.verification!.assessment = assessVerification(result.verification!.plan, result.sourceDigest!, result.verification!.evidence)
+    expect(() => assertIntegrationResult(result)).toThrow("contradicts integration stages")
+  })
+
+  it.each([{ external: true, code: 2, status: "inconclusive" }, { visual: true, code: 3, status: "needs-review" }])("does not confuse suite success with incomplete acceptance ($status)", async (options) => {
+    const root = await project(); await plan(root, options)
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
+    expect(result).toMatchObject({ exitCode: options.code, status: options.status })
+    expect(result.stages.every((stage) => stage.status === "pass")).toBe(true)
+    const raw = result.stages.find((stage) => stage.kind === "scenario")!.reports[0]
+    expect(JSON.parse(await readFile(join(root, raw.reportPath), "utf8")).spec.rawStatus).toBe("pass")
+    assertIntegrationResult(result)
+  })
+
+  it("labels explicitly mapped command evidence separately from runtime observations", async () => {
+    const root = await project(); const value = await plan(root)
+    value.requirements = [{ ...value.requirements[0], id: "types", category: "code", level: "L1", environment: { platform: "host" }, selector: { kind: "check", id: "types" } }]
+    await writeFile(join(root, "ui-eval/verification.json"), JSON.stringify(value))
+    await update(root, (suite) => { suite.checks = [{ id: "types", command: process.execPath, args: ["-e", "process.exit(0)"], timeoutMs: 1000,
+      phase: "before", dimension: "static", failureOutcome: "candidate", verificationLevel: "L1" }] })
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
+    expect(result.verification?.assessment.conclusions.code).toBe("pass")
+    expect(result.verification?.evidence.find((item) => item.selector.kind === "check")?.origin).toBe("declared-command")
+  })
+
+  it("does not accept valid-looking observations after source verification fails", async () => {
+    const root = await project(); await plan(root)
+    let calls = 0
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, source: async () => ({ ...await source(), commitSha: (++calls === 1 ? "a" : "b").repeat(40) }) })
+    expect(result.verification?.assessment.conclusions.ui).toBe("inconclusive")
+    expect(result.exitCode).toBe(2)
+  })
+
+  it("rejects a plan changed after loading but before the first source observation", async () => {
+    const root = await project(); const value = await plan(root)
+    const evaluate = vi.fn(dependencies.evaluate!)
+    let changed = false
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, evaluate,
+      verifyEngine: async () => {
+        if (changed) return
+        changed = true
+        value.requirements[0].visualReview = true
+        await writeFile(join(root, "ui-eval/verification.json"), JSON.stringify(value))
+      },
+    })
+    expect(result.exitCode).toBe(2)
+    expect(result.stages.find((stage) => stage.id === "source-before")?.status).toBe("inconclusive")
+    expect(result.verification?.assessment.conclusions.ui).not.toBe("pass")
+    expect(evaluate).not.toHaveBeenCalled()
+  })
+
+  it("rejects an ignored plan changed during checks even when source observations stay equal", async () => {
+    const root = await project(); const value = await plan(root)
+    const reference = ".ui-eval/ignored-plan.json"
+    await mkdir(join(root, ".ui-eval"), { recursive: true })
+    await writeFile(join(root, reference), JSON.stringify(value))
+    await update(root, (suite) => {
+      suite.verificationPlan = reference
+      suite.checks = [{ id: "after", command: "check", args: [], timeoutMs: 1000, phase: "after", dimension: "contract", failureOutcome: "candidate" }]
+    })
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies,
+      command: async (_binary, _args, context) => {
+        if (JSON.parse(context.input!).stages.some((stage: { kind: string; status: string }) => stage.kind === "scenario" && stage.status === "pass")) {
+          value.requirements[0].visualReview = true
+          await writeFile(join(root, reference), JSON.stringify(value))
+        }
+        return { exitCode: 0, stdout: "", stderr: "" }
+      },
+    })
+    expect(result.exitCode).toBe(2)
+    expect(result.stages.find((stage) => stage.id === "source-after")?.status).toBe("inconclusive")
+    expect(result.verification?.assessment.conclusions.ui).toBe("inconclusive")
+  })
+
+  it("rejects foreign and escaping plans before invoking project commands", async () => {
+    const root = await project(); const value = await plan(root); value.projectId = "foreign"
+    await writeFile(join(root, "ui-eval/verification.json"), JSON.stringify(value))
+    const command = vi.fn()
+    await expect(runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, command })).rejects.toThrow("another project")
+    await update(root, (suite) => { suite.verificationPlan = "../outside.json" })
+    await expect(runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, command })).rejects.toThrow()
+    expect(command).not.toHaveBeenCalled()
+  })
+
   it("prepares once across scenarios and variants and publishes one complete acceptance pair", async () => {
     const root = await project(true)
     const command = vi.fn(async () => ({ exitCode: 0, stdout: "sensitive command output", stderr: "hidden" }))

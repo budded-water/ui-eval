@@ -87,6 +87,11 @@
         }
       }
     },
+    "verificationPlan": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
     "session": {
       "additionalProperties": false,
       "type": "object",
@@ -228,6 +233,22 @@
               },
               {
                 "const": "infrastructure",
+                "type": "string"
+              }
+            ]
+          },
+          "verificationLevel": {
+            "anyOf": [
+              {
+                "const": "L1",
+                "type": "string"
+              },
+              {
+                "const": "L2",
+                "type": "string"
+              },
+              {
+                "const": "L3",
                 "type": "string"
               }
             ]
