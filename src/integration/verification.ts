@@ -22,7 +22,8 @@ export function integrationVerification(suite: IntegrationSuite, result: Integra
   const evidence: VerificationEvidence[] = []
   const sound = ["engine-before", "source-before", "source-after", "engine-after", "evidence-after"].every((id) =>
     result.stages.some((stage) => stage.id === id && stage.status === "pass")) &&
-    result.stages.filter((stage) => !["scenario", "check"].includes(stage.kind)).every((stage) => stage.status === "pass" && stage.cleanupSettled !== false)
+    result.stages.filter((stage) => !["scenario", "check"].includes(stage.kind) ||
+      ["recovery-context-before", "recovery-context-after"].includes(stage.id)).every((stage) => stage.status === "pass" && stage.cleanupSettled !== false)
   const platform = suite.adapter === "native-pilot" ? "ios-simulator" : suite.adapter === "wechat-pilot" ? "wechat-devtools" : "web"
   if (result.sourceDigest) for (const stage of result.stages) {
     if (stage.kind === "check") {

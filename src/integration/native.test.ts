@@ -204,6 +204,24 @@ async function recoveryFixture(mode: "passed" | "failed" = "passed") {
 }
 
 describe("bounded native recovery", () => {
+  it("keeps planned UI acceptance inconclusive when the recovery context changes after a passed capture", async () => {
+    const { root, config, save, options, dependencies } = await recoveryFixture()
+    config.verificationPlan = "ui-eval/verification.json"; await save()
+    await writeFile(join(root, config.verificationPlan), JSON.stringify({
+      apiVersion: "uieval.io/verification-v1alpha1", kind: "VerificationPlan", id: "native-change", projectId: project.projectId,
+      outcome: "Declared interaction works in unchanged fixture state", plannedAt: "2026-10-22T00:00:00.000Z", planningContext: "Synthetic recovery regression",
+      requirements: [{ id: "interaction", category: "ui", rationale: "Changed interaction", expectedOutcome: "Visibility assertion passes",
+        level: "L4", environment: { platform: "ios-simulator" }, selector: { kind: "scenario", id: "home" }, visualReview: false }], omissions: [],
+    }))
+    let calls = 0
+    dependencies.command = async () => ({ exitCode: 0, stdout: `sha256:${(calls++ === 0 ? "b" : "c").repeat(64)}`, stderr: "" })
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.stages.find((stage) => stage.id === "home")?.status).toBe("pass")
+    expect(result.stages.find((stage) => stage.id === "recovery-context-after")?.status).toBe("inconclusive")
+    expect(result.verification?.evidence[0].status).toBe("inconclusive")
+    expect(result.verification?.assessment.conclusions.ui).toBe("inconclusive")
+    expect(result.exitCode).toBe(2)
+  })
   it("revalidates superseded inconclusive attempt evidence after candidate checks", async () => {
     const { options, dependencies, command, config, save, root } = await recoveryFixture()
     config.checks.push(afterCheck); await save()

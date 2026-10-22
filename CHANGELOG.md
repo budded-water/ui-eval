@@ -21,6 +21,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Plan reconciliation rechecks loaded content at both source boundaries,
+  including ignored files, and treats invalid native recovery-context witnesses
+  as inconclusive UI evidence even when the raw capture passed.
+
 - Playwright owned-resource cleanup shares its existing five-second deadline
   across route removal and context/browser closure, avoiding premature failure
   when an individual close needs unused time from an earlier phase. Both close
