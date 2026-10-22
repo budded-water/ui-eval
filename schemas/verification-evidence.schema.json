@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "id",
+    "projectId",
+    "sourceDigest",
+    "level",
+    "environment",
+    "selector",
+    "status",
+    "references",
+    "origin"
+  ],
+  "properties": {
+    "id": {
+      "minLength": 1,
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "level": {
+      "anyOf": [
+        {
+          "const": "L1",
+          "type": "string"
+        },
+        {
+          "const": "L2",
+          "type": "string"
+        },
+        {
+          "const": "L3",
+          "type": "string"
+        },
+        {
+          "const": "L4",
+          "type": "string"
+        },
+        {
+          "const": "L5",
+          "type": "string"
+        }
+      ]
+    },
+    "environment": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "platform"
+      ],
+      "properties": {
+        "platform": {
+          "anyOf": [
+            {
+              "const": "host",
+              "type": "string"
+            },
+            {
+              "const": "web",
+              "type": "string"
+            },
+            {
+              "const": "ios-simulator",
+              "type": "string"
+            },
+            {
+              "const": "wechat-devtools",
+              "type": "string"
+            },
+            {
+              "const": "physical-device",
+              "type": "string"
+            }
+          ]
+        },
+        "profile": {
+          "minLength": 1,
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "deviceId": {
+          "minLength": 1,
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "variantKey": {
+          "minLength": 1,
+          "maxLength": 2048,
+          "type": "string"
+        }
+      }
+    },
+    "selector": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "const": "check",
+              "type": "string"
+            },
+            {
+              "const": "scenario",
+              "type": "string"
+            },
+            {
+              "const": "external",
+              "type": "string"
+            }
+          ]
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "pass",
+          "type": "string"
+        },
+        {
+          "const": "fail",
+          "type": "string"
+        },
+        {
+          "const": "needs-review",
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "type": "string"
+        },
+        {
+          "const": "not-run",
+          "type": "string"
+        }
+      ]
+    },
+    "references": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "minLength": 1,
+        "maxLength": 2048,
+        "type": "string"
+      }
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "const": "validated-adapter",
+          "type": "string"
+        },
+        {
+          "const": "declared-command",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

@@ -337,6 +337,21 @@ describe("bounded native recovery", () => {
 })
 
 describe("native integration execution", () => {
+  it("uses the same verification contract for a native consumer with exact simulator scope", async () => {
+    const { root, config, save, options, dependencies } = await integrationFixture()
+    config.verificationPlan = "ui-eval/verification.json"; await save()
+    await writeFile(join(root, config.verificationPlan), JSON.stringify({
+      apiVersion: "uieval.io/verification-v1alpha1", kind: "VerificationPlan", id: "native-change", projectId: project.projectId,
+      outcome: "Declared interaction works", plannedAt: "2026-10-22T00:00:00.000Z", planningContext: "Synthetic native regression plan",
+      requirements: [{ id: "interaction", category: "ui", rationale: "Changed interaction", expectedOutcome: "Visibility assertion passes",
+        level: "L4", environment: { platform: "ios-simulator", deviceId, variantKey: "ios-simulator" },
+        selector: { kind: "scenario", id: "home" }, visualReview: false }], omissions: [{ scope: "Physical device", reason: "Synthetic driver test only" }],
+    }))
+    const result = await runIntegrationSuite(options, dependencies)
+    expect(result.verification?.assessment.conclusions.ui).toBe("pass")
+    expect(result.verification?.evidence[0].environment).toEqual({ platform: "ios-simulator", deviceId, variantKey: "ios-simulator" })
+    expect(result.status).toBe("pass")
+  })
   it.each(["passed", "failed", "inconclusive"] as const)("aggregates %s native observations into synchronized integration JSON and HTML", async (mode) => {
     const { options, dependencies } = await integrationFixture(mode)
     const result = await runIntegrationSuite(options, dependencies)

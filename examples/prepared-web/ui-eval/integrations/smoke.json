@@ -4,6 +4,7 @@
   "id": "smoke",
   "projectId": "prepared-web",
   "adapter": "web",
+  "verificationPlan": "ui-eval/verification.json",
   "prepare": { "command": "node", "args": ["prepare.mjs"], "timeoutMs": 10000 },
   "checks": [
     { "id": "prepared-page", "phase": "after", "dimension": "prepared-content", "failureOutcome": "candidate", "command": "node", "args": ["check.mjs"], "timeoutMs": 10000 }

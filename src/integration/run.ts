@@ -20,6 +20,8 @@ import { writeIntegrationArtifacts } from "./report"
 import { NativePrerequisiteError } from "../native-pilot/preflight"
 import { loadNativeResume, recoveryContext, revalidateNativeStage } from "./recovery"
 
+import { loadVerificationPlan, integrationVerification, verificationExitCode } from "./verification"
+
 export interface IntegrationOptions {
   projectRoot: string
   suite: string
@@ -46,6 +48,13 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   const root = loaded.projectRoot
   const suite = loaded.value
   if (options.resume && (suite.adapter !== "native-pilot" || !suite.recovery)) throw new Error("Resume requires a native suite with a recovery context")
+
+  const verificationPlan = await loadVerificationPlan(root, suite)
+  const verifyPlanSnapshot = async () => {
+    if (verificationPlan && canonicalDigest(await loadVerificationPlan(root, suite)) !== canonicalDigest(verificationPlan)) {
+      throw new Error("Verification plan changed during integration")
+    }
+  }
   if (suite.adapter === "native-pilot") {
     if (!options.deviceId || !/^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/.test(options.deviceId)) {
       throw new Error("Native integration requires an explicit simulator UUID")
@@ -132,10 +141,12 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   })
   try {
     await atomicWriteFile(resolve(directory, "suite.json"), Buffer.from(`${JSON.stringify(suite, null, 2)}\n`))
+    if (verificationPlan) await atomicWriteFile(resolve(directory, "verification-plan.json"), Buffer.from(`${JSON.stringify(verificationPlan, null, 2)}\n`))
     await execute(engineBefore, () => (deps.verifyEngine ?? verifyEnginePin)(pin, options.signal))
     if (!stopped) await execute(sourceBefore, async () => {
       result.source = await (deps.source ?? collectSourceRevision)(root)
       result.sourceDigest = canonicalDigest(result.source)
+      await verifyPlanSnapshot()
     })
     if (!stopped && prepare && suite.prepare) await command(prepare, suite.prepare, "infrastructure")
     try {
@@ -246,16 +257,22 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
     })
     if (cleanupSettled && result.sourceDigest) await execute(sourceAfter, async () => {
       if (canonicalDigest(await (deps.source ?? collectSourceRevision)(root)) !== result.sourceDigest) throw new Error("Candidate source changed during integration")
+      await verifyPlanSnapshot()
     })
     if (cleanupSettled) await execute(engineAfter, () => (deps.verifyEngine ?? verifyEnginePin)(pin, options.signal))
   } catch (error) {
     if (!options.signal?.aborted) throw error
   }
+  if (verificationPlan) {
+    result.verification = integrationVerification(suite, result, verificationPlan)
+    result.limitations.push("Verification checks the declared plan only; risk selection and command evidence levels are trusted project decisions.",
+      "Visual inspection and physical-device/external evidence ingestion are not implemented; required unsupported evidence remains pending.")
+  }
   if (options.signal?.aborted) {
     result.exitCode = options.signal.reason?.signal === "SIGTERM" ? 143 : 130
     result.status = "interrupted"
   } else {
-    result.exitCode = integrationExitCode(result.stages)
+    result.exitCode = verificationExitCode(integrationExitCode(result.stages), result.verification?.assessment.exitCode ?? 0)
     result.status = statusForExit(result.exitCode) as IntegrationResult["status"]
   }
   result.durationMs = performance.now() - started

@@ -1,5 +1,10 @@
 # Feature verification workflow
 
+For shared evidence levels, risk-based selection and machine-readable requirements,
+read [verification plans](verification-plans.md). An optional `verificationPlan`
+on an integration suite enables deterministic reconciliation of declared scope;
+the feature map below remains a human/Agent aid and is never a coverage input.
+
 Use this workflow to connect a candidate Web project's user features to reviewed
 UI Eval scenarios and external checks. It reuses the existing CLI and report
 contracts. No feature-map loader, automatic scenario generator or model-based

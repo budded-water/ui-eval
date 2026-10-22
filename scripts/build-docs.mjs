@@ -10,6 +10,7 @@ const documents = [
   ["design-overview", "System design and flows", "docs/design-overview.md"],
   ["architecture", "Architecture", "docs/architecture.md"],
   ["contracts", "Contracts", "docs/contracts.md"],
+  ["verification-plans", "Risk-based verification", "docs/verification-plans.md"],
   ["security", "Security model", "docs/security-model.md"],
   ["integration", "Integration", "docs/integration.md"],
   ["verification", "Feature verification", "docs/verification.md"],

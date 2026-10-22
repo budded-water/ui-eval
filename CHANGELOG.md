@@ -56,6 +56,12 @@ The source repository is public, but the project has no package release or confi
   workflow, and a Basic Web feature map referencing existing assertions and
   coverage gaps. Maps are review aids only; CLI/report contracts, runtime scope
   and acceptance are unchanged.
+
+- Optional `VerificationPlan` contracts and reusable evidence reconciliation in
+  integration JSON/HTML. Missing environments, stale evidence and required visual
+  inspection cannot pass. Plan-free suites retain behavior. No human approval or
+  physical-device evidence ingestion is added.
+
 - `integrate` accepts experimental `native-pilot` suites with explicit simulator
   selection, strict original report/command/PNG verification and source metadata.
   Optional candidate-owned sessions remain alive across scenarios and require

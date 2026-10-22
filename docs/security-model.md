@@ -11,6 +11,16 @@ self-reported, private local input and HTML-escaped, with bounded schema fields
 and verified contained evidence paths. Human observations cannot waive failed
 or missing automatic evidence or establish release readiness.
 
+## Verification-plan boundary
+
+[Plans](verification-plans.md) are trusted candidate policy, not proof of complete risk
+selection. They use the integration loader's size/containment/regular-file/symlink
+checks. Observations derive from validated stages; prose and command levels are
+not attested. The pure API requires trusted validated inputs and does not import
+external records. Digests detect drift, not malicious local rewriting. HTML
+escapes plan text. Missing/wrong-scope evidence and unimplemented human/device
+approvals cannot pass.
+
 ## Integration command boundary
 
 The [integration runner](integration-runner.md) treats pins, suites and

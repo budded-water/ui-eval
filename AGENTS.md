@@ -27,6 +27,9 @@ UI Eval is a public-source, `UNLICENSED`, single-package TypeScript modular mono
   reduce the mandatory floor or weaken acceptance. Remote verification failures
   are infrastructure failures and never authorize repair or evidence reuse.
 - Missing/corrupt/unsupported evidence never becomes pass.
+- Shared risk-selection and evidence-level rules live in [verification plans](docs/verification-plans.md).
+  Consumer projects provide business requirements; never fork generic reconciliation
+  into an App wrapper or equate suite completion with undeclared feature acceptance.
 - Product, infrastructure, invalid-evidence, and review outcomes remain distinct.
 - A schema declaration is not proof of runtime support.
 

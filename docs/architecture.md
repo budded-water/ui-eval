@@ -50,6 +50,7 @@ All modules ship from one package and use relative internal imports. The directo
 | Module | Responsibility |
 | --- | --- |
 | `src/contracts/` | TypeBox schemas, derived TypeScript types, canonical JSON/digests, JSON Schema export, and structural/semantic contract validation. |
+| `src/verification/` | Pure [verification-plan](verification-plans.md) reconciliation against validated observations; no driver or business imports. |
 | `src/project/` | Safe loading of project, scenario, and policy authoring files; project-root containment and authoring semantics. |
 | `src/manifest-compiler/` | Matrix expansion, fixture/auth materialization, capability negotiation, plan sealing, and policy materialization. |
 | `src/capture-playwright/` | Chromium lifecycle, origin and egress guards, scenario actions, stabilization, and evidence collection. |

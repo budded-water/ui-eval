@@ -14,7 +14,7 @@ function renderBaseHtml(result: IntegrationResult, projectRoot: string): string 
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>UI Eval integration</title><style>body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ccc;text-align:left;vertical-align:top}code{overflow-wrap:anywhere}.table{overflow:auto}li{margin:8px 0}</style><h1>${escape(result.suiteId)}: ${escape(result.status)}</h1><p>Project: ${escape(result.projectId)} · Adapter: ${escape(result.adapter)} · Exit: ${result.exitCode} · Duration: ${Math.round(result.durationMs)} ms</p><p>Engine: <code>${escape(result.engine.revision)}</code> · Profile: ${escape(result.executionProfile ?? "default")} · Browser: ${escape(result.browserChannel ?? "adapter default")}</p><div class="table"><table><thead><tr><th>Stage</th><th>Result</th><th>Duration</th><th>Evidence and coverage</th></tr></thead><tbody>${result.stages.map((stage) => `<tr><td>${escape(stage.kind)}: ${escape(stage.id)}${stage.dimension ? `<br>${escape(stage.dimension)}` : ""}</td><td>${escape(stage.status)}<br>${escape(stage.reason)}</td><td>${Math.round(stage.durationMs)} ms</td><td>${stage.reports.map((report) => `${escape(report.variantKey)}: ${escape(report.status)} ${link(report.htmlPath, "HTML")} · ${link(report.reportPath, "JSON")}<ul>${report.capabilities.map((capability) => `<li>${escape(capability.dimension)}: ${escape(capability.status)} — ${escape(capability.detail)}</li>`).join("")}</ul>`).join("")}</td></tr>`).join("")}</tbody></table></div><h2>Acceptance limits</h2><ul>${result.limitations.map((item) => `<li>${escape(item)}</li>`).join("")}</ul><p>${link(relative(projectRoot, result.summaryPath), "Canonical integration JSON")}</p></html>\n`
 }
 
-export function renderIntegrationHtml(result: IntegrationResult, projectRoot: string): string {
+function renderRecoveryHtml(result: IntegrationResult, projectRoot: string): string {
   const remaining = result.stages.filter((stage) => stage.status !== "pass").map((stage) => escape(stage.id)).join(", ") || "none"
   const recovery = `<h2>Scope and recovery</h2><p>Scope is fixed by the sealed suite. Remaining stages: ${remaining}.</p>${result.stages.map((stage) =>
     `${stage.reusedFrom ? `<p>${escape(stage.id)} reused from <code>${escape(stage.reusedFrom)}</code>.</p>` : ""}${stage.attempts ?
@@ -22,6 +22,20 @@ export function renderIntegrationHtml(result: IntegrationResult, projectRoot: st
         `<li>${escape(attempt.status)} · ${Math.round(attempt.durationMs)} ms — ${escape(attempt.reason)}</li>`).join("")}</ol></details>` : ""}`).join("")}`
   return renderBaseHtml(result, projectRoot).replace("<h2>Acceptance limits</h2>", `${recovery}<h2>Acceptance limits</h2>`)
 }
+
+function renderVerificationHtml(result: IntegrationResult, projectRoot: string): string {
+  const html = renderRecoveryHtml(result, projectRoot)
+  const verification = result.verification
+  if (!verification) return html
+  const { assessment, plan } = verification
+  const section = `<h2>Verification against declared plan</h2><p>${escape(plan.outcome)}</p><p>Code verification: ${escape(assessment.conclusions.code)} · UI acceptance: ${escape(assessment.conclusions.ui)} · Release readiness: ${escape(assessment.conclusions.release)}</p><p>Plan: <code>${escape(assessment.planDigest)}</code>. These conclusions cover the declared requirements only.</p><div class="table"><table><thead><tr><th>Required outcome</th><th>Level and environment</th><th>Result</th></tr></thead><tbody>${assessment.requirements.map((item, index) => {
+    const requirement = plan.requirements[index]
+    return `<tr><td>${escape(item.id)}: ${escape(requirement.expectedOutcome)}</td><td>${escape(requirement.level)} · ${escape(JSON.stringify(requirement.environment))}</td><td>${escape(item.status)}<ul>${item.reasons.map((reason) => `<li>${escape(reason)}</li>`).join("")}</ul><code>${item.evidenceIds.map(escape).join("<br>")}</code></td></tr>`
+  }).join("")}</tbody></table></div><h3>Declared omissions</h3><ul>${plan.omissions.map((item) => `<li>${escape(item.scope)}: ${escape(item.reason)}</li>`).join("")}</ul>`
+  return html.replace("<h2>Acceptance limits</h2>", `${section}<h2>Acceptance limits</h2>`)
+}
+
+export const renderIntegrationHtml = renderVerificationHtml
 
 /** Publish the human view first; only a complete pair is a completed integration. */
 export async function writeIntegrationArtifacts(result: IntegrationResult, projectRoot: string): Promise<void> {

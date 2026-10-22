@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="cec078f2b16557f5c4be2de138ad5c9646e1b22bea685099c54d785d4a625529">
+  <meta name="source-sha256" content="adbc296c3fbf61c284720714cf62c6329e6c4c5f64d22402dc4d9e5aab787f4d">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -41,6 +41,7 @@
     <nav><strong>UI Eval docs</strong><a href="#design-overview">System design and flows</a>
 <a href="#architecture">Architecture</a>
 <a href="#contracts">Contracts</a>
+<a href="#verification-plans">Risk-based verification</a>
 <a href="#security">Security model</a>
 <a href="#integration">Integration</a>
 <a href="#verification">Feature verification</a>
@@ -59,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: cec078f2b16557f5c4be2de138ad5c9646e1b22bea685099c54d785d4a625529</footer>
+        <footer>Source set SHA-256: adbc296c3fbf61c284720714cf62c6329e6c4c5f64d22402dc4d9e5aab787f4d</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -342,6 +343,10 @@ candidate Git state ────────────────────
 <td>TypeBox schemas, derived TypeScript types, canonical JSON/digests, JSON Schema export, and structural/semantic contract validation.</td>
 </tr>
 <tr>
+<td><code>src/verification/</code></td>
+<td>Pure <a href="verification-plans.md">verification-plan</a> reconciliation against validated observations; no driver or business imports.</td>
+</tr>
+<tr>
 <td><code>src/project/</code></td>
 <td>Safe loading of project, scenario, and policy authoring files; project-root containment and authoring semantics.</td>
 </tr>
@@ -582,6 +587,11 @@ to integration alpha contracts. Original adapter reports remain unchanged.
 <code>uieval.io/native-review-v1</code> human-observation record. It binds declared review
 criteria and verified source/report/PNG digests, never rewrites an automated
 result, and is not an authenticated reviewer decision or release attestation.</p>
+<p>Optional <a href="verification-plans.md">verification plans</a> add plan, evidence, assessment and
+record schemas from <code>src/contracts/verification.ts</code>. These describe change-level
+requirements, not the existing <code>EvaluationPlan</code> evaluator inputs. Validators
+recompute conclusions/digests and integration binds observations to stages. This
+additive alpha extension requires updated strict readers when used.</p>
 <p>The additive <a href="integration-runner.md">integration runner</a> has generated engine-pin,
 suite and result schemas derived from <code>src/integration/</code>. Its acceptance record
 adds reviewed checks to original Web/WeChat/native-pilot observations without changing their
@@ -917,6 +927,108 @@ progress projections, separately from integration acceptance. See
 <p>Run <code>bun run schema:check</code> to detect generated-schema drift. See <a href="development.md">Development</a> for the complete verification ladder and <a href="release.md">Release</a> for compatibility gates.</p>
 
       </section>
+<section id="verification-plans" class="document">
+        <div class="source"><span>Risk-based verification</span><code>docs/verification-plans.md</code></div>
+        <h1>Risk-based verification plans</h1>
+<h2>Ownership and evidence levels</h2>
+<p>Failure: passing smoke can be mistaken for verification of a changed feature when
+its affected states or real environment were never exercised. Shared rules and
+reconciliation belong to UI Eval; consumers own business outcomes, commands,
+scenarios, fixtures and delivery gates. The UX skill guides risk selection;
+updating a user-installed skill does not update this engine or execute a candidate.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Evidence scope</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>L1</td>
+<td>Static/source/configuration checks.</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>Automated behavioral checks, including synthetic harness tests.</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>An explicitly identified bundle, native build or package subcheck.</td>
+</tr>
+<tr>
+<td>L4</td>
+<td>A scoped browser, simulator or DevTools UI execution.</td>
+</tr>
+<tr>
+<td>L5</td>
+<td>Relevant physical-device and real-service/environment observations.</td>
+</tr>
+</tbody></table>
+<p>Levels are not cumulative. Fake-driver tests remain L2 even when producing
+synthetic runtime reports. Builds do not establish UI acceptance; code review is
+independent. Before implementation identify the reported outcome, affected
+callers/platforms and dependencies hidden by mocks. Visible interactions need
+affected runtime evidence; native changes add builds; real GPS/network/payment
+or device-specific claims need that real environment. Pure logic may use L1/L2;
+documentation uses relevant document checks. Record omissions with reasons, never
+drop necessary checks because environments are unavailable, and record mid-task
+planning honestly in <code>planningContext</code>. Plan quality remains a trusted decision.</p>
+<h2>Implemented boundary</h2>
+<p>Suites may reference candidate-owned <code>verificationPlan</code> files following
+<a href="../schemas/verification-plan.schema.json">VerificationPlan</a>. This differs from
+the existing <code>EvaluationPlan</code> evaluator-input contract. Requirements name a
+check/scenario/external selector, level, environment, expected outcome, rationale,
+category and whether visual inspection is necessary. Commands and scenario
+assertions must implement the prose outcome: the engine cannot interpret prose
+or shell semantics. Each required environment field must match; omitted fields
+impose no extra constraint. All applicable emitted variants must pass. Declare
+separate requirements for environments that must not be omitted.</p>
+<p>The loader uses bounded contained regular files before executing commands. The
+complete plan is copied to the execution directory and bound by canonical digest
+in the summary. Direct content rechecks at both source boundaries detect plan
+changes even for Git-ignored files. Source verification additionally detects
+candidate changes during execution. Plans
+cannot remove mandatory suite stages. Scenario observations derive from existing
+adapter evidence verification: platform, profile/device and report variant remain
+explicit. Web, iOS Simulator and WeChat DevTools observations never imply real
+phone/service coverage. Host checks need explicit <code>verificationLevel</code> (<code>L1</code>, <code>L2</code>
+or <code>L3</code>): a trusted project classification of command exit, not build attestation.
+Unclassified checks still execute and affect suite acceptance.</p>
+<p>The pure <code>assessVerification</code> API consumes already validated observations. It
+does not load/attest files, execute commands, authenticate reviewers or prove
+environment declarations true. Its inputs are trusted; this is not an external
+evidence-import interface. <code>assertVerificationRecord</code> recomputes assessment and
+digests. Integration also checks observations against its stages. Original
+adapter reports remain unchanged. Do not copy shared reconciliation into consumers.</p>
+<h2>Reconciliation and results</h2>
+<p><code>src/verification/</code> matches selectors, project/source, level and environment.
+Missing evidence is <code>not-run</code>; wrong-scope evidence is <code>invalid-evidence</code>;
+failures/infrastructure/review remain visible. Required visual inspection stays
+<code>needs-review</code> after driver success. This integration plan reconciler does not
+ingest the separate native human-review/progress records or physical-device/external
+records. Such requirements can be declared
+but cannot become accepted through this runner.</p>
+<p>The optional summary <code>verification</code> record contains the plan, derived observations
+and assessment. Canonical JSON and derived HTML give separate code/UI/release
+conclusions. An empty category is <code>not-assessed</code>, never pass. Conclusions cover
+declared requirements only, not all repository checks, independent review or
+store conditions. Consumers must include their necessary gates. No result grants
+merge/publication authorization.</p>
+<p>Missing/invalid/inconclusive requirements map to exit 2, candidate failure to 1,
+review to 3, fully satisfied declared requirements to 0. Infrastructure/incomplete
+scope take precedence; cancellation retains 130/143. Raw passing stages can yield
+inconclusive/review acceptance. Plan-free suites retain behavior and do not acquire
+feature-level claims. Older strict readers need matching schemas/engine for these
+additive alpha fields; consumers pin a reviewed source revision.</p>
+<h2>Verification and reuse</h2>
+<p>Regression tests cover missing/stale/wrong-environment evidence, retained failures,
+visual review, forged assessments and separate conclusions. Synthetic Web/native
+consumer integrations use the same shared code. The prepared-Web built-CLI
+verifier exercises browser execution with a plan and a missing real-device
+requirement. Synthetic native coverage does not establish an installed App result.
+Keep actual run outcomes in PR records rather than timeless contract prose.</p>
+
+      </section>
 <section id="security" class="document">
         <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
         <h1>Security Model</h1>
@@ -930,6 +1042,14 @@ be one digest; reports withhold raw output. Human review notes and aliases are
 self-reported, private local input and HTML-escaped, with bounded schema fields
 and verified contained evidence paths. Human observations cannot waive failed
 or missing automatic evidence or establish release readiness.</p>
+<h2>Verification-plan boundary</h2>
+<p><a href="verification-plans.md">Plans</a> are trusted candidate policy, not proof of complete risk
+selection. They use the integration loader&#39;s size/containment/regular-file/symlink
+checks. Observations derive from validated stages; prose and command levels are
+not attested. The pure API requires trusted validated inputs and does not import
+external records. Digests detect drift, not malicious local rewriting. HTML
+escapes plan text. Missing/wrong-scope evidence and unimplemented human/device
+approvals cannot pass.</p>
 <h2>Integration command boundary</h2>
 <p>The <a href="integration-runner.md">integration runner</a> treats pins, suites and
 prepare/check argv as reviewed executable configuration. Executing source must
@@ -1721,6 +1841,10 @@ as scales the stylesheet still does not declare.</p>
 <section id="verification" class="document">
         <div class="source"><span>Feature verification</span><code>docs/verification.md</code></div>
         <h1>Feature verification workflow</h1>
+<p>For shared evidence levels, risk-based selection and machine-readable requirements,
+read <a href="verification-plans.md">verification plans</a>. An optional <code>verificationPlan</code>
+on an integration suite enables deterministic reconciliation of declared scope;
+the feature map below remains a human/Agent aid and is never a coverage input.</p>
 <p>Use this workflow to connect a candidate Web project&#39;s user features to reviewed
 UI Eval scenarios and external checks. It reuses the existing CLI and report
 contracts. No feature-map loader, automatic scenario generator or model-based
@@ -1862,6 +1986,10 @@ gate.</p>
 <section id="integration-runner" class="document">
         <div class="source"><span>Integration acceptance runner</span><code>docs/integration-runner.md</code></div>
         <h1>Integration acceptance runner</h1>
+<p>Suites may opt into <a href="verification-plans.md">verification plans</a> using <code>verificationPlan</code>.
+Host checks can declare <code>verificationLevel</code> for L1/L2/L3 mapping. Missing required
+environments or visual inspection prevent declared acceptance even when executed
+stages passed. Suites without these fields retain their original behavior.</p>
 <p><code>ui-eval integrate &lt;suite&gt;</code> verifies the executing engine pin, prepares a candidate
 once, runs required Web, experimental WeChat or iOS Simulator scenarios and external checks,
 and publishes complete acceptance JSON/HTML. It does not repair source. Existing
@@ -2376,6 +2504,11 @@ Native progress covers only explicitly selected scenarios and their currently
 declared human criteria. It does not include integration lifecycle/check stages,
 authenticate human decisions, or attest to installed binaries and backend state.
 It never auto-selects a passing historical run or rewrites an original failure.</p>
+<p>Optional <a href="verification-plans.md">verification plans</a> reconcile declared requirements only.
+Risk selection, command levels and assertion adequacy are trusted project decisions.
+Physical-device/manual approvals are not ingested; required visual inspection stays
+review and missing external evidence stays unrun. Plan-free suite success does not
+establish acceptance of an unspecified feature scope.</p>
 <p>The <a href="integration-runner.md">integration runner</a> aggregates required Web,
 experimental WeChat or iOS Simulator scenarios with reviewed preparation/checks.
 Native suites can use a candidate-owned session for startup and cleanup. It does not
@@ -2671,6 +2804,7 @@ runtime configuration or replace the checks below.</p>
 <h2>Source layout</h2>
 <pre><code class="language-text">src/
   contracts/             schemas, types, canonical JSON, validators
+  verification/          pure requirement/evidence reconciliation
   project/               authoring loaders and containment
   manifest-compiler/     scenario/policy materialization
   capture-playwright/    browser adapter and evidence collection

@@ -12,6 +12,7 @@ import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-p
 import { WechatPilotResultSchema } from "../wechat-pilot/report"
 import { EnginePinSchema, IntegrationSuiteSchema } from "../integration/config"
 import { IntegrationResultSchema } from "../integration/model"
+import { VerificationPlanSchema, VerificationEvidenceSchema, VerificationAssessmentSchema, VerificationRecordSchema } from "./verification"
 import {
   IntegrationSessionSchema, IntegrationSessionStartSchema, IntegrationSessionReadySchema,
   IntegrationSessionStopSchema, IntegrationSessionStoppedSchema,
@@ -39,6 +40,10 @@ import {
 const DRAFT = "https://json-schema.org/draft/2020-12/schema"
 
 const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
+  ["verification-plan.schema.json", VerificationPlanSchema],
+  ["verification-evidence.schema.json", VerificationEvidenceSchema],
+  ["verification-assessment.schema.json", VerificationAssessmentSchema],
+  ["verification-record.schema.json", VerificationRecordSchema],
   ["engine-pin.schema.json", EnginePinSchema],
   ["integration-suite.schema.json", IntegrationSuiteSchema],
   ["integration-result.schema.json", IntegrationResultSchema],

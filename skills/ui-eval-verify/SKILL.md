@@ -12,6 +12,14 @@ not install a plugin, register a command, or authorize new external actions.
 
 ## Establish the target and proof
 
+Read [risk-based verification plans](../../docs/verification-plans.md) before
+implementation or acceptance. Record required checks/scenarios, levels, observable
+outcomes and environments before execution, with justified omissions. State when
+planning occurs if adopting mid-task. Use an opt-in suite `verificationPlan` for
+machine reconciliation; a feature map is not an executable plan. Keep necessary
+missing environments and visual observations pending. Give separate code/UI/release
+conclusions and retain original reports. Routine planning adds no approval gate.
+
 - Resolve the engine checkout and candidate Git root separately. Run the CLI
   from the engine with an explicit candidate `--project-root`.
 - Inspect the candidate's startup command, reviewed `ui-eval/project.json`,

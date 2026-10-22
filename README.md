@@ -20,6 +20,10 @@ can add reviewed optional scenarios while preserving mandatory scope.
 
 ## What works today
 
+- Optional cross-project [verification plans](docs/verification-plans.md) reconcile
+  declared requirements with integration evidence and report separate code/UI/release
+  conclusions. Missing environments and required visual review stay pending.
+
 A separate experimental [WeChat DevTools pilot](docs/wechat-pilot.md) runs
 declared mini-program interactions and captures PNG evidence using the installed
 official CLI. It does not extend the Web policy pipeline or real-device coverage.

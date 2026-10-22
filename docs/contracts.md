@@ -8,6 +8,12 @@ to integration alpha contracts. Original adapter reports remain unchanged.
 criteria and verified source/report/PNG digests, never rewrites an automated
 result, and is not an authenticated reviewer decision or release attestation.
 
+Optional [verification plans](verification-plans.md) add plan, evidence, assessment and
+record schemas from `src/contracts/verification.ts`. These describe change-level
+requirements, not the existing `EvaluationPlan` evaluator inputs. Validators
+recompute conclusions/digests and integration binds observations to stages. This
+additive alpha extension requires updated strict readers when used.
+
 The additive [integration runner](integration-runner.md) has generated engine-pin,
 suite and result schemas derived from `src/integration/`. Its acceptance record
 adds reviewed checks to original Web/WeChat/native-pilot observations without changing their
