@@ -6,6 +6,19 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+### Added
+
+- Native visibility failures include supplemental, bounded diagnostics derived
+  from existing driver artifacts: preceding interaction, checkpoint/failure PNGs,
+  exact decoded-pixel comparison and unique exact-selector hierarchy bounds when
+  available. Cause remains undetermined; no new gestures, retries or waivers.
+- `native-pilot progress --scope <project-relative-json>` publishes synchronized
+  native acceptance JSON/HTML from explicitly selected captures and human reviews.
+  Missing, stale, failed and invalid evidence remain visible with next actions.
+  Exit codes are 0 complete, 1 blocked and 2 pending. Original reports are unchanged.
+  New strict progress schemas and optional native-result diagnostics extend the
+  experimental contracts; older strict result readers need this source revision.
+
 ### Fixed
 
 - Playwright owned-resource cleanup shares its existing five-second deadline

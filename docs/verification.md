@@ -143,6 +143,14 @@ output, or share sensitive artifacts without authorization.
 
 ## Boundaries
 
+For a fixed native scenario/human-review scope, use the separate offline
+`native-pilot progress --scope <project-relative-json>` command after selecting
+actual captures/observations. Retain its canonical JSON and matching HTML; missing,
+stale, failed or invalid items are not done. Failure diagnostics preserve cause
+uncertainty and the original automatic verdict. See
+[native progress](native-pilot.md#explicit-acceptance-progress); integration and
+store/real-device verification remain separate.
+
 This workflow covers the current Web pipeline. Experimental native/WeChat
 pilots have separate contracts and limitations. It adds no protected baseline,
 holdout isolation, automatic feature coverage, or calibrated quality score.

@@ -131,3 +131,76 @@ output is not quota-managed.
 The separate `nativePilot` library namespace exposes the experimental API.
 Distribution remains a separately authorized source checkout/build. This pilot
 does not complete the broader native-adapter roadmap milestone.
+
+## Failure diagnostics
+
+Bound visibility failures add optional `diagnostic` fields derived only from
+existing Maestro artifacts. Step indexes are zero-based scenario indexes. The
+previous checkpoint precedes the last completed interaction; it may be older
+than the immediately preceding frame. The failure image is the pinned driver's
+single matching failed-step artifact. Comparisons use decoded RGBA pixels with
+matching dimensions, not encoded PNG bytes. Different pixels do not establish
+the intended transition, and identical pixels do not identify a cause.
+
+A unique literal ID/text match in the post-failure hierarchy may supply target
+bounds in driver hierarchy coordinates. These are neither actual injected touch
+coordinates nor screenshot pixel coordinates. Regex-only/ambiguous targets have
+no inferred bounds. No pre-interaction hierarchy is captured or compared.
+Missing, invalid, oversized or symlinked diagnostic artifacts stay unavailable.
+Raw hierarchy text and driver errors are not embedded in result fields.
+
+JSON and HTML keep the failed status and explicitly state cause `undetermined`.
+Inspect candidate state, development overlays and input delivery before rerunning;
+the engine does not dismiss overlays, infer a product defect or retry. Integration
+revalidation recomputes retained diagnostics and binds their artifact bytes.
+Old results without diagnostics remain readable. Local diagnostic image paths
+are sensitive just like other native screenshots; no artifact is uploaded.
+
+## Explicit acceptance progress
+
+Create a project-relative scope file, selecting at most one report per scenario
+and one observation per human criterion. No directory scan, timestamp selection
+or preference for passing history is performed. For example:
+
+```json
+{
+  "apiVersion": "uieval.io/native-progress-v1",
+  "kind": "NativeProgressScope",
+  "projectId": "sample",
+  "deviceId": "11111111-1111-1111-1111-111111111111",
+  "scenarios": ["home"],
+  "reports": [],
+  "reviews": []
+}
+```
+
+```sh
+bun run ui-eval native-pilot progress --project-root /candidate \
+  --scope ui-eval/progress.json --format json
+```
+
+Add `reports: [{"scenarioId":"home","path":".ui-eval/native-runs/EXECUTION/report.json"}]`
+and `reviews: [{"reviewId":"layout","path":".ui-eval/native-reviews/OBSERVATION/review.json"}]`
+only for evidence actually selected by the operator. Placeholders are not results.
+Every current human criterion belonging to a selected scenario is required;
+scope, current declarations and source identity have separate digests.
+
+The offline command checks original source/plan/flow/command/PNG evidence through
+the existing native verifier. Human records must match the exact selected passed
+capture, checkpoint, criterion and current source, and retain both projections.
+Human aliases/decisions remain self-reported, not authenticated. Reviewer notes
+and raw hierarchy contents are not copied into the progress report. Final
+revalidation rejects inputs or verified evidence changing during summarization.
+
+Outputs are `.ui-eval/native-progress/<execution-id>/summary.json` and `summary.html`.
+States are passed, failed, inconclusive, pending, stale and invalid. Any failed or
+invalid item yields blocked/exit 1; all passed yields complete/exit 0; other states
+yield pending/exit 2. CLI signal exits remain unchanged. Unsupported scope inputs
+fail validation. Neither original evidence nor automated decisions are rewritten.
+
+This is selected native scenario/criterion progress, not acceptance of integration
+prepare/check/session/cleanup stages, backend state, an installed binary or a
+physical-device release. A new source requires new captures and observations;
+it does not authorize evidence reuse. No device, Metro, auth or backend command
+runs during summarization. The `nativePilot` namespace exports the scope/result
+schemas and `summarizeNativeProgress`.

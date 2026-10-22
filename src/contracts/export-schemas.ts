@@ -7,6 +7,7 @@ import { AgentRunResultSchema } from "../agent/model"
 import { NativePilotProjectSchema, NativePilotScenarioSchema } from "../native-pilot/config"
 import { NativePilotResultSchema } from "../native-pilot/report"
 import { NativeReviewResultSchema } from "../native-pilot/review"
+import { NativeProgressScopeSchema, NativeProgressResultSchema } from "../native-pilot/progress"
 import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-pilot/config"
 import { WechatPilotResultSchema } from "../wechat-pilot/report"
 import { EnginePinSchema, IntegrationSuiteSchema } from "../integration/config"
@@ -50,6 +51,8 @@ const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
   ["native-pilot-scenario.schema.json", NativePilotScenarioSchema],
   ["native-pilot-result.schema.json", NativePilotResultSchema],
   ["native-review-result.schema.json", NativeReviewResultSchema],
+  ["native-progress-scope.schema.json", NativeProgressScopeSchema],
+  ["native-progress-result.schema.json", NativeProgressResultSchema],
   ["wechat-pilot-project.schema.json", WechatPilotProjectSchema],
   ["wechat-pilot-scenario.schema.json", WechatPilotScenarioSchema],
   ["wechat-pilot-result.schema.json", WechatPilotResultSchema],

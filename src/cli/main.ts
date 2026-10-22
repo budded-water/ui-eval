@@ -32,6 +32,7 @@ Usage:
   ui-eval integrate <suite> [--project-root path] [--device uuid] [--resume execution-id] [--format text|json]
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
   ui-eval native-pilot review --report <path> --review <id> --decision pass|fail --reviewer <alias> --note <observation>
+  ui-eval native-pilot progress --scope <project-relative-json> [--format text|json]
   ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
                               [--project-root path] [--format text|json]
 

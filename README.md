@@ -1,5 +1,12 @@
 # UI Eval
 
+Native-pilot visibility failures retain supplemental screenshot/interaction
+diagnostics without guessing their cause. `native-pilot progress --scope <json>`
+summarizes explicitly selected native captures and human criteria into matching
+JSON/HTML, with pending/stale/invalid evidence and next actions. See
+[native diagnostics and progress](docs/native-pilot.md#failure-diagnostics) for
+scope authoring, exit codes and limits; this does not establish release readiness.
+
 UI Eval is a local-first, evidence-first conformance harness for web user interfaces. It compiles reviewable project inputs into sealed execution plans, captures browser evidence with Playwright, applies deterministic policy gates, and writes a validated JSON result plus a static HTML view.
 
 The current implementation is deliberately narrow: a single-package TypeScript modular monolith for local and CI use. It is not a hosted service or a general UI quality scorer. Its optional agent command is a bounded orchestration layer around deterministic evaluation and a separately configured repair adapter. A separate [experimental iOS Simulator pilot](docs/native-pilot.md) captures limited native interaction/screenshot evidence; it does not extend Web policies or establish release readiness.

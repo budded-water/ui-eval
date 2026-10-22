@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "executionId",
+    "projectId",
+    "deviceId",
+    "scopeDigest",
+    "sourceDigest",
+    "status",
+    "automatic",
+    "human",
+    "limitations"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/native-progress-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "NativeProgressResult",
+      "type": "string"
+    },
+    "executionId": {
+      "type": "string"
+    },
+    "projectId": {
+      "pattern": "^[a-z][a-z0-9-]{0,63}$",
+      "type": "string"
+    },
+    "deviceId": {
+      "type": "string"
+    },
+    "scopeDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sourceDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "complete",
+          "type": "string"
+        },
+        {
+          "const": "pending",
+          "type": "string"
+        },
+        {
+          "const": "blocked",
+          "type": "string"
+        }
+      ]
+    },
+    "automatic": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "nextAction"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "const": "passed",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "inconclusive",
+                "type": "string"
+              },
+              {
+                "const": "pending",
+                "type": "string"
+              },
+              {
+                "const": "stale",
+                "type": "string"
+              },
+              {
+                "const": "invalid",
+                "type": "string"
+              }
+            ]
+          },
+          "nextAction": {
+            "type": "string"
+          },
+          "reportPath": {
+            "minLength": 1,
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "evidenceDigest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "human": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "scenarioId",
+          "state",
+          "nextAction"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "scenarioId": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "const": "passed",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "inconclusive",
+                "type": "string"
+              },
+              {
+                "const": "pending",
+                "type": "string"
+              },
+              {
+                "const": "stale",
+                "type": "string"
+              },
+              {
+                "const": "invalid",
+                "type": "string"
+              }
+            ]
+          },
+          "nextAction": {
+            "type": "string"
+          },
+          "observationDigest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

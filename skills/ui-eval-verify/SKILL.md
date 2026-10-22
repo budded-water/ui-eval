@@ -39,6 +39,15 @@ use resume only with an explicit replay-safe scenario and valid context witness.
 Record human gesture/visual confirmation with native-pilot review, separately
 from automatic evidence. Do not count store upload or simulation as phone acceptance.
 
+For native visibility failures, inspect the optional existing-artifact diagnostic:
+its failed step, preceding interaction, available images and post-failure bounds.
+Cause stays undetermined; never infer that unchanged pixels prove an overlay or
+that different pixels prove the intended transition. Do not retry without restoring
+the relevant prerequisite. For selected native capture/human-review progress, use
+`native-pilot progress --scope <project-relative-json>` with explicit evidence
+selections. Preserve pending/stale/invalid items and both JSON/HTML; this summary
+does not replace integration lifecycle checks or physical-device acceptance.
+
 Run `doctor` first with the intended browser/profile. Inspect warnings as well
 as failures. Doctor may create the artifact directory and briefly launch a
 browser; it does not prove the application journey or start the candidate server.

@@ -10,6 +10,7 @@ import { compileNativePilotFlow } from "./flow"
 import { findNativeCommandFile, inspectNativeCommands, nativeScreenshots, readNativeEvidence } from "./evidence"
 import { writeNativePilotReport, type NativePilotResult } from "./report"
 import { NativePrerequisiteError, nativeStorage } from "./preflight"
+import { nativeFailureDiagnostic } from "./diagnostics"
 
 export interface NativePilotOptions { projectRoot: string; deviceId: string; scenario?: string; signal?: AbortSignal }
 export interface NativePilotDependencies { command?: typeof runCommand; sourceRevision?: typeof collectSourceRevision; platform?: NodeJS.Platform; storage?: typeof nativeStorage }
@@ -102,7 +103,8 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
       "--test-output-dir", resolve(directory, "driver"), "--debug-output", resolve(directory, "debug"),
     ], { cwd: options.projectRoot, timeoutMs: project.timeoutMs, signal: options.signal })
     const commands = await findNativeCommandFile(resolve(directory, "driver"))
-    const evidence = inspectNativeCommands(JSON.parse((await readNativeEvidence(commands, 1024 * 1024)).toString("utf8")), project, scenario, device.id)
+    const records = JSON.parse((await readNativeEvidence(commands, 1024 * 1024)).toString("utf8"))
+    const evidence = inspectNativeCommands(records, project, scenario, device.id)
     result.assertions = { passed: evidence.passed, failed: evidence.failed }
     if (driver.exitCode === 0 && evidence.complete && evidence.failed === 0) {
       const screenshots = await nativeScreenshots(commands, scenario)
@@ -113,6 +115,7 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
     } else if (driver.exitCode === 1 && evidence.failed > 0) {
       result.status = "failed"
       result.reason = "A declared Maestro visibility assertion failed; this is an interaction observation only."
+      result.diagnostic = (await nativeFailureDiagnostic(directory, commands, records, scenario)).diagnostic
     } else {
       result.reason = "Driver exit and bound command evidence did not establish a complete run."
     }

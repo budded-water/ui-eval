@@ -1,5 +1,14 @@
 # Current Limitations
 
+Native failure diagnostics are supplemental observations of existing artifacts,
+not a root-cause classifier or an actual touch trace. Optional hierarchy bounds
+come from exact matches after failure, and a checkpoint comparison may span more
+than one frame. Absent or malformed diagnostic artifacts remain unavailable.
+Native progress covers only explicitly selected scenarios and their currently
+declared human criteria. It does not include integration lifecycle/check stages,
+authenticate human decisions, or attest to installed binaries and backend state.
+It never auto-selects a passing historical run or rewrites an original failure.
+
 The [integration runner](integration-runner.md) aggregates required Web,
 experimental WeChat or iOS Simulator scenarios with reviewed preparation/checks.
 Native suites can use a candidate-owned session for startup and cleanup. It does not
