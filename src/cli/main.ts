@@ -7,6 +7,7 @@ import { runDoctor, type DoctorResult } from "./doctor"
 import { evaluationExitCode } from "./exit-code"
 import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
 import { nativePilotCommand } from "../native-pilot/cli"
+import { NativePilotInterruptedError, type NativePilotRun } from "../native-pilot/run"
 import { runWechatPilotCli } from "../wechat-pilot/cli"
 import { runIntegrationSuite } from "../integration/run"
 
@@ -124,7 +125,7 @@ function formatOption(value: string | undefined): "text" | "json" {
   throw new Error("--format must be text or json")
 }
 
-function errorPayload(error: unknown): unknown {
+function errorPayload(error: unknown, partialRun?: NativePilotRun): unknown {
   return {
     error: {
       name: error instanceof Error ? error.name : "Error",
@@ -140,6 +141,7 @@ function errorPayload(error: unknown): unknown {
         ? { signal: error.signal }
         : {}),
     },
+    ...(partialRun ? { partialRun } : {}),
   }
 }
 
@@ -423,7 +425,9 @@ export async function runCli(
       ? interruptionFromSignal(runOptions.signal)
       : error
     if (failure instanceof CliInterruptedError) {
-      if (jsonRequested) emitJson(io, errorPayload(failure))
+      const partialRun = error instanceof NativePilotInterruptedError ? error.partialRun : undefined
+      if (jsonRequested) emitJson(io, errorPayload(failure, partialRun))
+      else if (partialRun) io.stderr(`Interrupted native evidence (inconclusive)\n  HTML: ${partialRun.htmlPath}\n  JSON: ${partialRun.reportPath}\n`)
       return SIGNAL_EXIT_CODES[failure.signal]
     }
     if (jsonRequested) emitJson(io, errorPayload(failure))
