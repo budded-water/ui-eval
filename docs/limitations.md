@@ -1,5 +1,13 @@
 # Current Limitations
 
+Native interruption can provide diagnostic `partialRun` references only after
+both report projections and owned cleanup finish; forced exit, storage failure
+or incomplete cleanup may leave unreferenced files. These references do not
+establish complete evidence or permit reuse. Optional driver wall/monotonic
+timing cannot identify sleep or explain a timeout by itself, excludes candidate
+preparation and report publication, and does not measure portable active time.
+Pinned consumers require explicit adoption of the updated schema/error envelope.
+
 Native failure diagnostics are supplemental observations of existing artifacts,
 not a root-cause classifier or an actual touch trace. Optional hierarchy bounds
 come from exact matches after failure, and a checkpoint comparison may span more

@@ -8,6 +8,15 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Standalone native interruption retains diagnostic `partialRun` references to
+  this invocation's synchronized inconclusive reports after successful cleanup,
+  while preserving 130/143 exits. Programmatic callers receive
+  `NativePilotInterruptedError` with the original abort reason as `cause`.
+- Native reports include optional wall/monotonic driver timing and the configured
+  timeout in JSON/HTML, without attributing sleep or changing acceptance/deadlines.
+  Old records remain readable; strict consumers must explicitly adopt the new
+  result schema and interruption envelope.
+
 - Native visibility failures include supplemental, bounded diagnostics derived
   from existing driver artifacts: preceding interaction, checkpoint/failure PNGs,
   exact decoded-pixel comparison and unique exact-selector hierarchy bounds when

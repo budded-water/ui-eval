@@ -112,6 +112,33 @@ inconclusive/interrupted, including cancellation during final source checks or
 report publication. Completed projections are replaced through exclusive writes
 before cancellation propagates; publication/storage failures still fail the command.
 
+After both interrupted projections are written and owned-driver cleanup succeeds,
+JSON mode emits one value containing the existing `error` (code `INTERRUPTED`,
+signal `SIGINT` or `SIGTERM`) plus `partialRun: {result, reportPath, htmlPath}`.
+The result is always inconclusive and identifies this invocation's execution,
+source and plan; it is diagnostic evidence, never a successful capture or a
+retry/resume authorization. Text mode prints the two paths to stderr. Exit codes
+remain 130/143. Preflight interruption, incomplete cleanup, failed publication,
+or forced termination can leave files without a `partialRun`; do not infer a
+handoff by scanning historical directories. Consumers must verify containment,
+identity and persisted report contents before archiving referenced evidence.
+The programmatic API throws `NativePilotInterruptedError` with `partialRun` and
+the original abort reason as `cause` after successful interrupted publication;
+callers relying on abort-error identity must handle this wrapper explicitly.
+
+New captures add optional `driverTiming` to the result and HTML: signed
+`wallElapsedMs` from `Date.now()`, `monotonicElapsedMs` from `performance.now()`,
+and the unchanged configured `timeoutMs`. The interval covers the driver command
+through owned-process cleanup, excluding preflight, evidence validation and
+report publication. A wall-clock adjustment can produce a negative value;
+monotonic clock behavior across host suspension depends on the platform/runtime.
+Neither clock is a portable measure of active CPU time. Clock disagreement and
+deadline overshoot are observations, not proof of sleep, a timeout cause or a
+product failure. No power logs are collected and timeout policy is unchanged.
+Older records without timing remain readable; older strict readers need an
+explicit engine/schema update before consuming new records or `partialRun`.
+An existing consumer pin does not gain this behavior automatically.
+
 Reports explicitly do not certify:
 
 - installed binary or Metro provenance: source identity and installed app

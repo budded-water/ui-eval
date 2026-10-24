@@ -2,8 +2,11 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, readdir } from "node:
 import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import { PNG } from "pngjs"
+import { Value } from "@sinclair/typebox/value"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import * as nativeReport from "./report"
+import * as nativeRun from "./run"
+import { runCli, CliInterruptedError } from "../cli/main"
 import { loadNativePilotProject, loadNativePilotScenario, type NativePilotProject, type NativePilotScenario } from "./config"
 import { evaluateNativePilot, doctorNativePilot } from "./run"
 import { inspectNativeCommands, findNativeCommandFile } from "./evidence"
@@ -71,6 +74,109 @@ function driver(mode: "pass" | "missing-png" | "bad-png" | "failed" | "assertion
 }
 
 describe("native pilot evidence acceptance", () => {
+  it.each(["SIGINT", "SIGTERM"] as const)("links only this invocation's published interrupted reports for %s", async (signal) => {
+    const root = await candidate()
+    // An older passing run must never become the partial result of this invocation.
+    const older = await evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home" }, { platform, command: driver(), sourceRevision })
+    const abort = new AbortController()
+    const command = driver()
+    const evaluate = evaluateNativePilot
+    vi.spyOn(nativeRun, "evaluateNativePilot").mockImplementation((options) => evaluate(options, {
+      platform, sourceRevision, command: async (binary, args, options) => {
+        if (args.includes("test")) { abort.abort(new CliInterruptedError(signal)); throw abort.signal.reason }
+        return command(binary, args, options)
+      },
+    }))
+    const stdout: string[] = []
+    const code = await runCli(["native-pilot", "evaluate", "home", "--device", deviceId, "--format", "json"], {
+      cwd: root, stdout: (text) => stdout.push(text), stderr: vi.fn(),
+    }, {}, { signal: abort.signal })
+    expect(code).toBe(signal === "SIGINT" ? 130 : 143)
+    expect(stdout).toHaveLength(1)
+    const output = JSON.parse(stdout.join(""))
+    expect(output.error).toMatchObject({ name: "CliInterruptedError", code: "INTERRUPTED", signal })
+    expect(output.partialRun.result.status).toBe("inconclusive")
+    expect(output.partialRun.result.executionId).not.toBe(older.result.executionId)
+    expect(output.partialRun.result.sourceDigest).toBe(older.result.sourceDigest)
+    expect(output.partialRun.result.planDigest).toBe(older.result.planDigest)
+    expect(output.partialRun.result.driverTiming).toMatchObject({ timeoutMs: project.timeoutMs, monotonicElapsedMs: expect.any(Number) })
+    expect(JSON.parse(await readFile(output.partialRun.reportPath, "utf8"))).toEqual(output.partialRun.result)
+    expect(await readFile(output.partialRun.htmlPath, "utf8")).toContain("home: inconclusive")
+  })
+
+  it.each(["preflight", "json-only", "cleanup", "rewrite"] as const)("withholds partial handoff on %s failure even when a report file exists", async (stage) => {
+    const root = await candidate()
+    const abort = new AbortController()
+    const command = driver()
+    const evaluate = evaluateNativePilot
+    const interrupt = () => abort.abort(new CliInterruptedError("SIGTERM"))
+    const publish = nativeReport.writeNativePilotReport
+    if (stage === "json-only") vi.spyOn(nativeReport, "writeNativePilotReport").mockImplementation(async (directory, result) => {
+      await writeFile(resolve(directory, "report.json"), JSON.stringify(result), { flag: "wx" })
+      throw new Error("Synthetic HTML publication failure")
+    })
+    if (stage === "rewrite") vi.spyOn(nativeReport, "writeNativePilotReport").mockImplementationOnce(async (directory, result) => {
+      await publish(directory, result)
+      interrupt()
+    }).mockRejectedValue(new Error("Synthetic rewrite failure"))
+    vi.spyOn(nativeRun, "evaluateNativePilot").mockImplementation((options) => evaluate(options, {
+      platform, sourceRevision, command: async (binary, args, options) => {
+        if ((stage === "preflight" && args.includes("--version")) || (stage !== "rewrite" && args.includes("test"))) {
+          interrupt()
+          if (stage === "cleanup") throw new IncompleteCleanupError("Synthetic cleanup failure")
+          throw abort.signal.reason
+        }
+        return command(binary, args, options)
+      },
+    }))
+    const stdout: string[] = []
+    expect(await runCli(["native-pilot", "evaluate", "home", "--device", deviceId, "--format=json"], {
+      cwd: root, stdout: (text) => stdout.push(text), stderr: vi.fn(),
+    }, {}, { signal: abort.signal })).toBe(143)
+    expect(stdout).toHaveLength(1)
+    expect(JSON.parse(stdout[0])).toEqual({ error: { name: "CliInterruptedError", code: "INTERRUPTED", signal: "SIGTERM", message: "UI Eval was interrupted by SIGTERM." } })
+  })
+
+  it("prints partial report paths in text mode while retaining a signal exit", async () => {
+    const root = await candidate()
+    const abort = new AbortController()
+    const command = driver()
+    const evaluate = evaluateNativePilot
+    vi.spyOn(nativeRun, "evaluateNativePilot").mockImplementation((options) => evaluate(options, {
+      platform, sourceRevision, command: async (binary, args, options) => {
+        if (args.includes("test")) { abort.abort(new CliInterruptedError("SIGTERM")); throw abort.signal.reason }
+        return command(binary, args, options)
+      },
+    }))
+    const stdout = vi.fn(), stderr = vi.fn()
+    expect(await runCli(["native-pilot", "evaluate", "home", "--device", deviceId], { cwd: root, stdout, stderr }, {}, { signal: abort.signal })).toBe(143)
+    expect(stdout).not.toHaveBeenCalled()
+    const [executionId] = await readdir(resolve(root, ".ui-eval/native-runs"))
+    expect(stderr.mock.calls.flat().join("")).toContain(resolve(root, ".ui-eval/native-runs", executionId, "report.html"))
+    expect(stderr.mock.calls.flat().join("")).toContain(resolve(root, ".ui-eval/native-runs", executionId, "report.json"))
+  })
+
+  it.each([610000, -5000])("records signed wall elapsed %s without attributing clock disagreement", async (wallElapsedMs) => {
+    const root = await candidate()
+    const wall = vi.spyOn(Date, "now").mockReturnValueOnce(10000).mockReturnValue(10000 + wallElapsedMs)
+    const monotonic = vi.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValue(20100)
+    const run = await evaluateNativePilot({ projectRoot: root, deviceId, scenario: "home" }, { platform, command: driver("timeout"), sourceRevision })
+    wall.mockRestore(); monotonic.mockRestore()
+    expect(run.result.status).toBe("inconclusive")
+    expect(run.result.driverTiming).toEqual({ wallElapsedMs, monotonicElapsedMs: 20000, timeoutMs: 1000 })
+    expect(JSON.parse(await readFile(run.reportPath, "utf8"))).toEqual(run.result)
+    expect(await readFile(run.htmlPath, "utf8")).toContain(String(wallElapsedMs))
+    expect(await readFile(run.htmlPath, "utf8")).toContain("20000")
+    expect(await readFile(run.htmlPath, "utf8")).toContain("does not establish host sleep")
+    const legacy = { ...run.result }; delete legacy.driverTiming
+    expect(Value.Check(nativeReport.NativePilotResultSchema, legacy)).toBe(true)
+    for (const driverTiming of [
+      { ...run.result.driverTiming, monotonicElapsedMs: -1 },
+      { ...run.result.driverTiming, wallElapsedMs: Infinity },
+      { ...run.result.driverTiming, timeoutMs: 0 },
+      { ...run.result.driverTiming, hostSlept: true },
+    ]) expect(Value.Check(nativeReport.NativePilotResultSchema, { ...run.result, driverTiming })).toBe(false)
+  })
   it("publishes inconclusive projections then propagates incomplete owned cleanup", async () => {
     const root = await candidate()
     const command = driver()
@@ -239,7 +345,7 @@ describe("native pilot evidence acceptance", () => {
         if (++sourceReads === 3 && stage === "final-source") abort.abort(new Error("late cancellation"))
         return sourceRevision()
       },
-    })).rejects.toThrow("late cancellation")
+    })).rejects.toMatchObject({ name: "NativePilotInterruptedError", cause: new Error("late cancellation"), partialRun: { result: { status: "inconclusive" } } })
     const runs = resolve(root, ".ui-eval/native-runs")
     const directories = await readdir(runs)
     expect(directories).toHaveLength(1)

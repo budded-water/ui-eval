@@ -59,6 +59,15 @@ into public summaries; startup/cleanup failures stay infrastructure outcomes.
 
 ## iOS Simulator pilot boundary
 
+Standalone interrupted native handoffs expose only the originating invocation's
+published JSON/HTML paths and inconclusive result after successful owned cleanup.
+They never discover reports by directory timestamps or select a historical pass.
+References are diagnostic locators, not attestations: downstream readers still
+enforce containment, source/plan/execution identity and artifact integrity.
+Failed publication or cleanup withholds this handoff even if partial files remain.
+Driver timing contains local clock observations only, with no host power-log
+collection or automatic sleep attribution.
+
 The separate [native pilot](native-pilot.md) has a narrower evidence boundary:
 reviewed JSON generates data-only Maestro commands, source and command bindings
 are checked, reads are bounded, output rejects symlinks, and owned-driver cleanup

@@ -15,6 +15,21 @@ import { nativeFailureDiagnostic } from "./diagnostics"
 export interface NativePilotOptions { projectRoot: string; deviceId: string; scenario?: string; signal?: AbortSignal }
 export interface NativePilotDependencies { command?: typeof runCommand; sourceRevision?: typeof collectSourceRevision; platform?: NodeJS.Platform; storage?: typeof nativeStorage }
 
+export interface NativePilotRun {
+  result: NativePilotResult
+  reportPath: string
+  htmlPath: string
+}
+
+/** Published diagnostic evidence, never a completed or reusable capture. */
+export class NativePilotInterruptedError extends Error {
+  readonly code = "INTERRUPTED"
+  constructor(readonly partialRun: NativePilotRun, cause: unknown) {
+    super("Native capture was interrupted.", { cause })
+    this.name = "NativePilotInterruptedError"
+  }
+}
+
 export async function doctorNativePilot(options: NativePilotOptions, dependencies: NativePilotDependencies = {}) {
   if ((dependencies.platform ?? process.platform) !== "darwin") throw new NativePrerequisiteError("NATIVE_PLATFORM_UNSUPPORTED", "Native pilot requires macOS and iOS Simulator; select a supported runner.")
   if (!/^[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}$/.test(options.deviceId)) throw new Error("Native pilot requires an explicit simulator UUID")
@@ -98,10 +113,22 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
   }
   let cleanupFailure: unknown
   try {
-    const driver = await (dependencies.command ?? runCommand)("maestro", [
-      "--device", device.id, "test", resolve(directory, "flow.yaml"),
-      "--test-output-dir", resolve(directory, "driver"), "--debug-output", resolve(directory, "debug"),
-    ], { cwd: options.projectRoot, timeoutMs: project.timeoutMs, signal: options.signal })
+    const wallStart = Date.now()
+    const monotonicStart = performance.now()
+    const driver = await (async () => {
+      try {
+        return await (dependencies.command ?? runCommand)("maestro", [
+          "--device", device.id, "test", resolve(directory, "flow.yaml"),
+          "--test-output-dir", resolve(directory, "driver"), "--debug-output", resolve(directory, "debug"),
+        ], { cwd: options.projectRoot, timeoutMs: project.timeoutMs, signal: options.signal })
+      } finally {
+        result.driverTiming = {
+          wallElapsedMs: Date.now() - wallStart,
+          monotonicElapsedMs: performance.now() - monotonicStart,
+          timeoutMs: project.timeoutMs,
+        }
+      }
+    })()
     const commands = await findNativeCommandFile(resolve(directory, "driver"))
     const records = JSON.parse((await readNativeEvidence(commands, 1024 * 1024)).toString("utf8"))
     const evidence = inspectNativeCommands(records, project, scenario, device.id)
@@ -149,6 +176,7 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
     throw error
   }
   if (cleanupFailure) throw cleanupFailure
-  options.signal?.throwIfAborted()
-  return { result, reportPath: resolve(directory, "report.json"), htmlPath: resolve(directory, "report.html") }
+  const run = { result, reportPath: resolve(directory, "report.json"), htmlPath: resolve(directory, "report.html") }
+  if (options.signal?.aborted) throw new NativePilotInterruptedError(run, options.signal.reason)
+  return run
 }

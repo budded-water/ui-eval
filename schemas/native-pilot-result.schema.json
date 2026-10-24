@@ -350,6 +350,28 @@
           "type": "string"
         }
       }
+    },
+    "driverTiming": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "wallElapsedMs",
+        "monotonicElapsedMs",
+        "timeoutMs"
+      ],
+      "properties": {
+        "wallElapsedMs": {
+          "type": "number"
+        },
+        "monotonicElapsedMs": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "timeoutMs": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
     }
   }
 }

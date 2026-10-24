@@ -1,5 +1,14 @@
 # Contracts and Canonical Truth
 
+Native pilot results optionally include driver clock observations, generated
+from `NativePilotResultSchema`. Existing records without `driverTiming` remain
+valid; new records require updated strict readers. Standalone native interruption
+adds diagnostic `partialRun` to the CLI error envelope only after synchronized
+publication and successful cleanup, retaining 130/143 exits. The programmatic
+API wraps the abort reason in `NativePilotInterruptedError` in that case.
+See [native report semantics](native-pilot.md#reports-and-limits) for compatibility
+and measurement boundaries. This does not change acceptance or authorize reuse.
+
 Numeric geometry constraints (`value-in-range`, `value-on-scale`, `ratio`) use
 the numeric subset of abstract properties in the generated geometry config
 schema. Previously accepted color/family/shadow numeric declarations were not
