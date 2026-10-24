@@ -16,6 +16,7 @@ import {
   validateEvaluationPolicy,
   validateEvaluationReport,
   validateFinding,
+  validateGeometryEvaluatorConfig,
   validateLayoutEvidencePayload,
   validateMockServerFixtureConfig,
   validateNetworkEvidencePayload,
@@ -28,6 +29,15 @@ import {
 } from "./validation"
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`
+
+describe("numeric geometry constraints", () => {
+  it.each(["value-in-range", "value-on-scale", "ratio"])("rejects a nonnumeric property in %s", (kind) => {
+    const constraint = kind === "ratio"
+      ? { id: "numeric", kind, numerator: "box.height", denominator: "text.family", rangeRef: "range" }
+      : { id: "numeric", kind, property: "text.family", ...(kind === "value-on-scale" ? { scaleRef: "scale", tolerance: 0 } : { rangeRef: "range" }) }
+    expect(() => validateGeometryEvaluatorConfig({ tokenSet: { ranges: [{ id: "range", unit: "ratio", min: 1 }], scales: [{ id: "scale", unit: "logical-px", steps: [12] }] }, constraints: [constraint] })).toThrow()
+  })
+})
 
 const artifact = {
   id: "artifact-1",

@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http"
 import type { AddressInfo } from "node:net"
 import { existsSync } from "node:fs"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { chromium } from "playwright"
@@ -19,6 +19,7 @@ import { CaptureBundleSpecSchema } from "../contracts/schemas"
 import { assertSchema } from "../contracts/validation"
 import { LocalArtifactStore } from "../storage-local/artifact-store"
 import { captureWebScenario, closePlaywrightResources } from "./adapter"
+import { runAgentSuite } from "../agent/run"
 
 const browserInstalled = existsSync(chromium.executablePath())
 const browserRequired = process.env.UI_EVAL_REQUIRE_BROWSER === "1"
@@ -106,6 +107,39 @@ function minimalPlan(options: {
 }
 
 describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
+  it("stops Agent scenarios while a failed browser close still leaves Chromium connected", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ui-eval-agent-browser-cleanup-"))
+    const browser = await chromium.launch({ headless: true })
+    try {
+      await mkdir(join(root, "ui-eval/agents"), { recursive: true })
+      await writeFile(join(root, "ui-eval/agents/cleanup.json"), JSON.stringify({
+        apiVersion: "uieval.io/v1alpha1", kind: "AgentSuite", id: "cleanup", revision: 1, maxIterations: 2,
+        plateau: { maxConsecutiveNoImprovement: 1, minScoreImprovement: 0.01 }, requiredDimensions: ["ui"],
+        mutation: { allowedPathPrefixes: ["app"], protectedPathPrefixes: ["ui-eval"], maxChangedFiles: 1 }, checks: [],
+        scenarios: ["first", "second"].map((id) => ({ id, dimensions: ["ui"], timeoutMs: 10000 })),
+      }))
+      const calls: string[] = []
+      const result = await runAgentSuite({ projectRoot: root, suite: "cleanup" }, {
+        snapshotFiles: async () => new Map(), listChangedFiles: async () => [],
+        evaluate: async (options) => {
+          calls.push(options.scenario)
+          const context = await browser.newContext()
+          const page = await context.newPage()
+          await page.setContent("<p>Synthetic unresolved browser transport</p>")
+          await closePlaywrightResources(context, { close: async () => { throw new Error("Synthetic close rejection") } })
+          throw new Error("Incomplete cleanup must reject")
+        },
+      })
+      expect(browser.isConnected()).toBe(true)
+      expect(calls).toEqual(["first"])
+      expect(result.status).toBe("blocked")
+      expect(result.iterations[0].scenarios[0].cleanupSettled).toBe(false)
+    } finally {
+      await browser.close()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it("confirms owned context and browser shutdown before reporting cleanup success", async () => {
     const browser = await chromium.launch({ headless: true })
     try {

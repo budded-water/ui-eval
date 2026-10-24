@@ -21,6 +21,19 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Native resume refuses evidence from invocations with failed source, engine,
+  recovery-context or final evidence validation, even after starting identities
+  or bytes are restored. Safe partial-run reuse still revalidates each report.
+- Agent acceptance rechecks source after scenarios and blocks source drift
+  without repair or evidence reuse, preserving original reports and earlier
+  iterations. Incomplete cleanup stops remaining scenarios immediately.
+- Agent visual ceilings no longer waive failed or unknown policy gates.
+- Geometry ratios retain invalid coverage for missing pairs, zero denominators
+  and non-finite quotients. Numeric ranges/scales cannot pass unreadable numeric
+  evidence. The alpha geometry config schema now rejects nonnumeric properties
+  for numeric constraints; correct such authoring inputs before running again.
+  Report/store shapes and evaluator identifiers remain unchanged.
+
 - Plan reconciliation rechecks loaded content at both source boundaries,
   including ignored files, and treats invalid native recovery-context witnesses
   as inconclusive UI evidence even when the raw capture passed.

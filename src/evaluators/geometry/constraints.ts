@@ -74,8 +74,8 @@ function inScope(node: NormalizedNode, scope: ConstraintScope | undefined): bool
 }
 
 function numericOf(value: NormalizedValue): number | undefined {
-  if (value.kind === "length") return value.px
-  if (value.kind === "number") return value.value
+  if (value.kind === "length" && Number.isFinite(value.px)) return value.px
+  if (value.kind === "number" && Number.isFinite(value.value)) return value.value
   return undefined
 }
 
@@ -219,20 +219,23 @@ export function evaluateConstraint(
 ): ConstraintResult {
   if (constraint.kind === "ratio") {
     const range = requireRange(tokenSet, constraint.id, constraint.rangeRef)
-    const numerator = readProperty(nodes, constraint, constraint.numerator)
-    const denominator = readProperty(nodes, constraint, constraint.denominator)
-    const denominatorByNode = new Map(
-      denominator.readings.map((reading) => [reading.node.nodeId, reading.value]),
-    )
-
     const violations: Violation[] = []
     const readings: Reading[] = []
-    for (const reading of numerator.readings) {
-      const other = denominatorByNode.get(reading.node.nodeId)
-      if (other === undefined) continue
-      const top = numericOf(reading.value)
-      const bottom = numericOf(other)
-      if (top === undefined || bottom === undefined || bottom === 0) continue
+    let matched = 0
+    let unnormalizable = 0
+    for (const node of nodes) {
+      if (!inScope(node, constraint.scope)) continue
+      const numerator = node.properties.get(constraint.numerator)
+      const denominator = node.properties.get(constraint.denominator)
+      if (numerator === undefined && denominator === undefined) continue
+      matched += 1
+      const top = numerator === undefined ? undefined : numericOf(numerator)
+      const bottom = denominator === undefined ? undefined : numericOf(denominator)
+      if (top === undefined || bottom === undefined || bottom === 0 || !Number.isFinite(top / bottom)) {
+        unnormalizable += 1
+        continue
+      }
+      const reading = { node, value: numerator! }
       readings.push(reading)
       const ratio = top / bottom
       if (
@@ -246,8 +249,8 @@ export function evaluateConstraint(
     }
     return settle(
       constraint,
-      Math.min(numerator.matched, denominator.matched),
-      numerator.unnormalizable + denominator.unnormalizable,
+      matched,
+      unnormalizable,
       readings,
       violations,
     )
@@ -301,11 +304,15 @@ export function evaluateConstraint(
     return settle(constraint, matched, unnormalizable, readings, violations)
   }
 
-  const { readings, matched, unnormalizable } = readProperty(
+  const property = readProperty(
     nodes,
     constraint,
     constraint.property,
   )
+  const numeric = constraint.kind !== "value-in-set"
+  const readings = numeric ? property.readings.filter((reading) => numericOf(reading.value) !== undefined) : property.readings
+  const matched = property.matched
+  const unnormalizable = property.unnormalizable + property.readings.length - readings.length
   const violations: Violation[] = []
 
   if (constraint.kind === "value-in-set") {

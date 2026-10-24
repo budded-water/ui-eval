@@ -53,6 +53,17 @@ const checkpoint = (checkpointId: string, backgroundColor: string) => ({
 })
 
 describe("geometry evaluator", () => {
+  it("keeps a zero-denominator ratio out of passing coverage and metrics", () => {
+    const evidence = checkpoint("ready", "#ffffff")
+    evidence.layout.nodes[0].rect.height = 0
+    const result = evaluateGeometryEvidence({
+      tokenSet: { ranges: [{ id: "aspect", unit: "ratio", min: 1, max: 2 }] },
+      constraints: [{ id: "aspect", kind: "ratio", numerator: "box.width", denominator: "box.height", rangeRef: "aspect" }],
+    }, [evidence])
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
+    expect(result.findings).toEqual([])
+  })
   it("reports metrics, coverage, and findings per checkpoint", () => {
     const result = evaluateGeometryEvidence(config, [
       checkpoint("ready", "#ffffff"),

@@ -367,18 +367,6 @@
                     "type": "string"
                   },
                   {
-                    "const": "fill.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "stroke.color",
-                    "type": "string"
-                  },
-                  {
                     "const": "text.size",
                     "type": "string"
                   },
@@ -388,14 +376,6 @@
                   },
                   {
                     "const": "text.lineHeight",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.family",
-                    "type": "string"
-                  },
-                  {
-                    "const": "effect.shadow",
                     "type": "string"
                   }
                 ]
@@ -475,18 +455,6 @@
                     "type": "string"
                   },
                   {
-                    "const": "fill.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "stroke.color",
-                    "type": "string"
-                  },
-                  {
                     "const": "text.size",
                     "type": "string"
                   },
@@ -496,14 +464,6 @@
                   },
                   {
                     "const": "text.lineHeight",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.family",
-                    "type": "string"
-                  },
-                  {
-                    "const": "effect.shadow",
                     "type": "string"
                   }
                 ]
@@ -684,18 +644,6 @@
                     "type": "string"
                   },
                   {
-                    "const": "fill.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "stroke.color",
-                    "type": "string"
-                  },
-                  {
                     "const": "text.size",
                     "type": "string"
                   },
@@ -705,14 +653,6 @@
                   },
                   {
                     "const": "text.lineHeight",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.family",
-                    "type": "string"
-                  },
-                  {
-                    "const": "effect.shadow",
                     "type": "string"
                   }
                 ]
@@ -744,18 +684,6 @@
                     "type": "string"
                   },
                   {
-                    "const": "fill.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.color",
-                    "type": "string"
-                  },
-                  {
-                    "const": "stroke.color",
-                    "type": "string"
-                  },
-                  {
                     "const": "text.size",
                     "type": "string"
                   },
@@ -765,14 +693,6 @@
                   },
                   {
                     "const": "text.lineHeight",
-                    "type": "string"
-                  },
-                  {
-                    "const": "text.family",
-                    "type": "string"
-                  },
-                  {
-                    "const": "effect.shadow",
                     "type": "string"
                   }
                 ]

@@ -31,7 +31,9 @@ repair, reuse evidence, or later accept while an evaluator may still own live
 resources. Capture cancellation has its own bounded cleanup wait; a timeout or
 failed context/browser close raises `OWNED_RESOURCE_CLEANUP_INCOMPLETE`, which
 the Agent blocks even if the outer evaluator Promise has already settled.
-Failure results record `cleanupSettled`; `false` prohibits another iteration.
+Failure results record `cleanupSettled`; `false` stops the remaining scenarios
+in that iteration and prohibits another iteration, including when the evaluator
+rejects before its deadline.
 A deadline or evaluator exception with no report and settled cleanup is
 retried as infrastructure failure and is never sent to the product repair
 worker. Infrastructure-only iterations consume the finite run budget but do
@@ -42,6 +44,13 @@ already accepted immutable scenario reports from the same Agent run and
 reruns only failed or not-yet-executed scenarios. The result records the source
 iteration for every reused scenario. Any product repair invalidates this reuse
 set so the modified candidate is evaluated across the full suite again.
+After scenarios, UI Eval compares source contents with the post-check snapshot
+again. Any change blocks the run without repair or reuse: the current iteration's
+scenario decisions become unaccepted, dimensions become `not-evaluated`, and
+acceptance/progress scores are zero. Command exit records and original evaluation
+reports remain historical observations; earlier iteration records are unchanged.
+Restore stable source and start a new invocation. Snapshot checks do not lock the
+working tree or detect a change that is reverted between observations.
 Snapshot identity includes file contents, executable mode, and symlink targets;
 links are not followed and Git paths are NUL-delimited so quoting cannot hide a
 Unicode or whitespace filename. Source-file hashing streams file bytes.
@@ -59,14 +68,16 @@ report never authorizes product repair.
 An `inconclusive` report also retries without product repair, even when
 scenario execution itself was valid, such as an unavailable pixel comparison.
 Acceptance requires
-successful checks, valid scenario evidence, passing hard gates, no non-visual
+successful checks, valid scenario evidence, passing policy gates, no non-visual
 findings, and every declared reference below its declared ceiling. A visual
 reference without a threshold cannot pass.
 Each variant must supply its own finite pixel ratio from canonical report
 `metrics` when a reference is declared. A zero ratio is valid without a visual
 finding. Missing ratios, `fail`, and `inconclusive` reports cannot be accepted;
 another variant's measured ratio cannot cover their evidence gap. A visual
-`needs-review` result may pass only through the declared reference threshold.
+`needs-review` result may pass only through the declared reference threshold
+when every policy gate passed. The threshold does not waive failed or unknown
+soft gates, including a separately declared visual policy gate.
 
 When repair is enabled, UI Eval writes a machine-readable `RepairRequest` under
 `.ui-eval/agent-runs/`, sends a constrained prompt to the configured adapter,

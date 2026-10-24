@@ -28,12 +28,22 @@ export async function loadNativeResume(root: string, executionId: string, curren
   const { boundedFile } = await import("../wechat-pilot/evidence")
   const { containedPath } = await import("../wechat-pilot/config")
   const html = await boundedFile(await containedPath(root, `.ui-eval/integration/${executionId}/summary.html`), 8 * 1024 * 1024)
+  const validationPassed = ([
+    ["engine", "engine-before"], ["source", "source-before"],
+    ["engine", "engine-after"], ["source", "source-after"],
+    ["check", "recovery-context-before"], ["check", "recovery-context-after"],
+  ] as const).every(([kind, id]) => previous.stages.some((stage) => stage.kind === kind && stage.id === id && stage.status === "pass"))
+  const evidenceAfter = previous.stages.find((stage) => stage.kind === "evidence" && stage.id === "evidence-after")
+  // Partial runs may not reach the aggregate evidence check. Each reused
+  // scenario is still revalidated below; a failed aggregate check is different
+  // and invalidates reuse even if the original bytes have since been restored.
+  const evidenceSound = evidenceAfter?.status === "pass" || evidenceAfter?.status === "not-run"
   if (!html.length || previous.executionId !== executionId || previous.projectId !== current.projectId ||
     previous.adapter !== "native-pilot" || previous.deviceId !== current.deviceId || previous.suiteDigest !== current.suiteDigest ||
     previous.sourceDigest !== current.sourceDigest || canonicalDigest(previous.engine) !== canonicalDigest(current.engine) ||
-    previous.recoveryContextDigest !== current.recoveryContextDigest || !current.recoveryContextDigest ||
+    previous.recoveryContextDigest !== current.recoveryContextDigest || !current.recoveryContextDigest || !validationPassed || !evidenceSound ||
     previous.stages.some((stage) => stage.cleanupSettled === false || (stage.kind === "session" && stage.id === "session-stop" && stage.status !== "pass"))) {
-    throw new Error("Native resume identity/state differs or previous cleanup is incomplete; start a fresh run")
+    throw new Error("Native resume identity/state differs, previous validation failed or cleanup is incomplete; start a fresh run")
   }
   return previous
 }

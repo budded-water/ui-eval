@@ -104,6 +104,10 @@ every planned checkpoint, including missing/invalid inputs. Equality compares
 stable identities across checkpoints of one evaluation and requires comparable
 peers; comparison across variants or scenarios remains unsupported. Unusable
 geometry evidence without an observed product defect is invalid/inconclusive.
+Numeric constraints accept only numeric abstract properties. Ratio evidence
+needs both properties on each matched node, a nonzero denominator and a finite
+quotient; unusable pairs cannot count as passing coverage. A product violation
+observed on another comparable node still remains a failure.
 
 The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:
 
@@ -122,6 +126,15 @@ Policy `agentMutation` fields remain forward contract data. The executable agent
 Agent acceptance score remains the fraction of required dimensions that pass.
 Plateau uses a separate continuous check/scenario progress measurement, and
 source snapshots are compared after checks before cached evidence can be reused.
+Source drift during scenarios blocks the invocation without product repair and
+invalidates that iteration's acceptance. Snapshots are observations, not a source
+lock; edits reverted between observations and ignored build outputs are not
+attested. Visual thresholds waive only advisory pixel review when all policy
+gates pass, never unresolved soft gates. Incomplete evaluator cleanup prevents
+the next scenario from starting, even within the same iteration.
+Native resume cannot reuse evidence from an invocation whose final source,
+engine, recovery-context or evidence validation failed, even after restoring
+its starting state; a fresh invocation is required.
 Command collection retains bounded output and bounded owned-process cleanup;
 descendants that escape the group still require OS/container isolation.
 

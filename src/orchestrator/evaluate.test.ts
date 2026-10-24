@@ -34,6 +34,7 @@ import {
 } from "./evaluate"
 import { MockServerError } from "./mock-server"
 import { IncompleteCleanupError } from "../runtime/cleanup"
+import { assessScenario } from "../agent/assessment"
 
 const roots: string[] = []
 
@@ -702,6 +703,20 @@ describe("evaluateScenario", () => {
     })
     expect(result.runs[0].report.spec).not.toHaveProperty("scores")
     await access(join(projectRoot, ".ui-eval/runs/run-test/diff.png"))
+  })
+
+  it("preserves an unresolved policy review beside an identical visual reference", async () => {
+    const projectRoot = await project()
+    await writeFile(join(projectRoot, "reference.png"), screenshot(20))
+    const path = join(projectRoot, "ui-eval/policies/default.json")
+    const policy = JSON.parse(await readFile(path, "utf8"))
+    policy.gates = [{ id: "accessibility-review", hard: false, expression: { metric: "accessibility.violations", operator: "eq", value: 0 }, onUnknown: "review" }]
+    await writeFile(path, JSON.stringify(policy))
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop", referencePath: "reference.png" }, deps)
+    expect(result.runs[0].report.spec).toMatchObject({ rawStatus: "needs-review", findings: [], metrics: { "visual.changedPixelRatio": 0 } })
+    const assessed = assessScenario({ id: "privacy-desktop", reference: "reference.png", maxChangedPixelRatio: 0.03, dimensions: ["ui"], timeoutMs: 1000 }, result.runs)
+    expect(assessed.accepted).toBe(false)
+    expect(assessed.reasons.join(" ")).toContain("accessibility-review")
   })
 
   it("reports oversized reference IHDR dimensions as runner infrastructure", async () => {
