@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="03a34e2bb2db6be66ebdc8481a8be2673b51ccbde2a6124df59a04a03ae399ca">
+  <meta name="source-sha256" content="2a93ee7e792db56d099b86a251c4fb8a95f7755df4ae7a00ab650484e25fd2d9">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 03a34e2bb2db6be66ebdc8481a8be2673b51ccbde2a6124df59a04a03ae399ca</footer>
+        <footer>Source set SHA-256: 2a93ee7e792db56d099b86a251c4fb8a95f7755df4ae7a00ab650484e25fd2d9</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2707,7 +2707,9 @@ units are supported, with conversion clipped to 8-bit sRGB rather than
 perceptual gamut mapping. Font weights accept numbers in 1–1000 or
 <code>normal</code>/<code>bold</code>. Unnormalizable styles retain invalid coverage; malformed theme
 colors remain unresolved rather than becoming palette entries. Theme declaration,
-reference and fallback resolution preserves non-CSS whitespace for validation.</p>
+reference and fallback resolution preserves non-CSS whitespace for validation.
+Theme import removes a BOM only at the stylesheet start and preserves token
+boundaries across comments; it does not implement the full CSS tokenizer.</p>
 <p>The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:</p>
 <ul>
 <li>missing or optionalized execution/interaction/runtime core evaluators;</li>

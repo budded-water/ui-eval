@@ -2,8 +2,29 @@ import { existsSync } from "node:fs"
 import { chromium } from "playwright"
 import { describe, expect, it } from "vitest"
 import { parseColor } from "../normalize/color"
+import { importTailwindTheme } from "../design-adapters/tailwind-theme"
 
 describe.skipIf(!existsSync(chromium.executablePath()))("CSS normalization against Chromium", () => {
+  it("preserves stylesheet BOM decoding and comment token boundaries", async () => {
+    const css = "\ufeff:root { --color-good: rgb(255/**/0/**/0); --color-bad: rgb(25/**/5 255 255); } #sample { color: var(--color-good); }"
+    const imported = importTailwindTheme(css)
+    const browser = await chromium.launch()
+    try {
+      const page = await browser.newPage()
+      await page.setContent(`<link rel="stylesheet" href="data:text/css;base64,${Buffer.from(css).toString("base64")}"><div id="sample">Sample</div>`)
+      const observed = await page.evaluate(() => ({
+        color: getComputedStyle(document.querySelector("#sample")!).color,
+        malformedSupported: CSS.supports("color", "rgb(25/**/5 255 255)"),
+      }))
+      expect(parseColor(observed.color)).toEqual({ r: 255, g: 0, b: 0, alpha: 1 })
+      expect(imported.tokenSet.valueSets).toEqual([{ id: "palette", valueKind: "color", values: [{ r: 255, g: 0, b: 0, alpha: 1 }] }])
+      expect(observed.malformedSupported).toBe(false)
+      expect(imported.unresolved).toEqual([expect.objectContaining({ name: "--color-bad", reason: "unsupported-value" })])
+    } finally {
+      await browser.close()
+    }
+  })
+
   it("agrees with computed colors for the supported numeric forms", async () => {
     const browser = await chromium.launch()
     try {

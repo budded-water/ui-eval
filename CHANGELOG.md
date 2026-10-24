@@ -25,6 +25,7 @@ The source repository is public, but the project has no package release or confi
   arguments and malformed separators instead of allowing guessed values to pass
   geometry constraints. Malformed theme colors remain unresolved during import,
   including non-CSS whitespace preserved through declarations and references.
+  Theme comments retain token boundaries, and a leading stylesheet BOM remains supported.
   Supported Lab/OKLab percentages and OKLCh angle units now normalize correctly;
   font weights must be complete numbers in 1–1000 or `normal`/`bold`.
   Report/store shapes and evaluator identifiers remain unchanged.

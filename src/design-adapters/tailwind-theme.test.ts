@@ -44,6 +44,25 @@ describe("length normalization", () => {
 })
 
 describe("tailwind theme import", () => {
+  it.each(["rgb(25/**/5 255 255)", "#f/**/ff", "var(--color-/**/good)"])("does not join tokens across CSS comments: %s", (value) => {
+    const result = importTailwindTheme(`:root { --color-good: #f00; --color-bad: ${value}; }`)
+    expect(result.unresolved).toEqual(expect.arrayContaining([expect.objectContaining({ name: "--color-bad", reason: "unsupported-value" })]))
+    expect(result.tokenSet.valueSets).toEqual([{ id: "palette", valueKind: "color", values: [{ r: 255, g: 0, b: 0, alpha: 1 }] }])
+  })
+
+  it("accepts a leading stylesheet BOM and comments between complete color tokens", () => {
+    const result = importTailwindTheme("\ufeff:root { --color-good: rgb(255/**/0/**/0); }")
+    expect(result.declarationCount).toBe(1)
+    expect(result.unresolved).toEqual([])
+    expect(result.tokenSet.valueSets).toEqual([{ id: "palette", valueKind: "color", values: [{ r: 255, g: 0, b: 0, alpha: 1 }] }])
+  })
+
+  it("preserves a BOM inside a color value as invalid input", () => {
+    const result = importTailwindTheme(":root { --color-bad: \ufeff#fff; }")
+    expect(result.unresolved).toContainEqual({ name: "--color-bad", value: "\ufeff#fff", reason: "unsupported-value" })
+    expect(result.tokenSet.valueSets).toBeUndefined()
+  })
+
   it.each([
     "\u00a0#fff", "#fff\u00a0", "var(--missing,\u00a0#fff)",
     "var(\u00a0--color-good)", "\u00a0var(--color-good)", "var(--color-good)\u00a0",

@@ -53,7 +53,9 @@ interface CssBlock {
 
 /** Extracts top-level `header { body }` pairs, skipping nested at-rule bodies. */
 function topLevelBlocks(css: string): CssBlock[] {
-  const source = css.replace(/\/\*[\s\S]*?\*\//g, "")
+  // UTF-8 file reads retain the encoding BOM. Remove it only at the stream start;
+  // comments separate tokens and must never join digits or identifier fragments.
+  const source = css.replace(/^\ufeff/, "").replace(/\/\*[\s\S]*?\*\//g, " ")
   const blocks: CssBlock[] = []
   let depth = 0
   let headerStart = 0

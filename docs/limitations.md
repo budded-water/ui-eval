@@ -120,6 +120,8 @@ perceptual gamut mapping. Font weights accept numbers in 1–1000 or
 `normal`/`bold`. Unnormalizable styles retain invalid coverage; malformed theme
 colors remain unresolved rather than becoming palette entries. Theme declaration,
 reference and fallback resolution preserves non-CSS whitespace for validation.
+Theme import removes a BOM only at the stylesheet start and preserves token
+boundaries across comments; it does not implement the full CSS tokenizer.
 
 The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:
 
