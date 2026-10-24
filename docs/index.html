@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10">
+  <meta name="source-sha256" content="c8ba96eabdcdc6c295d1d5c8ec855178d94bb281ed978a84024e120d4b0fed73">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10</footer>
+        <footer>Source set SHA-256: c8ba96eabdcdc6c295d1d5c8ec855178d94bb281ed978a84024e120d4b0fed73</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2926,6 +2926,14 @@ produce incomplete cleanup, and a serial test pass does not prove concurrent
 browser invocations will always close within the budget.
 Run the browser suite after other resource-intensive checks finish on the same
 host; serial test files do not isolate Chromium from unrelated host load.</p>
+<p>Unit tests for cleanup ordering and deadline boundaries should control both
+timers and the monotonic clock, rather than give real host scheduling a tiny
+success budget. Retain explicit late-settlement rejection cases and real-browser
+lifecycle coverage. Tests of invalid integration evidence should reach their
+evaluator without an unrelated prepare process; preparation timeout propagation
+is asserted separately, while command tests and built-CLI integration retain
+real process execution. These test boundaries do not change production deadlines
+or acceptance rules.</p>
 <h2>Change workflow</h2>
 <ol>
 <li>Inspect the affected module, its tests, public contract, and related docs.</li>

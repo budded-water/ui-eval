@@ -202,21 +202,26 @@ describe("owned Playwright cleanup", () => {
   })
 
   it("bounds Playwright cleanup when Chrome does not settle", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
     const neverSettles = new Promise<void>(() => undefined)
     const browserContext = {
       unrouteAll: vi.fn(() => neverSettles),
       close: vi.fn(() => neverSettles),
     }
     const browser = { close: vi.fn(() => neverSettles) }
-    const startedAt = Date.now()
-
-    await expect(closePlaywrightResources(
+    let settled = false
+    const closing = closePlaywrightResources(
       browserContext as never,
       browser as never,
       30,
-    )).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
+    ).finally(() => { settled = true })
+    const assertion = expect(closing).rejects.toMatchObject({ code: "OWNED_RESOURCE_CLEANUP_INCOMPLETE" })
 
-    expect(Date.now() - startedAt).toBeLessThan(500)
+    await vi.advanceTimersByTimeAsync(29)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await assertion
+    expect(performance.now()).toBe(30)
     expect(browserContext.unrouteAll).toHaveBeenCalledWith({
       behavior: "ignoreErrors",
     })
@@ -234,10 +239,22 @@ describe("owned Playwright cleanup", () => {
   })
 
   it("allows bounded route teardown when context and browser close succeed", async () => {
-    await expect(closePlaywrightResources({
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] })
+    const contextClose = vi.fn(async () => {})
+    const browserClose = vi.fn(async () => {})
+    const closing = closePlaywrightResources({
       unrouteAll: () => new Promise<void>(() => {}),
-      close: async () => {},
-    } as never, { close: async () => {} } as never, 30)).resolves.toBeUndefined()
+      close: contextClose,
+    } as never, { close: browserClose } as never, 30)
+    const assertion = expect(closing).resolves.toBeUndefined()
+    await vi.advanceTimersByTimeAsync(9)
+    expect(contextClose).not.toHaveBeenCalled()
+    expect(browserClose).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    await assertion
+    expect(contextClose).toHaveBeenCalledOnce()
+    expect(browserClose).toHaveBeenCalledOnce()
+    expect(performance.now()).toBe(10)
   })
 })
 

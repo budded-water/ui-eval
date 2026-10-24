@@ -21,6 +21,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Cleanup unit tests use controlled timers and monotonic time for route-teardown
+  and deadline assertions. Invalid integration-evidence tests reach their target
+  without an unrelated prepare process, with preparation timeout gating covered
+  separately. Production deadlines and acceptance behavior are unchanged.
 - Native resume refuses evidence from invocations with failed source, engine,
   recovery-context or final evidence validation, even after starting identities
   or bytes are restored. Safe partial-run reuse still revalidates each report.

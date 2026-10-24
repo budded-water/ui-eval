@@ -82,6 +82,15 @@ browser invocations will always close within the budget.
 Run the browser suite after other resource-intensive checks finish on the same
 host; serial test files do not isolate Chromium from unrelated host load.
 
+Unit tests for cleanup ordering and deadline boundaries should control both
+timers and the monotonic clock, rather than give real host scheduling a tiny
+success budget. Retain explicit late-settlement rejection cases and real-browser
+lifecycle coverage. Tests of invalid integration evidence should reach their
+evaluator without an unrelated prepare process; preparation timeout propagation
+is asserted separately, while command tests and built-CLI integration retain
+real process execution. These test boundaries do not change production deadlines
+or acceptance rules.
+
 ## Change workflow
 
 1. Inspect the affected module, its tests, public contract, and related docs.
