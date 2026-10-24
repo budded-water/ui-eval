@@ -223,9 +223,24 @@ describe("integration runner", () => {
     expect(result.stages.find((stage) => stage.kind === "scenario")?.status).toBe("not-run")
   })
 
+  it("keeps scenarios unrun when preparation times out", async () => {
+    const root = await project()
+    const invoke = vi.fn(evaluate)
+    const command = vi.fn(async () => ({ exitCode: null, stdout: "", stderr: "" }))
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, evaluate: invoke, command })
+    expect(result.exitCode).toBe(2)
+    expect(result.stages.find((stage) => stage.kind === "prepare")).toMatchObject({ status: "inconclusive" })
+    expect(result.stages.find((stage) => stage.kind === "scenario")).toMatchObject({ status: "not-run" })
+    expect(command).toHaveBeenCalledOnce()
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
   it.each(["empty", "foreign", "missing-variant", "missing-html", "contradiction", "corrupt-json"])("rejects %s evidence", async (defect) => {
     const root = await project()
-    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, evaluate: async (options) => {
+    // Evidence rejection must reach the evaluator; process preparation has its
+    // own tests and must not preempt this assertion under host scheduling load.
+    await update(root, (suite) => { delete suite.prepare })
+    const invoke = vi.fn(async (options: Parameters<NonNullable<IntegrationDependencies["evaluate"]>>[0]) => {
       const output = await evaluate(options)
       if (defect === "empty") output.runs = []
       if (defect === "foreign") output.projectId = "another-project"
@@ -234,7 +249,9 @@ describe("integration runner", () => {
       if (defect === "contradiction") output.runs[0].rawStatus = "fail"
       if (defect === "corrupt-json") await writeFile(output.runs[0].reportPath, "{}")
       return output
-    } })
+    })
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, { ...dependencies, evaluate: invoke })
+    expect(invoke).toHaveBeenCalledOnce()
     expect(result.exitCode).toBe(2)
     expect(result.stages.find((stage) => stage.kind === "scenario")?.status).toBe("inconclusive")
   })

@@ -21,6 +21,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- Cleanup unit tests use controlled timers and monotonic time for route-teardown
+  and deadline assertions. Invalid integration-evidence tests reach their target
+  without an unrelated prepare process, with preparation timeout gating covered
+  separately. Production deadlines and acceptance behavior are unchanged.
 - Color and font-weight normalization rejects numeric prefixes, extra color
   arguments and malformed separators instead of allowing guessed values to pass
   geometry constraints. Malformed theme colors remain unresolved during import,
