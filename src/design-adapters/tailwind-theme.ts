@@ -19,6 +19,7 @@ import type {
 } from "../contracts/model"
 import { colorKey, parseColor } from "../normalize/color"
 import { DEFAULT_ROOT_FONT_SIZE_PX, parseLengthPx } from "../normalize/length"
+import { trimCssWhitespace } from "../normalize/number"
 
 export interface TailwindThemeOptions {
   /** Selector whose declarations win over `:root`, e.g. `.dark`. */
@@ -72,7 +73,7 @@ function topLevelBlocks(css: string): CssBlock[] {
         const preceding = source.slice(headerStart, bodyStart - 1)
         const statementEnd = preceding.lastIndexOf(";")
         blocks.push({
-          header: preceding.slice(statementEnd + 1).trim(),
+          header: trimCssWhitespace(preceding.slice(statementEnd + 1)),
           body: source.slice(bodyStart, index),
         })
         headerStart = index + 1
@@ -90,13 +91,13 @@ function customProperties(body: string): Map<string, string> {
   let buffer = ""
 
   const flush = () => {
-    const text = buffer.trim()
+    const text = trimCssWhitespace(buffer)
     buffer = ""
     if (!text.startsWith("--")) return
     const separator = text.indexOf(":")
     if (separator < 0) return
-    const name = text.slice(0, separator).trim()
-    const value = text.slice(separator + 1).trim()
+    const name = trimCssWhitespace(text.slice(0, separator))
+    const value = trimCssWhitespace(text.slice(separator + 1))
     if (name.length > 2 && value.length > 0) declarations.set(name, value)
   }
 
@@ -149,7 +150,8 @@ function resolveValue(
 ): { text: string } | { failure: ResolveFailure } {
   if (depth > MAX_REFERENCE_DEPTH) return { failure: "reference-cycle" }
 
-  const reference = /^var\(\s*(--[\w-]+)\s*(?:,([^)]*))?\)$/.exec(value.trim())
+  const text = trimCssWhitespace(value)
+  const reference = /^var\([ \t\n\r\f]*(--[\w-]+)[ \t\n\r\f]*(?:,([^)]*))?\)$/.exec(text)
   if (reference) {
     const name = reference[1]
     if (seen.has(name)) return { failure: "reference-cycle" }
@@ -164,9 +166,9 @@ function resolveValue(
     )
   }
 
-  const calc = /^calc\((.+)\)$/.exec(value.trim())
+  const calc = /^calc\((.+)\)$/.exec(text)
   if (calc) {
-    const parts = /^(.+?)\s([+\-*/])\s(.+)$/.exec(calc[1].trim())
+    const parts = /^(.+?)[ \t\n\r\f]([+\-*/])[ \t\n\r\f](.+)$/.exec(trimCssWhitespace(calc[1]))
     if (!parts) return { failure: "unsupported-expression" }
     const operands = [parts[1], parts[3]].map((operand) =>
       resolveValue(operand, declarations, rootFontSizePx, seen, depth + 1),
@@ -194,7 +196,7 @@ function resolveValue(
     return { text: `${String(result)}px` }
   }
 
-  return { text: value.trim() }
+  return { text }
 }
 
 /** Groups `--radius-sm` and `--radius` alike under the scale id `radius`. */

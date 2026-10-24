@@ -44,6 +44,21 @@ describe("length normalization", () => {
 })
 
 describe("tailwind theme import", () => {
+  it.each([
+    "\u00a0#fff", "#fff\u00a0", "var(--missing,\u00a0#fff)",
+    "var(\u00a0--color-good)", "\u00a0var(--color-good)", "var(--color-good)\u00a0",
+  ])("preserves invalid CSS whitespace through declaration and reference resolution: %s", (value) => {
+    const result = importTailwindTheme(`:root { --color-good: #f00; --color-bad: ${value}; }`)
+    expect(result.unresolved).toContainEqual({ name: "--color-bad", value, reason: "unsupported-value" })
+    expect(result.tokenSet.valueSets).toEqual([{ id: "palette", valueKind: "color", values: [{ r: 255, g: 0, b: 0, alpha: 1 }] }])
+  })
+
+  it("does not sanitize invalid whitespace from a referenced color declaration", () => {
+    const result = importTailwindTheme(":root { --raw: \u00a0#fff; --color-bad: var(--raw); }")
+    expect(result.unresolved).toEqual(expect.arrayContaining([expect.objectContaining({ name: "--color-bad", reason: "unsupported-value" })]))
+    expect(result.tokenSet.valueSets).toBeUndefined()
+  })
+
   it("retains malformed color declarations as unresolved rather than adding them to a palette", () => {
     const result = importTailwindTheme(":root { --color-good: #fff; --color-bad: rgb(255px 255 255); }")
     expect(result.unresolved).toEqual(expect.arrayContaining([expect.objectContaining({ name: "--color-bad", reason: "unsupported-value" })]))
