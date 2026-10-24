@@ -53,6 +53,17 @@ const checkpoint = (checkpointId: string, backgroundColor: string) => ({
 })
 
 describe("geometry evaluator", () => {
+  it("keeps a zero-denominator ratio out of passing coverage and metrics", () => {
+    const evidence = checkpoint("ready", "#ffffff")
+    evidence.layout.nodes[0].rect.height = 0
+    const result = evaluateGeometryEvidence({
+      tokenSet: { ranges: [{ id: "aspect", unit: "ratio", min: 1, max: 2 }] },
+      constraints: [{ id: "aspect", kind: "ratio", numerator: "box.width", denominator: "box.height", rangeRef: "aspect" }],
+    }, [evidence])
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
+    expect(result.findings).toEqual([])
+  })
   it("reports metrics, coverage, and findings per checkpoint", () => {
     const result = evaluateGeometryEvidence(config, [
       checkpoint("ready", "#ffffff"),
@@ -121,5 +132,27 @@ describe("geometry evaluator", () => {
       constraints: [{ id: "consistent-width", kind: "cross-node-equal", property: "box.width", tolerance: 0 }],
     }, [first], ["ready", "after-scroll"])
     expect(result.coverage).toMatchObject({ expected: 1, invalid: 1, passed: 0 })
+  })
+
+  it("does not accept equal overflow values derived from finite layout evidence", () => {
+    const evidence = ["ready", "after-scroll"].map((id) => {
+      const item = checkpoint(id, "#ffffff")
+      item.layout = validateLayoutEvidencePayload({
+        ...item.layout,
+        nodes: [
+          { nodeId: "parent", rect: { x: 0, y: 0, width: 800, height: 600 }, visible: true },
+          { nodeId: "child", parentNodeId: "parent", uiId: "cta", rect: { x: 1e308, y: 0, width: 1e308, height: 10 }, visible: true },
+        ],
+      })
+      return item
+    })
+    const result = evaluateGeometryEvidence({
+      tokenSet: {},
+      constraints: [{ id: "consistent-overflow", kind: "cross-node-equal", property: "box.overflowRight", tolerance: 0 }],
+    }, evidence)
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.results[0]).toMatchObject({ unnormalizableNodes: 2, comparedNodes: 0 })
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
+    expect(result.findings).toEqual([])
   })
 })

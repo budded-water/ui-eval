@@ -456,6 +456,11 @@ const constraintBase = {
   requireMatch: Type.Optional(Type.Boolean()),
 }
 
+const NumericGeometryPropertySchema = Type.Exclude(AbstractPropertySchema, Type.Union([
+  Type.Literal("fill.color"), Type.Literal("text.color"), Type.Literal("stroke.color"),
+  Type.Literal("text.family"), Type.Literal("effect.shadow"),
+]))
+
 /** The five kinds from ADR 0002. A sixth requires an accepted decision. */
 export const GeometryConstraintSchema = Type.Union([
   Type.Object(
@@ -471,7 +476,7 @@ export const GeometryConstraintSchema = Type.Union([
     {
       ...constraintBase,
       kind: Type.Literal("value-on-scale"),
-      property: AbstractPropertySchema,
+      property: NumericGeometryPropertySchema,
       scaleRef: Type.String(nonEmpty),
       tolerance: Type.Number({ minimum: 0 }),
     },
@@ -481,7 +486,7 @@ export const GeometryConstraintSchema = Type.Union([
     {
       ...constraintBase,
       kind: Type.Literal("value-in-range"),
-      property: AbstractPropertySchema,
+      property: NumericGeometryPropertySchema,
       rangeRef: Type.String(nonEmpty),
     },
     strict,
@@ -499,8 +504,8 @@ export const GeometryConstraintSchema = Type.Union([
     {
       ...constraintBase,
       kind: Type.Literal("ratio"),
-      numerator: AbstractPropertySchema,
-      denominator: AbstractPropertySchema,
+      numerator: NumericGeometryPropertySchema,
+      denominator: NumericGeometryPropertySchema,
       rangeRef: Type.String(nonEmpty),
     },
     strict,

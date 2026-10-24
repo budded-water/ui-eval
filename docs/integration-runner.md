@@ -151,6 +151,10 @@ node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/app \
 
 Resume requires exact source, suite, engine, device and context identity plus
 both previous report projections and settled cleanup. Passed replay-safe stages
+also require the previous invocation's initial and final source, engine and
+recovery-context validations to have passed. A failed final evidence validation
+blocks reuse even if the original bytes or starting identities are later restored.
+A partial run may have an unrun aggregate evidence check; its passed stages
 are reused only after revalidating original inputs, flow, command metadata and
 both PNG copies. Invalid or changed evidence blocks instead of silently rerunning
 and hiding the discrepancy. Other scenarios execute normally. Preparation,

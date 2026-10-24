@@ -204,6 +204,54 @@ async function recoveryFixture(mode: "passed" | "failed" = "passed") {
 }
 
 describe("bounded native recovery", () => {
+  it.each(["recovery-context-after", "source-after", "engine-after", "evidence-after"])("refuses resume when prior %s invalidated passing evidence", async (failedStage) => {
+    const { root, config, save, options, dependencies } = await recoveryFixture()
+    const stable = { ...dependencies }
+    let calls = 0
+    let alteredHtml: { path: string; bytes: Buffer } | undefined
+    if (failedStage === "recovery-context-after") dependencies.command = async () => ({ exitCode: 0, stdout: `sha256:${(calls++ === 0 ? "b" : "c").repeat(64)}`, stderr: "" })
+    if (failedStage === "source-after") dependencies.source = async () => ({ ...source, commitSha: (calls++ === 0 ? "a" : "c").repeat(40) })
+    if (failedStage === "engine-after") dependencies.verifyEngine = async () => { if (calls++ > 0) throw new Error("Engine changed") }
+    if (failedStage === "evidence-after") {
+      config.checks.push(afterCheck); await save()
+      dependencies.command = async (binary, args, input) => {
+        if (binary === "synthetic-context") return stable.command!(binary, args, input)
+        const report = JSON.parse(input.input!).stages.find((stage: { id: string }) => stage.id === "home").reports[0]
+        const path = join(root, report.htmlPath)
+        alteredHtml = { path, bytes: await readFile(path) }
+        await writeFile(path, "Changed after capture")
+        return { exitCode: 0, stdout: "", stderr: "" }
+      }
+    }
+    const first = await runIntegrationSuite(options, dependencies)
+    expect(first.status).toBe("inconclusive")
+    expect(first.stages.find((stage) => stage.id === "home")?.status).toBe("pass")
+    expect(first.stages.find((stage) => stage.id === failedStage)?.status).toBe("inconclusive")
+    if (alteredHtml) await writeFile(alteredHtml.path, alteredHtml.bytes)
+    const native = vi.fn(stable.native!)
+    const resumed = await runIntegrationSuite({ ...options, resume: first.executionId }, { ...stable, native })
+    expect(resumed.status).toBe("inconclusive")
+    expect(resumed.stages.find((stage) => stage.id === "home")?.reusedFrom).toBeUndefined()
+    expect(native).not.toHaveBeenCalled()
+  })
+
+  it("can reuse a validated passed scenario when a later scenario produced no report", async () => {
+    const { options, dependencies, config, save } = await recoveryFixture()
+    config.scenarios.push({ id: "later", replaySafe: true, timeoutMs: 1000 })
+    await save()
+    const native = vi.fn<NonNullable<IntegrationDependencies["native"]>>(async (input) => {
+      if (input.scenario === "later") throw new Error("Synthetic unavailable driver")
+      return dependencies.native!(input)
+    })
+    const first = await runIntegrationSuite(options, { ...dependencies, native })
+    expect(first.stages.find((stage) => stage.id === "evidence-after")?.status).toBe("not-run")
+    native.mockClear()
+    const resumed = await runIntegrationSuite({ ...options, resume: first.executionId }, { ...dependencies, native })
+    expect(resumed.stages.find((stage) => stage.id === "home")?.reusedFrom).toBe(first.executionId)
+    expect(native).toHaveBeenCalledOnce()
+    expect(native.mock.calls[0][0].scenario).toBe("later")
+  })
+
   it("keeps planned UI acceptance inconclusive when the recovery context changes after a passed capture", async () => {
     const { root, config, save, options, dependencies } = await recoveryFixture()
     config.verificationPlan = "ui-eval/verification.json"; await save()

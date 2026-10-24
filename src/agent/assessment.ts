@@ -40,6 +40,13 @@ export function assessScenario(
       )
       score = 0
     }
+    const unresolvedPolicyGates = run.report.spec.gates.filter(
+      (gate) => !gate.hard && gate.status !== "pass",
+    )
+    if (unresolvedPolicyGates.length > 0) {
+      reasons.push(`${run.variantKey}: unresolved policy gates ${unresolvedPolicyGates.map((gate) => gate.gateId).join(", ")}`)
+      score = 0
+    }
     const nonVisualFindings = run.report.spec.findings.filter(
       (finding) => finding.dimension !== "pixel",
     )

@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { execFileSync } from "node:child_process"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { EvaluateScenarioResult } from "../orchestrator/evaluate"
@@ -159,18 +160,65 @@ describe("runAgentSuite", () => {
   })
   it.each([false, true])("blocks explicit cleanup failure without repair (aggregate: %s)", async (aggregate) => {
     const root = await project({ repair: true })
+    await updateSuite(root, (suite) => { suite.scenarios.push({ ...suite.scenarios[0], id: "details" }) })
     const runCommand = vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" }))
+    const evaluate = vi.fn(async () => {
+      const error = new IncompleteCleanupError("Owned browser cleanup did not settle")
+      throw aggregate ? new AggregateError([error, new Error("server cleanup failed")], "Cleanup failed") : error
+    })
     const result = await runAgentSuite({ projectRoot: root, suite: "rentals", repair: true }, {
-      evaluate: async () => {
-        const error = new IncompleteCleanupError("Owned browser cleanup did not settle")
-        throw aggregate ? new AggregateError([error, new Error("server cleanup failed")], "Cleanup failed") : error
-      },
+      evaluate,
       runCommand, listChangedFiles: async () => [], snapshotFiles: async () => new Map(),
     })
     expect(result.status).toBe("blocked")
     expect(result.iterations).toHaveLength(1)
     expect(result.iterations[0].scenarios[0].cleanupSettled).toBe(false)
+    expect(result.iterations[0].scenarios).toHaveLength(1)
+    expect(evaluate).toHaveBeenCalledOnce()
     expect(runCommand).toHaveBeenCalledOnce()
+  })
+
+  it.each(["pass", "fail", "throw"])("blocks source drift during a %s capture without repair or reuse", async (outcome) => {
+    const root = await project({ repair: true })
+    await mkdir(join(root, "app"))
+    await writeFile(join(root, "app/value.txt"), "checked-source")
+    await writeFile(join(root, ".gitignore"), ".ui-eval/\n")
+    execFileSync("git", ["init", "-q"], { cwd: root })
+    execFileSync("git", ["add", "."], { cwd: root })
+    execFileSync("git", ["-c", "user.name=Synthetic", "-c", "user.email=test@example.invalid", "commit", "-qm", "Synthetic candidate"], { cwd: root })
+    const runCommand = vi.fn(async () => {
+      expect(await readFile(join(root, "app/value.txt"), "utf8")).toBe("checked-source")
+      return { exitCode: 0, stdout: "", stderr: "" }
+    })
+    const evaluate = vi.fn(async () => {
+      await writeFile(join(root, "app/value.txt"), "unchecked-source")
+      if (outcome === "throw") throw new Error("Synthetic driver failure")
+      const result = evaluation()
+      if (outcome === "fail") result.runs[0].rawStatus = "fail"
+      return result
+    })
+    const result = await runAgentSuite({ projectRoot: root, suite: "rentals", repair: true }, { evaluate, runCommand })
+    expect(result).toMatchObject({ status: "blocked", accepted: false })
+    expect(result.reason).toContain("source changed")
+    expect(result.iterations).toHaveLength(1)
+    expect(result.iterations[0]).toMatchObject({ accepted: false, score: 0 })
+    expect(result.iterations[0].dimensions.every((item) => item.status === "not-evaluated")).toBe(true)
+    expect(result.iterations[0].scenarios[0].accepted).toBe(false)
+    expect(evaluate).toHaveBeenCalledOnce()
+    expect(runCommand).toHaveBeenCalledOnce()
+    expect(JSON.parse(await readFile(result.summaryPath, "utf8"))).toMatchObject({ status: "blocked", reason: result.reason })
+    expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("source changed")
+  })
+
+  it.each(["fail", "unknown"] as const)("does not waive a %s policy gate with a passing visual reference", async (status) => {
+    const root = await project({ reference: true })
+    const output = evaluation(0)
+    output.runs[0].report.spec.gates.push({ gateId: "additional-review", hard: false, status, reason: "Additional policy review is required" })
+    const result = await runAgentSuite({ projectRoot: root, suite: "rentals", repair: false }, {
+      ...scopeDeps, evaluate: async () => output,
+    })
+    expect(result.accepted).toBe(false)
+    expect(result.iterations[0].scenarios[0].reasons.join(" ")).toContain("additional-review")
   })
 
   it("accepts a measured zero pixel ratio without inventing a finding", async () => {
@@ -291,17 +339,18 @@ describe("runAgentSuite", () => {
       .mockResolvedValueOnce(evaluation())
       .mockRejectedValueOnce(new Error("driver unavailable"))
       .mockResolvedValue(evaluation())
-    const snapshots = vi.fn()
-      .mockResolvedValueOnce(new Map([["app/page.ts", "before"]]))
-      .mockResolvedValueOnce(new Map([["app/page.ts", "before"]]))
-      .mockResolvedValue(new Map([["app/page.ts", "after"]]))
+    let source = "before"
+    let checks = 0
     const result = await runAgentSuite(
       { projectRoot: root, suite: "rentals", repair: false },
       {
         evaluate,
-        runCommand: vi.fn(async () => ({ exitCode: 0, stdout: "", stderr: "" })),
+        runCommand: vi.fn(async () => {
+          if (++checks === 2) source = "after"
+          return { exitCode: 0, stdout: "", stderr: "" }
+        }),
         listChangedFiles: vi.fn(async () => []),
-        snapshotFiles: snapshots,
+        snapshotFiles: async () => new Map([["app/page.ts", source]]),
       },
     )
     expect(result.status).toBe("accepted")
@@ -387,16 +436,16 @@ describe("runAgentSuite", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce(["ui-eval/policies/default.json"])
-    const snapshotFiles = vi
-      .fn<() => Promise<Map<string, string>>>()
-      .mockResolvedValueOnce(new Map([["ui-eval/policies/default.json", "before"]]))
-      .mockResolvedValueOnce(new Map([["ui-eval/policies/default.json", "before"]]))
-      .mockResolvedValueOnce(new Map([["ui-eval/policies/default.json", "after"]]))
+    let source = "before"
+    const snapshotFiles = async () => new Map([["ui-eval/policies/default.json", source]])
     const result = await runAgentSuite(
       { projectRoot: root, suite: "rentals", repair: true },
       {
         evaluate: vi.fn(async () => evaluation(0.2)),
-        runCommand: vi.fn(async () => ({ exitCode: 0, stdout: "ok", stderr: "" })),
+        runCommand: vi.fn(async (command) => {
+          if (command === "codex") source = "after"
+          return { exitCode: 0, stdout: "ok", stderr: "" }
+        }),
         listChangedFiles,
         snapshotFiles,
       },
@@ -533,6 +582,24 @@ describe("runAgentSuite", () => {
       accepted: true,
       reusedFromIteration: 1,
     })
+  })
+
+  it("invalidates current reuse on source drift without changing earlier iterations", async () => {
+    const root = await project()
+    await updateSuite(root, (suite) => { suite.scenarios.push({ ...suite.scenarios[0], id: "later" }) })
+    let source = "before"
+    const evaluate = vi.fn()
+      .mockResolvedValueOnce(evaluation())
+      .mockRejectedValueOnce(new Error("Synthetic driver unavailable"))
+      .mockImplementationOnce(async () => { source = "after"; return evaluation() })
+    const result = await runAgentSuite({ projectRoot: root, suite: "rentals" }, {
+      ...scopeDeps, evaluate, snapshotFiles: async () => new Map([["app/page.ts", source]]),
+    })
+    expect(result).toMatchObject({ status: "blocked", accepted: false })
+    expect(result.iterations).toHaveLength(2)
+    expect(result.iterations[0].scenarios[0]).toMatchObject({ accepted: true, reasons: [] })
+    expect(result.iterations[1].scenarios[0]).toMatchObject({ accepted: false, reusedFromIteration: 1 })
+    expect(JSON.parse(await readFile(result.summaryPath, "utf8")).iterations[0].scenarios[0].accepted).toBe(true)
   })
 
   it("fails closed when the human-readable terminal report cannot be published", async () => {

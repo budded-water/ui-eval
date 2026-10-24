@@ -239,9 +239,60 @@ describe("cross-node-equal", () => {
       status: "invalid", invalidReason: "insufficient-peers", comparedNodes: 1,
     })
   })
+
+  it("retains invalid numeric peers without masking comparable disagreements", () => {
+    const nodes = nodesFrom([
+      { nodeId: "1", rect: { x: 0, y: 0, width: 80, height: 48 }, uiId: "cta" },
+      { nodeId: "2", rect: { x: 0, y: 0, width: 80, height: 48 }, uiId: "cta" },
+      { nodeId: "3", rect: { x: 0, y: 0, width: 80, height: Infinity }, uiId: "cta" },
+    ])
+    expect(evaluateConstraint(constraint, nodes, {})).toMatchObject({ status: "invalid", comparedNodes: 2, unnormalizableNodes: 1 })
+    nodes[1] = { ...nodes[1], properties: new Map([["box.height", { kind: "length", px: 44 }]]) }
+    expect(evaluateConstraint(constraint, nodes, {})).toMatchObject({ status: "failed", comparedNodes: 2, unnormalizableNodes: 1 })
+  })
+
+  it("still compares nonnumeric family values", () => {
+    const nodes: NormalizedNode[] = ["inter", "inter"].map((family, index) => ({
+      nodeId: String(index), uiId: "cta", visible: true,
+      properties: new Map([["text.family", { kind: "family", family }]]),
+    }))
+    const familyConstraint: Constraint = { ...constraint, property: "text.family" }
+    expect(evaluateConstraint(familyConstraint, nodes, {}).status).toBe("passed")
+    nodes[1] = { ...nodes[1], properties: new Map([["text.family", { kind: "family", family: "serif" }]]) }
+    expect(evaluateConstraint(familyConstraint, nodes, {}).status).toBe("failed")
+  })
 })
 
 describe("ratio", () => {
+  const constraint: Constraint = { id: "aspect", kind: "ratio", numerator: "box.width", denominator: "box.height", rangeRef: "line-height" }
+  it("treats zero denominators as invalid rather than evaluated coverage", () => {
+    const result = evaluateConstraint(constraint, nodesFrom([{ nodeId: "zero", rect: { x: 0, y: 0, width: 100, height: 0 } }]), tokenSet)
+    expect(result).toMatchObject({ status: "invalid", matchedNodes: 1, comparedNodes: 0, unnormalizableNodes: 1 })
+  })
+  it("does not let a comparable pair hide an uncomparable pair", () => {
+    const nodes = nodesFrom([
+      { nodeId: "ok", rect: { x: 0, y: 0, width: 15, height: 10 } },
+      { nodeId: "zero", rect: { x: 0, y: 0, width: 100, height: 0 } },
+    ])
+    expect(evaluateConstraint(constraint, nodes, tokenSet)).toMatchObject({ status: "invalid", comparedNodes: 1, unnormalizableNodes: 1 })
+    const defect = { ...nodes[0], properties: new Map<"box.width" | "box.height", { kind: "length"; px: number }>([["box.width", { kind: "length", px: 100 }], ["box.height", { kind: "length", px: 10 }]]) }
+    expect(evaluateConstraint(constraint, [defect, nodes[1]], tokenSet)).toMatchObject({ status: "failed", comparedNodes: 1, unnormalizableNodes: 1 })
+  })
+  it("requires numerator and denominator on each matched node", () => {
+    const nodes: NormalizedNode[] = [
+      { nodeId: "top", visible: true, properties: new Map([["box.width", { kind: "length", px: 15 }]]) },
+      { nodeId: "bottom", visible: true, properties: new Map([["box.height", { kind: "length", px: 10 }]]) },
+    ]
+    expect(evaluateConstraint(constraint, nodes, tokenSet)).toMatchObject({ status: "invalid", comparedNodes: 0, unnormalizableNodes: 2 })
+  })
+  it("rejects an overflowing quotient without losing the coverage gap", () => {
+    const nodes: NormalizedNode[] = [{ nodeId: "overflow", visible: true, properties: new Map([
+      ["box.width", { kind: "length", px: Number.MAX_VALUE }],
+      ["box.height", { kind: "length", px: Number.MIN_VALUE }],
+    ]) }]
+    expect(evaluateConstraint(constraint, nodes, tokenSet)).toMatchObject({ status: "invalid", comparedNodes: 0, unnormalizableNodes: 1 })
+  })
+
   it("compares two properties of the same node against a range", () => {
     const constraint: Constraint = {
       id: "line-height-ratio",
@@ -263,6 +314,29 @@ describe("ratio", () => {
     const result = evaluateConstraint(constraint, nodes, tokenSet)
     expect(result.status).toBe("failed")
     expect(result.violations.map((violation) => violation.nodeId)).toEqual(["2"])
+  })
+})
+
+describe("numeric evidence compatibility", () => {
+  it.each([Infinity, -Infinity, NaN])("rejects nonfinite numeric reading %s in ranges and scales", (value) => {
+    const constraints: Constraint[] = [
+      { id: "height-range", kind: "value-in-range", property: "box.height", rangeRef: "touch-target" },
+      { id: "height-scale", kind: "value-on-scale", property: "box.height", scaleRef: "radius", tolerance: 0 },
+    ]
+    for (const constraint of constraints) {
+      for (const reading of [{ kind: "length", px: value }, { kind: "number", value }] as const) {
+        const nodes: NormalizedNode[] = [{ nodeId: "nonfinite", visible: true, properties: new Map([["box.height", reading]]) }]
+        expect(evaluateConstraint(constraint, nodes, tokenSet)).toMatchObject({ status: "invalid", matchedNodes: 1, comparedNodes: 0, unnormalizableNodes: 1 })
+      }
+    }
+  })
+
+  it.each(["value-in-range", "value-on-scale"] as const)("counts nonnumeric %s evidence as invalid", (kind) => {
+    const constraint: Constraint = kind === "value-in-range"
+      ? { id: "height", kind, property: "box.height", rangeRef: "touch-target" }
+      : { id: "height", kind, property: "box.height", scaleRef: "radius", tolerance: 0 }
+    const nodes: NormalizedNode[] = [{ nodeId: "wrong-type", visible: true, properties: new Map([["box.height", { kind: "family", family: "inter" }]]) }]
+    expect(evaluateConstraint(constraint, nodes, tokenSet)).toMatchObject({ status: "invalid", comparedNodes: 0, unnormalizableNodes: 1 })
   })
 })
 

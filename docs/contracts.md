@@ -1,5 +1,13 @@
 # Contracts and Canonical Truth
 
+Numeric geometry constraints (`value-in-range`, `value-on-scale`, `ratio`) use
+the numeric subset of abstract properties in the generated geometry config
+schema. Previously accepted color/family/shadow numeric declarations were not
+meaningful executable comparisons; they now fail configuration validation.
+Correct those authoring inputs to numeric properties or use `value-in-set` for
+set membership. This is a validation correction within the unreleased alpha
+contract, with no report fields, store format or evaluator identifiers changed.
+
 Native recovery adds optional `recovery`/`replaySafe` authoring and
 `resumedFrom`, `recoveryContextDigest`, stage `attempts`/`reusedFrom` provenance
 to integration alpha contracts. Original adapter reports remain unchanged.

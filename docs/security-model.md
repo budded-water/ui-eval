@@ -377,7 +377,20 @@ descendants that create another process group.
 Planned geometry work remains in coverage when structured evidence is absent
 or invalid. Without an observed product defect, an indecisive geometry result
 cannot produce an overall pass. Agent evidence reuse rechecks the source
-snapshot after checks, and repair requests bind file-content snapshots.
+snapshot after checks, and repair requests bind file-content snapshots. A second
+snapshot after scenarios blocks acceptance, reuse and repair if source changed;
+the current acceptance dimensions become unevaluated while original reports and
+earlier iterations remain intact. These observations do not lock the candidate
+tree. Visual thresholds cannot waive unresolved policy gates. An explicit
+incomplete-cleanup result stops the Agent's remaining scenarios immediately.
+Numeric geometry constraints reject nonnumeric property declarations; zero,
+missing or unusable denominators and non-finite ratios retain invalid coverage.
+Equality comparisons also reject non-finite numeric readings, including derived
+layout overflow, instead of comparing their string representations.
+Native resume requires successful prior source/engine/context validation and
+rejects failed aggregate evidence validation, even after identities are restored.
+A missing aggregate check on a partial run still requires individual evidence
+revalidation before reuse.
 Snapshots include executable mode and symlink targets without following links;
 Git path parsing preserves literal filenames, and unreadable files fail the
 audit instead of silently disappearing.

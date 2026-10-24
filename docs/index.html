@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="adbc296c3fbf61c284720714cf62c6329e6c4c5f64d22402dc4d9e5aab787f4d">
+  <meta name="source-sha256" content="cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: adbc296c3fbf61c284720714cf62c6329e6c4c5f64d22402dc4d9e5aab787f4d</footer>
+        <footer>Source set SHA-256: cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -554,7 +554,10 @@ original scenarios and checks, audits file hashes against allowed and protected
 prefixes, enforces budgets, and stops on repair-progress plateau. Acceptance
 remains a strict check/scenario/dimension decision; continuous progress never
 authorizes acceptance. Evidence reuse checks the source snapshot after project
-checks. Agent result types derive from their TypeBox source. Raw reports are never
+checks, and a second snapshot after scenarios blocks acceptance and repair on
+source drift. Incomplete cleanup stops subsequent scenarios immediately, and
+visual thresholds cannot waive unresolved policy gates. Agent result types
+derive from their TypeBox source. Raw reports are never
 rewritten. See <a href="agent.md">Constrained Agent Loop</a>.</p>
 <p>Each terminal Agent state publishes <code>summary.json</code> as the canonical aggregate
 record and <code>summary.html</code> as its escaped human-readable projection. The HTML
@@ -580,6 +583,13 @@ network-profile, or secret providers;</li>
 <section id="contracts" class="document">
         <div class="source"><span>Contracts</span><code>docs/contracts.md</code></div>
         <h1>Contracts and Canonical Truth</h1>
+<p>Numeric geometry constraints (<code>value-in-range</code>, <code>value-on-scale</code>, <code>ratio</code>) use
+the numeric subset of abstract properties in the generated geometry config
+schema. Previously accepted color/family/shadow numeric declarations were not
+meaningful executable comparisons; they now fail configuration validation.
+Correct those authoring inputs to numeric properties or use <code>value-in-set</code> for
+set membership. This is a validation correction within the unreleased alpha
+contract, with no report fields, store format or evaluator identifiers changed.</p>
 <p>Native recovery adds optional <code>recovery</code>/<code>replaySafe</code> authoring and
 <code>resumedFrom</code>, <code>recoveryContextDigest</code>, stage <code>attempts</code>/<code>reusedFrom</code> provenance
 to integration alpha contracts. Original adapter reports remain unchanged.
@@ -1358,7 +1368,20 @@ descendants that create another process group.</p>
 <p>Planned geometry work remains in coverage when structured evidence is absent
 or invalid. Without an observed product defect, an indecisive geometry result
 cannot produce an overall pass. Agent evidence reuse rechecks the source
-snapshot after checks, and repair requests bind file-content snapshots.
+snapshot after checks, and repair requests bind file-content snapshots. A second
+snapshot after scenarios blocks acceptance, reuse and repair if source changed;
+the current acceptance dimensions become unevaluated while original reports and
+earlier iterations remain intact. These observations do not lock the candidate
+tree. Visual thresholds cannot waive unresolved policy gates. An explicit
+incomplete-cleanup result stops the Agent&#39;s remaining scenarios immediately.
+Numeric geometry constraints reject nonnumeric property declarations; zero,
+missing or unusable denominators and non-finite ratios retain invalid coverage.
+Equality comparisons also reject non-finite numeric readings, including derived
+layout overflow, instead of comparing their string representations.
+Native resume requires successful prior source/engine/context validation and
+rejects failed aggregate evidence validation, even after identities are restored.
+A missing aggregate check on a partial run still requires individual evidence
+revalidation before reuse.
 Snapshots include executable mode and symlink targets without following links;
 Git path parsing preserves literal filenames, and unreadable files fail the
 audit instead of silently disappearing.</p>
@@ -2111,6 +2134,10 @@ successful earlier scenarios are not rerun within the invocation.</p>
 </code></pre>
 <p>Resume requires exact source, suite, engine, device and context identity plus
 both previous report projections and settled cleanup. Passed replay-safe stages
+also require the previous invocation&#39;s initial and final source, engine and
+recovery-context validations to have passed. A failed final evidence validation
+blocks reuse even if the original bytes or starting identities are later restored.
+A partial run may have an unrun aggregate evidence check; its passed stages
 are reused only after revalidating original inputs, flow, command metadata and
 both PNG copies. Invalid or changed evidence blocks instead of silently rerunning
 and hiding the discrepancy. Other scenarios execute normally. Preparation,
@@ -2655,7 +2682,13 @@ when a selected constraint reads style/text properties. Local constraints count
 every planned checkpoint, including missing/invalid inputs. Equality compares
 stable identities across checkpoints of one evaluation and requires comparable
 peers; comparison across variants or scenarios remains unsupported. Unusable
-geometry evidence without an observed product defect is invalid/inconclusive.</p>
+geometry evidence without an observed product defect is invalid/inconclusive.
+Non-finite numeric readings, including overflow derived from finite layout
+rectangles, cannot become passing equality comparisons.
+Numeric constraints accept only numeric abstract properties. Ratio evidence
+needs both properties on each matched node, a nonzero denominator and a finite
+quotient; unusable pairs cannot count as passing coverage. A product violation
+observed on another comparable node still remains a failure.</p>
 <p>The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:</p>
 <ul>
 <li>missing or optionalized execution/interaction/runtime core evaluators;</li>
@@ -2671,6 +2704,15 @@ geometry evidence without an observed product defect is invalid/inconclusive.</p
 <p>Agent acceptance score remains the fraction of required dimensions that pass.
 Plateau uses a separate continuous check/scenario progress measurement, and
 source snapshots are compared after checks before cached evidence can be reused.
+Source drift during scenarios blocks the invocation without product repair and
+invalidates that iteration&#39;s acceptance. Snapshots are observations, not a source
+lock; edits reverted between observations and ignored build outputs are not
+attested. Visual thresholds waive only advisory pixel review when all policy
+gates pass, never unresolved soft gates. Incomplete evaluator cleanup prevents
+the next scenario from starting, even within the same iteration.
+Native resume cannot reuse evidence from an invocation whose final source,
+engine, recovery-context or evidence validation failed, even after restoring
+its starting state; a fresh invocation is required.
 Command collection retains bounded output and bounded owned-process cleanup;
 descendants that escape the group still require OS/container isolation.</p>
 <h2>Evidence and privacy limits</h2>
@@ -3585,6 +3627,18 @@ canonical coverage rather than a separate capability list.</p>
 <tr>
 <td>Captured value cannot be normalized</td>
 <td>invalid evidence</td>
+</tr>
+<tr>
+<td>Numeric constraint names a nonnumeric property</td>
+<td>configuration error before capture</td>
+</tr>
+<tr>
+<td>Ratio pair is incomplete, denominator is zero, or quotient is non-finite</td>
+<td>invalid evidence; comparable observed violations still fail</td>
+</tr>
+<tr>
+<td>Numeric reading is non-finite, including in an equality comparison</td>
+<td>invalid evidence; comparable observed violations still fail</td>
 </tr>
 <tr>
 <td>Constraint scope matches zero nodes and <code>requireMatch</code> is true</td>

@@ -168,7 +168,7 @@ export async function runAgentSuite(
       for (const scenario of suite.scenarios) {
         const reusable = reusableScenarios.get(scenario.id)
         if (reusable) {
-          scenarios.push(reusable)
+          scenarios.push(structuredClone(reusable))
           options.onProgress?.(
             `Agent iteration ${number}/${suite.maxIterations}: reusing ${scenario.id} evidence from iteration ${reusable.reusedFromIteration ?? number - 1}`,
           )
@@ -242,7 +242,7 @@ export async function runAgentSuite(
         } finally {
           deadline.removeEventListener("abort", onDeadline)
         }
-        if (timedOut) break
+        if (timedOut || scenarios.at(-1)?.cleanupSettled === false) break
       }
     } else {
       options.onProgress?.(
@@ -250,7 +250,23 @@ export async function runAgentSuite(
       )
     }
 
-    const dimensions = assessDimensions(suite, checks, scenarios)
+    const unsettledCleanup = scenarios.filter((scenario) => scenario.cleanupSettled === false)
+    // Checks and captures must describe the same source. A concurrent edit or
+    // candidate-owned generator is not a product failure and cannot authorize
+    // repair, acceptance, or reuse of any scenario from this iteration.
+    const sourceChanges = unsettledCleanup.length > 0
+      ? [] : changedBetween(sourceSnapshot, await snapshotFiles(loaded.projectRoot))
+    const sourceChangeReason = `Candidate source changed during scenario evaluation: ${sourceChanges.join(", ")}`
+    if (sourceChanges.length > 0) {
+      for (const scenario of scenarios) {
+        scenario.accepted = false
+        scenario.score = 0
+        scenario.reasons.push(sourceChangeReason)
+      }
+    }
+    const dimensions = sourceChanges.length > 0
+      ? suite.requiredDimensions.map((id) => ({ id, status: "not-evaluated" as const, score: 0 as const, evidence: [] }))
+      : assessDimensions(suite, checks, scenarios)
     const score = Number(
       (
         dimensions.reduce((sum, dimension) => sum + dimension.score, 0) /
@@ -258,11 +274,12 @@ export async function runAgentSuite(
       ).toFixed(6),
     )
     const accepted =
+      sourceChanges.length === 0 &&
       checksPassed &&
       scenarios.length === suite.scenarios.length &&
       scenarios.every((scenario) => scenario.accepted) &&
       dimensions.every((dimension) => dimension.status === "pass")
-    const progressScore = repairProgress(suite, checks, scenarios)
+    const progressScore = sourceChanges.length > 0 ? 0 : repairProgress(suite, checks, scenarios)
     const currentFiles = await listChangedFiles(loaded.projectRoot)
     const iteration: AgentIteration = {
       iteration: number,
@@ -286,12 +303,14 @@ export async function runAgentSuite(
       break
     }
 
-    const unsettledCleanup = scenarios.filter((scenario) =>
-      scenario.cleanupSettled === false,
-    )
     if (unsettledCleanup.length > 0) {
       status = "blocked"
       reason = `evaluator cleanup did not settle: ${unsettledCleanup.map((scenario) => scenario.id).join(", ")}`
+      break
+    }
+    if (sourceChanges.length > 0) {
+      status = "blocked"
+      reason = sourceChangeReason
       break
     }
 

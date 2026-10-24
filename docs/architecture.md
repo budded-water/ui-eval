@@ -248,7 +248,10 @@ original scenarios and checks, audits file hashes against allowed and protected
 prefixes, enforces budgets, and stops on repair-progress plateau. Acceptance
 remains a strict check/scenario/dimension decision; continuous progress never
 authorizes acceptance. Evidence reuse checks the source snapshot after project
-checks. Agent result types derive from their TypeBox source. Raw reports are never
+checks, and a second snapshot after scenarios blocks acceptance and repair on
+source drift. Incomplete cleanup stops subsequent scenarios immediately, and
+visual thresholds cannot waive unresolved policy gates. Agent result types
+derive from their TypeBox source. Raw reports are never
 rewritten. See [Constrained Agent Loop](agent.md).
 
 Each terminal Agent state publishes `summary.json` as the canonical aggregate
