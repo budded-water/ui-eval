@@ -387,6 +387,10 @@ Numeric geometry constraints reject nonnumeric property declarations; zero,
 missing or unusable denominators and non-finite ratios retain invalid coverage.
 Equality comparisons also reject non-finite numeric readings, including derived
 layout overflow, instead of comparing their string representations.
+Color and font-weight normalization consumes complete numeric tokens; suffixes,
+extra arguments and malformed color separators cannot be silently discarded to
+produce passing evidence. Unsupported colors and weights outside 1–1000 (apart
+from the supported `normal`/`bold` keywords) retain invalid geometry coverage.
 Native resume requires successful prior source/engine/context validation and
 rejects failed aggregate evidence validation, even after identities are restored.
 A missing aggregate check on a partial run still requires individual evidence

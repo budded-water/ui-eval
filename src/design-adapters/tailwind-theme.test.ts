@@ -44,6 +44,11 @@ describe("length normalization", () => {
 })
 
 describe("tailwind theme import", () => {
+  it("retains malformed color declarations as unresolved rather than adding them to a palette", () => {
+    const result = importTailwindTheme(":root { --color-good: #fff; --color-bad: rgb(255px 255 255); }")
+    expect(result.unresolved).toEqual(expect.arrayContaining([expect.objectContaining({ name: "--color-bad", reason: "unsupported-value" })]))
+  })
+
   const css = `
     @theme inline {
       --color-brand: var(--brand);
