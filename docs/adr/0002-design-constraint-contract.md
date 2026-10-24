@@ -64,6 +64,14 @@ The engine addresses properties by abstract name, never by platform property. Ad
 Values are normalized before comparison:
 
 - **Color** becomes an sRGB 8-bit tuple plus alpha. The engine never compares color strings, so `#2e8b57`, `rgb(46, 139, 87)`, and a native color object are the same value.
+- Supported functional colors require complete finite CSS number tokens and
+  valid argument counts/separators. Legacy comma RGB requires uniformly numeric
+  or percentage channels; modern RGB permits mixed channels. Lab/OKLab axes
+  accept percentages, and OKLCh hue accepts unitless degrees, `deg`, `grad`,
+  `rad` or `turn`, following [CSS Color 4](https://www.w3.org/TR/css-color-4/).
+  Conversion clips to sRGB; this is not perceptual gamut mapping.
+- **Weight** accepts complete numbers in 1–1000, `normal` (400), or `bold` (700).
+  Numeric prefixes such as `400px` are unnormalizable rather than guessed.
 - **Length** becomes a logical unit paired with the capture's scale factor, recorded in the existing `renderSpace`. The engine never sees `"16px"`.
 - **Family** becomes the first non-fallback family, unquoted and case-folded.
 - A value that cannot be normalized is `unnormalizable` and counts as invalid evidence. It never counts as a pass.

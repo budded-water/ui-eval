@@ -12,6 +12,7 @@ import type {
   StylesEvidencePayload,
 } from "../../contracts/model"
 import { parseColor } from "../../normalize/color"
+import { parseCssNumber, trimCssWhitespace } from "../../normalize/number"
 import {
   DEFAULT_ROOT_FONT_SIZE_PX,
   parseLengthPx,
@@ -57,10 +58,11 @@ function lengthValue(
  */
 function weightValue(raw: string | undefined): NormalizedValue | undefined {
   if (raw === undefined) return undefined
-  const numeric = Number.parseFloat(raw)
-  if (Number.isFinite(numeric)) return { kind: "number", value: numeric }
-  const named: Record<string, number> = { normal: 400, bold: 700 }
-  const resolved = named[raw.trim().toLowerCase()]
+  const token = trimCssWhitespace(raw)
+  const numeric = parseCssNumber(token)
+  if (numeric !== undefined && numeric >= 1 && numeric <= 1000) return { kind: "number", value: numeric }
+  const keyword = token.toLowerCase()
+  const resolved = keyword === "normal" ? 400 : keyword === "bold" ? 700 : undefined
   return resolved === undefined
     ? { kind: "unnormalizable", raw }
     : { kind: "number", value: resolved }

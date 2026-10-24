@@ -8,6 +8,13 @@ Correct those authoring inputs to numeric properties or use `value-in-set` for
 set membership. This is a validation correction within the unreleased alpha
 contract, with no report fields, store format or evaluator identifiers changed.
 
+Style strings still use the existing evidence schemas, but runtime normalization
+rejects malformed color syntax and incomplete or out-of-range font weights.
+These values retain invalid geometry coverage rather than passing through
+numeric-prefix parsing. Supported Lab/OKLab percentages and OKLCh angle units
+are interpreted as described in [the normalization ADR](adr/0002-design-constraint-contract.md).
+This correction changes no schema shapes or evaluator identifiers.
+
 Native recovery adds optional `recovery`/`replaySafe` authoring and
 `resumedFrom`, `recoveryContextDigest`, stage `attempts`/`reusedFrom` provenance
 to integration alpha contracts. Original adapter reports remain unchanged.
