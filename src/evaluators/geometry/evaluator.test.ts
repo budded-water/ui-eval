@@ -53,6 +53,34 @@ const checkpoint = (checkpointId: string, backgroundColor: string) => ({
 })
 
 describe("geometry evaluator", () => {
+  it.each(["rgb(255junk 255 255)", "rgb(255 255 255 / 1 / 0)"])("retains invalid coverage for malformed color %s", (color) => {
+    const result = evaluateGeometryEvidence(config, [checkpoint("ready", color)])
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
+    expect(result.findings).toEqual([])
+  })
+
+  it.each(["400junk", "400px", "0x190", "0", "1001", "400 700", "\u00a0400"])("retains invalid coverage for unusable font weight %s", (fontWeight) => {
+    const evidence = checkpoint("ready", "#ffffff")
+    evidence.styles = validateStylesEvidencePayload({ schemaVersion: "uieval.styles/v1alpha1", nodes: [{ nodeId: "1", computedStyle: { fontWeight } }] })
+    const result = evaluateGeometryEvidence({
+      tokenSet: { ranges: [{ id: "weights", unit: "unitless", min: 0, max: 2000 }] },
+      constraints: [{ id: "weight", kind: "value-in-range", property: "text.weight", rangeRef: "weights" }],
+    }, [evidence])
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.results[0]).toMatchObject({ comparedNodes: 0, unnormalizableNodes: 1 })
+  })
+
+  it.each(["normal", "bold", "1", "1000", "+400.5", "4e2"])("preserves usable font weight %s", (fontWeight) => {
+    const evidence = checkpoint("ready", "#ffffff")
+    evidence.styles = validateStylesEvidencePayload({ schemaVersion: "uieval.styles/v1alpha1", nodes: [{ nodeId: "1", computedStyle: { fontWeight } }] })
+    const result = evaluateGeometryEvidence({
+      tokenSet: { ranges: [{ id: "weights", unit: "unitless", min: 1, max: 1000 }] },
+      constraints: [{ id: "weight", kind: "value-in-range", property: "text.weight", rangeRef: "weights" }],
+    }, [evidence])
+    expect(result.coverage).toMatchObject({ passed: 1, invalid: 0 })
+  })
+
   it("keeps a zero-denominator ratio out of passing coverage and metrics", () => {
     const evidence = checkpoint("ready", "#ffffff")
     evidence.layout.nodes[0].rect.height = 0

@@ -8,6 +8,7 @@
  */
 
 import type { NormalizedColor } from "../contracts/model"
+import { parseCssNumber, trimCssWhitespace } from "./number"
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -95,26 +96,43 @@ function labToSrgb(
 
 function parseAlpha(token: string | undefined): number | undefined {
   if (token === undefined) return 1
-  const text = token.trim()
-  if (text.endsWith("%")) {
-    const percent = Number.parseFloat(text.slice(0, -1))
-    return Number.isFinite(percent) ? clamp(percent / 100, 0, 1) : undefined
-  }
-  const value = Number.parseFloat(text)
-  return Number.isFinite(value) ? clamp(value, 0, 1) : undefined
+  const value = parseNumberOrPercent(token, 1)
+  return value === undefined ? undefined : clamp(value, 0, 1)
 }
 
 function parseNumberOrPercent(token: string, scale: number): number | undefined {
-  const text = token.trim()
-  const value = Number.parseFloat(text.endsWith("%") ? text.slice(0, -1) : text)
-  if (!Number.isFinite(value)) return undefined
+  const text = trimCssWhitespace(token)
+  const value = parseCssNumber(text.endsWith("%") ? text.slice(0, -1) : text)
+  if (value === undefined) return undefined
   return text.endsWith("%") ? (value / 100) * scale : value
 }
 
-function splitColorArguments(body: string): { values: string[]; alpha?: string } {
-  const [main, alphaPart] = body.split("/")
-  const values = main.trim().split(/[\s,]+/).filter(Boolean)
-  return { values, alpha: alphaPart?.trim() }
+function splitColorArguments(body: string, rgb: boolean): { values: string[]; alpha?: string } | undefined {
+  if (body.includes(",")) {
+    if (!rgb || body.includes("/")) return undefined
+    const parts = body.split(",").map(trimCssWhitespace)
+    if ((parts.length !== 3 && parts.length !== 4) || parts.some((part) => !part)) return undefined
+    const values = parts.slice(0, 3)
+    // Legacy RGB cannot mix numeric and percentage channels.
+    if (values.some((value) => value.endsWith("%") !== values[0].endsWith("%"))) return undefined
+    return { values, alpha: parts[3] }
+  }
+  const parts = body.split("/")
+  if (parts.length > 2 || (parts.length === 2 && !trimCssWhitespace(parts[1]))) return undefined
+  const values = trimCssWhitespace(parts[0]).split(/[ \t\n\r\f]+/)
+  if (values.length !== 3) return undefined
+  return { values, alpha: parts[1] === undefined ? undefined : trimCssWhitespace(parts[1]) }
+}
+
+function parseHue(token: string): number | undefined {
+  const unit = /(deg|grad|rad|turn)$/.exec(token)?.[0]
+  const value = parseCssNumber(unit ? token.slice(0, -unit.length) : token)
+  if (value === undefined) return undefined
+  // Reduce before multiplying so large finite angles cannot overflow.
+  if (unit === "turn") return (value % 1) * 360
+  if (unit === "grad") return (value % 400) * 0.9
+  if (unit === "rad") return (value % (2 * Math.PI)) * (180 / Math.PI)
+  return value % 360
 }
 
 /**
@@ -123,7 +141,7 @@ function splitColorArguments(body: string): { values: string[]; alpha?: string }
  * value set; an undefined one is reported as unnormalizable by the caller.
  */
 export function parseColor(input: string): NormalizedColor | undefined {
-  const text = input.trim().toLowerCase()
+  const text = trimCssWhitespace(input).toLowerCase()
   if (text === "transparent") return { r: 0, g: 0, b: 0, alpha: 0 }
 
   const hex = /^#([0-9a-f]{3,8})$/.exec(text)
@@ -152,38 +170,37 @@ export function parseColor(input: string): NormalizedColor | undefined {
 
   const functional = /^(oklch|oklab|lab|rgba?)\(([^)]*)\)$/.exec(text)
   if (!functional) return undefined
-  const { values, alpha: alphaToken } = splitColorArguments(functional[2])
   const notation = functional[1]
-  const alpha = parseAlpha(
-    notation === "rgb" || notation === "rgba"
-      ? (alphaToken ?? values[3])
-      : alphaToken,
-  )
+  const args = splitColorArguments(functional[2], notation === "rgb" || notation === "rgba")
+  if (!args) return undefined
+  const { values } = args
+  const alpha = parseAlpha(args.alpha)
   if (alpha === undefined) return undefined
 
   if (notation === "oklch" || notation === "oklab" || notation === "lab") {
-    if (values.length < 3) return undefined
     // `lab()` lightness is a 0-100 percentage scale; the Ok spaces use 0-1.
     const lightness = parseNumberOrPercent(values[0], notation === "lab" ? 100 : 1)
     const second =
       notation === "oklch"
         ? parseNumberOrPercent(values[1], 0.4)
-        : Number.parseFloat(values[1])
-    const third = Number.parseFloat(values[2])
+        : parseNumberOrPercent(values[1], notation === "lab" ? 125 : 0.4)
+    const third = notation === "oklch" ? parseHue(values[2]) : parseNumberOrPercent(values[2], notation === "lab" ? 125 : 0.4)
     if (
       lightness === undefined ||
       second === undefined ||
+      third === undefined ||
       !Number.isFinite(second) ||
       !Number.isFinite(third)
     ) {
       return undefined
     }
-    if (notation === "oklch") return { ...oklchToSrgb(lightness, second, third), alpha }
-    if (notation === "oklab") return { ...oklabToSrgb(lightness, second, third), alpha }
-    return { ...labToSrgb(lightness, second, third), alpha }
+    const boundedLightness = clamp(lightness, 0, notation === "lab" ? 100 : 1)
+    const color = notation === "oklch"
+      ? oklchToSrgb(boundedLightness, Math.max(0, second), third)
+      : notation === "oklab" ? oklabToSrgb(boundedLightness, second, third) : labToSrgb(boundedLightness, second, third)
+    return Object.values(color).every(Number.isFinite) ? { ...color, alpha } : undefined
   }
 
-  if (values.length < 3) return undefined
   const channels = values.slice(0, 3).map((value) => parseNumberOrPercent(value, 255))
   if (channels.some((channel) => channel === undefined)) return undefined
   const [r, g, b] = channels as number[]

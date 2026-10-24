@@ -111,6 +111,18 @@ needs both properties on each matched node, a nonzero denominator and a finite
 quotient; unusable pairs cannot count as passing coverage. A product violation
 observed on another comparable node still remains a failure.
 
+Color normalization supports hex, `transparent`, `rgb`/`rgba`, `lab`, `oklab`
+and `oklch` with complete numeric components. It rejects malformed syntax and
+unsupported forms, including unresolved expressions and missing `none`
+components; it is not a full CSS parser. Lab/OKLab percentages and OKLCh angle
+units are supported, with conversion clipped to 8-bit sRGB rather than
+perceptual gamut mapping. Font weights accept numbers in 1–1000 or
+`normal`/`bold`. Unnormalizable styles retain invalid coverage; malformed theme
+colors remain unresolved rather than becoming palette entries. Theme declaration,
+reference and fallback resolution preserves non-CSS whitespace for validation.
+Theme import removes a BOM only at the stylesheet start and preserves token
+boundaries across comments; it does not implement the full CSS tokenizer.
+
 The current evaluator registry accepts only the implemented evaluator set and exact supported configuration shapes. It rejects:
 
 - missing or optionalized execution/interaction/runtime core evaluators;
