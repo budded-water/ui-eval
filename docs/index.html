@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="d65f89786022479b2eef3bb97bec154f597a80b5701201e1c18f85d3acbefddf">
+  <meta name="source-sha256" content="cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: d65f89786022479b2eef3bb97bec154f597a80b5701201e1c18f85d3acbefddf</footer>
+        <footer>Source set SHA-256: cf6f06f024e14ecbf512f141501b68eb5b87b8246909696d5976b1eb7f749d10</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1376,6 +1376,8 @@ tree. Visual thresholds cannot waive unresolved policy gates. An explicit
 incomplete-cleanup result stops the Agent&#39;s remaining scenarios immediately.
 Numeric geometry constraints reject nonnumeric property declarations; zero,
 missing or unusable denominators and non-finite ratios retain invalid coverage.
+Equality comparisons also reject non-finite numeric readings, including derived
+layout overflow, instead of comparing their string representations.
 Native resume requires successful prior source/engine/context validation and
 rejects failed aggregate evidence validation, even after identities are restored.
 A missing aggregate check on a partial run still requires individual evidence
@@ -2681,6 +2683,8 @@ every planned checkpoint, including missing/invalid inputs. Equality compares
 stable identities across checkpoints of one evaluation and requires comparable
 peers; comparison across variants or scenarios remains unsupported. Unusable
 geometry evidence without an observed product defect is invalid/inconclusive.
+Non-finite numeric readings, including overflow derived from finite layout
+rectangles, cannot become passing equality comparisons.
 Numeric constraints accept only numeric abstract properties. Ratio evidence
 needs both properties on each matched node, a nonzero denominator and a finite
 quotient; unusable pairs cannot count as passing coverage. A product violation
@@ -3630,6 +3634,10 @@ canonical coverage rather than a separate capability list.</p>
 </tr>
 <tr>
 <td>Ratio pair is incomplete, denominator is zero, or quotient is non-finite</td>
+<td>invalid evidence; comparable observed violations still fail</td>
+</tr>
+<tr>
+<td>Numeric reading is non-finite, including in an equality comparison</td>
 <td>invalid evidence; comparable observed violations still fail</td>
 </tr>
 <tr>

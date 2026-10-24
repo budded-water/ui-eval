@@ -30,7 +30,8 @@ The source repository is public, but the project has no package release or confi
 - Agent visual ceilings no longer waive failed or unknown policy gates.
 - Geometry ratios retain invalid coverage for missing pairs, zero denominators
   and non-finite quotients. Numeric ranges/scales cannot pass unreadable numeric
-  evidence. The alpha geometry config schema now rejects nonnumeric properties
+  evidence, and equality comparisons reject non-finite derived values rather
+  than comparing their string representations. The alpha geometry config schema now rejects nonnumeric properties
   for numeric constraints; correct such authoring inputs before running again.
   Report/store shapes and evaluator identifiers remain unchanged.
 

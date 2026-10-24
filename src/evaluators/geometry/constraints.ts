@@ -146,7 +146,8 @@ function readProperty(
     const value = node.properties.get(property)
     if (value === undefined) continue
     matched += 1
-    if (!isComparable(value)) {
+    if (!isComparable(value) ||
+      ((value.kind === "length" || value.kind === "number") && numericOf(value) === undefined)) {
       unnormalizable += 1
       continue
     }

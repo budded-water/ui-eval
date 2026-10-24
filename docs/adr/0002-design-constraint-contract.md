@@ -110,6 +110,7 @@ Every constraint declares `requireMatch`, defaulting to `true`. A constraint who
 | Captured value cannot be normalized | invalid evidence |
 | Numeric constraint names a nonnumeric property | configuration error before capture |
 | Ratio pair is incomplete, denominator is zero, or quotient is non-finite | invalid evidence; comparable observed violations still fail |
+| Numeric reading is non-finite, including in an equality comparison | invalid evidence; comparable observed violations still fail |
 | Constraint scope matches zero nodes and `requireMatch` is true | invalid evidence |
 | Policy references a token-set id absent from the contract | configuration error, exit `2` |
 | Platform does not expose the capability the property needs | `unsupported`, never pass |

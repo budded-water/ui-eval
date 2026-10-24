@@ -104,6 +104,8 @@ every planned checkpoint, including missing/invalid inputs. Equality compares
 stable identities across checkpoints of one evaluation and requires comparable
 peers; comparison across variants or scenarios remains unsupported. Unusable
 geometry evidence without an observed product defect is invalid/inconclusive.
+Non-finite numeric readings, including overflow derived from finite layout
+rectangles, cannot become passing equality comparisons.
 Numeric constraints accept only numeric abstract properties. Ratio evidence
 needs both properties on each matched node, a nonzero denominator and a finite
 quotient; unusable pairs cannot count as passing coverage. A product violation

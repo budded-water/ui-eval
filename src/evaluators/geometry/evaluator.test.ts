@@ -133,4 +133,26 @@ describe("geometry evaluator", () => {
     }, [first], ["ready", "after-scroll"])
     expect(result.coverage).toMatchObject({ expected: 1, invalid: 1, passed: 0 })
   })
+
+  it("does not accept equal overflow values derived from finite layout evidence", () => {
+    const evidence = ["ready", "after-scroll"].map((id) => {
+      const item = checkpoint(id, "#ffffff")
+      item.layout = validateLayoutEvidencePayload({
+        ...item.layout,
+        nodes: [
+          { nodeId: "parent", rect: { x: 0, y: 0, width: 800, height: 600 }, visible: true },
+          { nodeId: "child", parentNodeId: "parent", uiId: "cta", rect: { x: 1e308, y: 0, width: 1e308, height: 10 }, visible: true },
+        ],
+      })
+      return item
+    })
+    const result = evaluateGeometryEvidence({
+      tokenSet: {},
+      constraints: [{ id: "consistent-overflow", kind: "cross-node-equal", property: "box.overflowRight", tolerance: 0 }],
+    }, evidence)
+    expect(result.coverage).toMatchObject({ expected: 1, evaluated: 0, passed: 0, invalid: 1 })
+    expect(result.results[0]).toMatchObject({ unnormalizableNodes: 2, comparedNodes: 0 })
+    expect(result.metrics["geometry.indecisiveConstraints"]).toBe(1)
+    expect(result.findings).toEqual([])
+  })
 })
