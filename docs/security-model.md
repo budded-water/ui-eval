@@ -40,6 +40,14 @@ summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.
 
+Interrupted integration handoffs reference only this invocation's published
+summary pair. They do not search historical directories, expose raw command
+output or upgrade interrupted stages. Cleanup failure may be recorded in these
+diagnostic summaries; the handoff itself is not a cleanup assertion. Downstream
+readers must still verify containment, identity, artifact integrity and any
+explicit recovery prerequisites. Publication failure withholds the handoff even
+when one projection remains on disk.
+
 Native integration verifies exact device/App/project/scenario, source and plan,
 raw command metadata and CRC-decoded driver/copied PNGs, then rechecks the
 underlying byte digests after external checks. The first trusted native evaluator

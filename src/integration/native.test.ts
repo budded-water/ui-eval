@@ -543,11 +543,11 @@ describe("native integration execution", () => {
     expect(stop).toHaveBeenCalledOnce()
   })
 
-  it.each(["native", "after-check"])("still stops its session and publishes interrupted projections on caller cancellation at %s", async (stage) => {
+  it.each(["native", "after-check", "stop-failure"])("still stops its session and publishes interrupted projections on caller cancellation at %s", async (stage) => {
     const { root, options, config, save, dependencies } = await integrationFixture("passed", true)
     config.checks = [afterCheck]; await save()
     const abort = new AbortController()
-    const stop = vi.fn(async () => {})
+    const stop = vi.fn(async () => { if (stage === "stop-failure") throw new Error("Synthetic session stop failed") })
     const interrupted = new Error("Synthetic caller cancelled")
     await expect(runIntegrationSuite({ ...options, signal: abort.signal }, { ...dependencies,
       session: async () => ({ signal: new AbortController().signal, assertAlive: () => {}, stop }),
@@ -556,12 +556,13 @@ describe("native integration execution", () => {
         return dependencies.native!(input)
       },
       command: async () => { abort.abort(interrupted); return { exitCode: 0, stdout: "", stderr: "" } },
-    })).rejects.toBe(interrupted)
+    })).rejects.toMatchObject({ name: "IntegrationInterruptedError", cause: interrupted,
+      partialIntegration: { status: "interrupted", exitCode: 130 } })
     expect(stop).toHaveBeenCalledOnce()
     const [directory] = await readdir(join(root, ".ui-eval/integration"))
     const summary = JSON.parse(await readFile(join(root, ".ui-eval/integration", directory, "summary.json"), "utf8"))
     expect(summary).toMatchObject({ status: "interrupted", exitCode: 130 })
-    expect(summary.stages.find((entry: { id: string }) => entry.id === "session-stop").status).toBe("pass")
+    expect(summary.stages.find((entry: { id: string }) => entry.id === "session-stop").status).toBe(stage === "stop-failure" ? "inconclusive" : "pass")
     expect(await readFile(join(root, ".ui-eval/integration", directory, "summary.html"), "utf8")).toContain("smoke: interrupted")
   })
 })

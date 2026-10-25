@@ -194,8 +194,24 @@ support requires the matching reviewed engine pin, not a schema-only upgrade.
 Exit codes are `0` pass, `1` candidate failure, `2` configuration/infrastructure/
 inconclusive scope, and `3` review. Infrastructure and unexecuted mandatory stages
 take precedence. SIGINT/SIGTERM retain `130`/`143`: initialized runs attempt both
-interrupted summaries before propagating. Forced termination or unwritable
-storage can prevent publication and never proves completion. Scenario deadlines
+interrupted summaries before propagating. After both publish, JSON mode emits
+one error envelope with `error` and diagnostic `partialIntegration`, containing
+the same `IntegrationResult` as canonical `summary.json`, including
+`summaryPath` and `summaryHtmlPath`. Text mode prints those paths to stderr.
+The result remains `interrupted`; unfinished stages and cleanup failures remain
+visible and never become acceptance. This handoff does not authorize retry or
+evidence reuse; existing explicit recovery checks remain required.
+
+Programmatic callers receive exported `IntegrationInterruptedError` with
+`partialIntegration` and the original abort reason as `cause`, instead of the
+raw abort reason, only after both interrupted projections publish. This additive
+CLI envelope and changed rejection type require explicit adoption by strict
+pinned consumers; the existing result schema and exit codes are unchanged.
+Pre-initialization cancellation and publication failure do not provide a handoff.
+A signal arriving during publication of a non-interrupted result also withholds
+the handoff; on-disk output is not proof the invocation completed successfully.
+Forced termination or unwritable storage can prevent publication and never
+proves completion. Scenario deadlines
 wait bounded cleanup grace; a late success after a deadline cannot pass.
 
 ```sh

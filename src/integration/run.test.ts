@@ -9,7 +9,7 @@ import { canonicalDigest } from "../contracts/canonical-json"
 import type { WebCheckpointSpec, WebScenarioStep } from "../contracts/model"
 import { PLAYWRIGHT_CAPTURE_ADAPTER_ID, PLAYWRIGHT_CAPTURE_ADAPTER_VERSION, PLAYWRIGHT_CAPTURE_CAPABILITIES } from "../capture-playwright/adapter"
 import { IncompleteCleanupError } from "../runtime/cleanup"
-import { runIntegrationSuite, type IntegrationDependencies } from "./run"
+import { IntegrationInterruptedError, runIntegrationSuite, type IntegrationDependencies } from "./run"
 import { loadIntegrationSuite } from "./config"
 import { assertIntegrationResult } from "./model"
 import { writeIntegrationArtifacts, renderIntegrationHtml } from "./report"
@@ -359,16 +359,97 @@ describe("integration runner", () => {
     expect(result.stages.find((stage) => stage.id === "after")?.status).toBe("not-run")
   })
 
+  it.each(["SIGINT", "SIGTERM"] as const)("hands off interrupted summaries through CLI JSON and text for %s", async (signal) => {
+    for (const format of ["json", "text"]) {
+      const root = await project(true); const controller = new AbortController()
+      const stdout: string[] = []; const stderr: string[] = []
+      const invoke = vi.fn(async () => { controller.abort(new CliInterruptedError(signal)); throw controller.signal.reason })
+      const code = await runCli(["integrate", "smoke", "--format", format], {
+        cwd: root, stdout: (v) => stdout.push(v), stderr: (v) => stderr.push(v),
+      }, { integrate: (options) => runIntegrationSuite(options, { ...dependencies, evaluate: invoke }) }, { signal: controller.signal })
+      expect(code).toBe(signal === "SIGINT" ? 130 : 143)
+      expect(invoke).toHaveBeenCalledOnce()
+      if (format === "json") {
+        expect(stdout).toHaveLength(1)
+        const envelope = JSON.parse(stdout[0])
+        expect(envelope.error).toMatchObject({ code: "INTERRUPTED", signal })
+        expect(envelope.partialIntegration).toMatchObject({ status: "interrupted", exitCode: code })
+        const summary = JSON.parse(await readFile(envelope.partialIntegration.summaryPath, "utf8"))
+        expect(envelope.partialIntegration).toEqual(summary)
+        expect(summary.stages.find((stage: { id: string }) => stage.id === "details").status).toBe("not-run")
+        expect(await readFile(summary.summaryHtmlPath, "utf8")).toContain("smoke: interrupted")
+      } else {
+        expect(stdout).toEqual([])
+        expect(stderr.join("")).toContain("Interrupted integration evidence")
+        expect(stderr.join("")).toMatch(/HTML: .*summary\.html/)
+        expect(stderr.join("")).toMatch(/JSON: .*summary\.json/)
+      }
+    }
+  })
+
   it("publishes interrupted summaries and preserves conventional signal exit codes", async () => {
     const root = await project(); const controller = new AbortController()
+    const original = new CliInterruptedError("SIGTERM")
     await expect(runIntegrationSuite({ projectRoot: root, suite: "smoke", signal: controller.signal }, { ...dependencies,
-      evaluate: async () => { controller.abort(new CliInterruptedError("SIGTERM")); throw controller.signal.reason },
+      evaluate: async () => { controller.abort(original); throw controller.signal.reason },
       publish: async (result, projectRoot) => {
         expect(result).toMatchObject({ exitCode: 143, status: "interrupted" })
         await writeIntegrationArtifacts(result, projectRoot)
         expect(await readFile(result.summaryHtmlPath, "utf8")).toContain("interrupted")
       },
-    })).rejects.toThrow("SIGTERM")
+    })).rejects.toMatchObject({ name: "IntegrationInterruptedError", cause: original,
+      partialIntegration: { status: "interrupted", exitCode: 143 } })
+  })
+
+  it.each(["summary.html", "summary.json"])("withholds interrupted references when %s cannot publish", async (artifact) => {
+    const root = await project(); const controller = new AbortController(); const stdout: string[] = []
+    let caught: unknown
+    const code = await runCli(["integrate", "smoke", "--format", "json"], {
+      cwd: root, stdout: (v) => stdout.push(v), stderr: () => {},
+    }, { integrate: async (options) => {
+      try { return await runIntegrationSuite(options, { ...dependencies,
+        evaluate: async () => { controller.abort(new CliInterruptedError("SIGINT")); throw controller.signal.reason },
+        publish: async (result, projectRoot) => {
+          await mkdir(join(dirname(result.summaryPath), artifact))
+          await writeIntegrationArtifacts(result, projectRoot)
+        },
+      }) } catch (error) { caught = error; throw error }
+    } }, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(caught).toBeInstanceOf(Error)
+    expect(caught).not.toBeInstanceOf(IntegrationInterruptedError)
+    expect(stdout).toHaveLength(1)
+    expect(JSON.parse(stdout[0])).toEqual({ error: { name: "CliInterruptedError", code: "INTERRUPTED",
+      signal: "SIGINT", message: "UI Eval was interrupted by SIGINT." } })
+  })
+
+  it("does not attach a completed summary when cancellation arrives during publication", async () => {
+    const root = await project(); const controller = new AbortController(); const stdout: string[] = []
+    const code = await runCli(["integrate", "smoke", "--format", "json"], {
+      cwd: root, stdout: (v) => stdout.push(v), stderr: () => {},
+    }, { integrate: (options) => runIntegrationSuite(options, { ...dependencies,
+      publish: async (result, projectRoot) => {
+        expect(result.status).toBe("pass")
+        controller.abort(new CliInterruptedError("SIGTERM"))
+        await writeIntegrationArtifacts(result, projectRoot)
+      },
+    }) }, { signal: controller.signal })
+    expect(code).toBe(143)
+    expect(stdout).toHaveLength(1)
+    expect(JSON.parse(stdout[0])).not.toHaveProperty("partialIntegration")
+    expect(JSON.parse(stdout[0]).error.signal).toBe("SIGTERM")
+  })
+
+  it("does not initialize or invent a handoff for an already aborted integration", async () => {
+    const root = await project(); const controller = new AbortController(); const stdout: string[] = []
+    const original = new CliInterruptedError("SIGINT"); controller.abort(original)
+    const invoke = vi.fn((options) => runIntegrationSuite(options, dependencies))
+    await expect(runIntegrationSuite({ projectRoot: root, suite: "smoke", signal: controller.signal }, dependencies)).rejects.toBe(original)
+    const code = await runCli(["integrate", "smoke", "--format", "json"], {
+      cwd: root, stdout: (v) => stdout.push(v), stderr: () => {},
+    }, { integrate: invoke }, { signal: controller.signal })
+    expect(code).toBe(130); expect(invoke).not.toHaveBeenCalled()
+    expect(JSON.parse(stdout.join(""))).not.toHaveProperty("partialIntegration")
   })
 
   it("rejects missing human-report publication and keeps JSON stdout singular", async () => {

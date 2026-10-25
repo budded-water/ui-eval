@@ -42,6 +42,15 @@ export interface IntegrationDependencies {
   cleanupTimeoutMs?: number
 }
 
+/** Diagnostic handoff only after both interrupted summary projections publish. */
+export class IntegrationInterruptedError extends Error {
+  readonly code = "INTERRUPTED"
+  constructor(readonly partialIntegration: IntegrationResult, cause: unknown) {
+    super("Integration was interrupted", { cause })
+    this.name = "IntegrationInterruptedError"
+  }
+}
+
 export async function runIntegrationSuite(options: IntegrationOptions, deps: IntegrationDependencies = {}): Promise<IntegrationResult> {
   options.signal?.throwIfAborted()
   const loaded = await loadIntegrationSuite(options.projectRoot, options.suite)
@@ -277,6 +286,8 @@ export async function runIntegrationSuite(options: IntegrationOptions, deps: Int
   }
   result.durationMs = performance.now() - started
   await (deps.publish ?? writeIntegrationArtifacts)(result, root)
+  if (result.status === "interrupted") throw new IntegrationInterruptedError(result, options.signal?.reason)
+  // A signal arriving during publication must not expose a pre-signal success as interrupted evidence.
   options.signal?.throwIfAborted()
   return result
 }

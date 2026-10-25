@@ -1,5 +1,14 @@
 # Current Limitations
 
+Integration interruption exposes diagnostic `partialIntegration` only after
+both interrupted summaries publish. Unlike a standalone native partial run, an
+integration summary can record failed or unsettled cleanup; consumers must
+inspect its stages. References do not prove cleanup, acceptance or permission
+to retry/reuse evidence. Pre-initialization cancellation, publication failure,
+forced termination and signals arriving during publication of a non-interrupted
+result provide no handoff. Consumers must adopt the updated error envelope and
+programmatic rejection type explicitly; the result schema is unchanged.
+
 Native interruption can provide diagnostic `partialRun` references only after
 both report projections and owned cleanup finish; forced exit, storage failure
 or incomplete cleanup may leave unreferenced files. These references do not
