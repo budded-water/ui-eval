@@ -9,7 +9,8 @@ import { initUiEvalProject, type InitUiEvalProjectResult } from "./init"
 import { nativePilotCommand } from "../native-pilot/cli"
 import { NativePilotInterruptedError, type NativePilotRun } from "../native-pilot/run"
 import { runWechatPilotCli } from "../wechat-pilot/cli"
-import { runIntegrationSuite } from "../integration/run"
+import { IntegrationInterruptedError, runIntegrationSuite } from "../integration/run"
+import type { IntegrationResult } from "../integration/model"
 
 const VERSION = packageJson.version
 const SIGNAL_CLEANUP_TIMEOUT_MS = 10_000
@@ -125,7 +126,7 @@ function formatOption(value: string | undefined): "text" | "json" {
   throw new Error("--format must be text or json")
 }
 
-function errorPayload(error: unknown, partialRun?: NativePilotRun): unknown {
+function errorPayload(error: unknown, partialRun?: NativePilotRun, partialIntegration?: IntegrationResult): unknown {
   return {
     error: {
       name: error instanceof Error ? error.name : "Error",
@@ -142,6 +143,7 @@ function errorPayload(error: unknown, partialRun?: NativePilotRun): unknown {
         : {}),
     },
     ...(partialRun ? { partialRun } : {}),
+    ...(partialIntegration ? { partialIntegration } : {}),
   }
 }
 
@@ -426,8 +428,10 @@ export async function runCli(
       : error
     if (failure instanceof CliInterruptedError) {
       const partialRun = error instanceof NativePilotInterruptedError ? error.partialRun : undefined
-      if (jsonRequested) emitJson(io, errorPayload(failure, partialRun))
+      const partialIntegration = error instanceof IntegrationInterruptedError ? error.partialIntegration : undefined
+      if (jsonRequested) emitJson(io, errorPayload(failure, partialRun, partialIntegration))
       else if (partialRun) io.stderr(`Interrupted native evidence (inconclusive)\n  HTML: ${partialRun.htmlPath}\n  JSON: ${partialRun.reportPath}\n`)
+      else if (partialIntegration) io.stderr(`Interrupted integration evidence\n  HTML: ${partialIntegration.summaryHtmlPath}\n  JSON: ${partialIntegration.summaryPath}\n`)
       return SIGNAL_EXIT_CODES[failure.signal]
     }
     if (jsonRequested) emitJson(io, errorPayload(failure))

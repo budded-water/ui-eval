@@ -8,6 +8,14 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Interrupted `integrate` commands retain diagnostic `partialIntegration` in
+  JSON errors and summary paths in text stderr after both interrupted summaries
+  publish. Programmatic callers receive `IntegrationInterruptedError` with the
+  original abort reason as `cause`. Strict pinned consumers must adopt the new
+  envelope/rejection type; result schemas and 130/143 exits remain unchanged.
+  Cleanup failures remain visible and the handoff does not authorize acceptance,
+  retry or evidence reuse. Publication failure and late cancellation of a
+  non-interrupted result withhold references.
 - Standalone native interruption retains diagnostic `partialRun` references to
   this invocation's synchronized inconclusive reports after successful cleanup,
   while preserving 130/143 exits. Programmatic callers receive

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="e4057ac751c74c6e9cb96a3471bd508853f2ca22f28511726afdd37d8b51bdf0">
+  <meta name="source-sha256" content="e1b6c4378e9c5dd3a9a00fd99f689ff59f6e2d9221131b9c3878e0170b500de6">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: e4057ac751c74c6e9cb96a3471bd508853f2ca22f28511726afdd37d8b51bdf0</footer>
+        <footer>Source set SHA-256: e1b6c4378e9c5dd3a9a00fd99f689ff59f6e2d9221131b9c3878e0170b500de6</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -583,6 +583,13 @@ network-profile, or secret providers;</li>
 <section id="contracts" class="document">
         <div class="source"><span>Contracts</span><code>docs/contracts.md</code></div>
         <h1>Contracts and Canonical Truth</h1>
+<p>Integration interruption adds diagnostic <code>partialIntegration</code> to the CLI error
+envelope after both interrupted summaries publish. It is the existing validated
+<code>IntegrationResult</code>, not a new result schema. Programmatic callers receive
+<code>IntegrationInterruptedError</code> with the original abort reason as <code>cause</code> instead
+of the raw reason. Strict consumers must explicitly adopt this envelope/rejection
+change. Signal exits remain 130/143; no accepted scope or recovery permission is
+added. See <a href="integration-runner.md">integration interruption semantics</a>.</p>
 <p>Native pilot results optionally include driver clock observations, generated
 from <code>NativePilotResultSchema</code>. Existing records without <code>driverTiming</code> remain
 valid; new records require updated strict readers. Standalone native interruption
@@ -1091,6 +1098,13 @@ reject escapes/symlink ancestors; HTML escapes data and links local reports. Bot
 summary projections must publish. These are audit/lifecycle controls, not an OS
 sandbox or candidate-command network isolation. Use synthetic data and external
 isolation for authoritative CI.</p>
+<p>Interrupted integration handoffs reference only this invocation&#39;s published
+summary pair. They do not search historical directories, expose raw command
+output or upgrade interrupted stages. Cleanup failure may be recorded in these
+diagnostic summaries; the handoff itself is not a cleanup assertion. Downstream
+readers must still verify containment, identity, artifact integrity and any
+explicit recovery prerequisites. Publication failure withholds the handoff even
+when one projection remains on disk.</p>
 <p>Native integration verifies exact device/App/project/scenario, source and plan,
 raw command metadata and CRC-decoded driver/copied PNGs, then rechecks the
 underlying byte digests after external checks. The first trusted native evaluator
@@ -2200,8 +2214,23 @@ support requires the matching reviewed engine pin, not a schema-only upgrade.</p
 <p>Exit codes are <code>0</code> pass, <code>1</code> candidate failure, <code>2</code> configuration/infrastructure/
 inconclusive scope, and <code>3</code> review. Infrastructure and unexecuted mandatory stages
 take precedence. SIGINT/SIGTERM retain <code>130</code>/<code>143</code>: initialized runs attempt both
-interrupted summaries before propagating. Forced termination or unwritable
-storage can prevent publication and never proves completion. Scenario deadlines
+interrupted summaries before propagating. After both publish, JSON mode emits
+one error envelope with <code>error</code> and diagnostic <code>partialIntegration</code>, containing
+the same <code>IntegrationResult</code> as canonical <code>summary.json</code>, including
+<code>summaryPath</code> and <code>summaryHtmlPath</code>. Text mode prints those paths to stderr.
+The result remains <code>interrupted</code>; unfinished stages and cleanup failures remain
+visible and never become acceptance. This handoff does not authorize retry or
+evidence reuse; existing explicit recovery checks remain required.</p>
+<p>Programmatic callers receive exported <code>IntegrationInterruptedError</code> with
+<code>partialIntegration</code> and the original abort reason as <code>cause</code>, instead of the
+raw abort reason, only after both interrupted projections publish. This additive
+CLI envelope and changed rejection type require explicit adoption by strict
+pinned consumers; the existing result schema and exit codes are unchanged.
+Pre-initialization cancellation and publication failure do not provide a handoff.
+A signal arriving during publication of a non-interrupted result also withholds
+the handoff; on-disk output is not proof the invocation completed successfully.
+Forced termination or unwritable storage can prevent publication and never
+proves completion. Scenario deadlines
 wait bounded cleanup grace; a late success after a deadline cannot pass.</p>
 <pre><code class="language-sh">node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate
 node /path/to/engine/dist/cli.js integrate smoke --project-root /path/to/candidate --format json
@@ -2574,6 +2603,14 @@ schemas and <code>summarizeNativeProgress</code>.</p>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
+<p>Integration interruption exposes diagnostic <code>partialIntegration</code> only after
+both interrupted summaries publish. Unlike a standalone native partial run, an
+integration summary can record failed or unsettled cleanup; consumers must
+inspect its stages. References do not prove cleanup, acceptance or permission
+to retry/reuse evidence. Pre-initialization cancellation, publication failure,
+forced termination and signals arriving during publication of a non-interrupted
+result provide no handoff. Consumers must adopt the updated error envelope and
+programmatic rejection type explicitly; the result schema is unchanged.</p>
 <p>Native interruption can provide diagnostic <code>partialRun</code> references only after
 both report projections and owned cleanup finish; forced exit, storage failure
 or incomplete cleanup may leave unreferenced files. These references do not

@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createServer } from "node:net"
 import assert from "node:assert/strict"
+import { setTimeout as delay } from "node:timers/promises"
 
 const exec = promisify(execFile)
 const engine = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -73,5 +74,43 @@ try {
   assert.equal(incomplete.verification.assessment.conclusions.release, "not-run")
   assert.equal(incomplete.stages.every((stage) => stage.status === "pass"), true)
   assert.match(await readFile(incomplete.summaryHtmlPath, "utf8"), /Release readiness: not-run/)
-  process.stdout.write("Verified planned Web integration, two variants, post-check rejection and missing-device acceptance gap.\n")
+  // Exercise the built CLI's real signal boundary after its owned prepare child is ready.
+  const marker = resolve(root, ".ui-eval/signal-ready")
+  suite.prepare = { command: process.execPath, args: ["-e",
+    "require('node:fs').writeFileSync('.ui-eval/signal-ready', String(process.pid)); setInterval(() => {}, 1000)"], timeoutMs: 30000 }
+  await writeFile(suitePath, JSON.stringify(suite))
+  for (const [signal, expected] of [["SIGINT", 130], ["SIGTERM", 143]]) {
+    await rm(marker, { force: true })
+    let child
+    const finished = new Promise((done) => {
+      child = execFile(process.execPath, [cli, "integrate", "smoke", "--project-root", root, "--format", "json"],
+        { cwd: engine, timeout: 45000, maxBuffer: 8 * 1024 * 1024 },
+        (error, stdout, stderr) => done({ error, stdout, stderr }))
+    })
+    try {
+      const deadline = performance.now() + 15000
+      let pid
+      while (performance.now() < deadline) {
+        try { pid = Number(await readFile(marker, "utf8")); break } catch (error) { if (error.code !== "ENOENT") throw error }
+        if (child.exitCode !== null || child.signalCode !== null) throw new Error("Integration exited before prepare readiness")
+        await delay(20)
+      }
+      assert.ok(Number.isInteger(pid) && pid > 0, "Owned prepare child must start before interruption")
+      assert.equal(child.kill(signal), true)
+      const output = await finished
+      assert.equal(output.error?.code, expected)
+      const envelope = JSON.parse(output.stdout)
+      assert.equal(envelope.error.signal, signal)
+      const summary = envelope.partialIntegration
+      assert.equal(summary.status, "interrupted"); assert.equal(summary.exitCode, expected)
+      assert.deepEqual(JSON.parse(await readFile(summary.summaryPath, "utf8")), summary)
+      assert.match(await readFile(summary.summaryHtmlPath, "utf8"), /smoke: interrupted/)
+      assert.equal(summary.stages.find((stage) => stage.kind === "scenario").status, "not-run")
+      assert.throws(() => process.kill(pid, 0), { code: "ESRCH" }, "Owned prepare process must be gone")
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGTERM")
+      await finished
+    }
+  }
+  process.stdout.write("Verified planned Web integration, two variants, post-check rejection, missing-device acceptance gap and real SIGINT/SIGTERM summary handoffs with owned cleanup.\n")
 } finally { await rm(root, { recursive: true, force: true }) }

@@ -1,5 +1,13 @@
 # Contracts and Canonical Truth
 
+Integration interruption adds diagnostic `partialIntegration` to the CLI error
+envelope after both interrupted summaries publish. It is the existing validated
+`IntegrationResult`, not a new result schema. Programmatic callers receive
+`IntegrationInterruptedError` with the original abort reason as `cause` instead
+of the raw reason. Strict consumers must explicitly adopt this envelope/rejection
+change. Signal exits remain 130/143; no accepted scope or recovery permission is
+added. See [integration interruption semantics](integration-runner.md).
+
 Native pilot results optionally include driver clock observations, generated
 from `NativePilotResultSchema`. Existing records without `driverTiming` remain
 valid; new records require updated strict readers. Standalone native interruption
