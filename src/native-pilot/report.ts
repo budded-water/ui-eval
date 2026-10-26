@@ -20,6 +20,7 @@ export const NativePilotResultSchema = Type.Object({
   device: Type.Object({ id: Type.String(), name: Type.String(), runtime: Type.String(), maestroVersion: Type.String() }, { additionalProperties: false }),
   appId: Type.String(),
   provenanceAssurance: Type.Literal("observed-source-and-installed-app-only"),
+  screenshotMethod: Type.Optional(Type.Literal("maestro-take-screenshot")),
   assertions: Type.Object({ passed: Type.Integer({ minimum: 0 }), failed: Type.Integer({ minimum: 0 }) }, { additionalProperties: false }),
   screenshots: Type.Array(Type.Object({
     checkpointId: Type.String(), path: Type.String({ pattern: "^[a-z][a-z0-9-]*\\.png$" }),
@@ -43,7 +44,8 @@ export async function writeNativePilotReport(directory: string, result: NativePi
   await writeFile(resolve(directory, "report.json"), JSON.stringify(result, null, 2) + "\n", { flag: "wx" })
   const diagnostic = result.diagnostic
   const timing = result.driverTiming
+  const captureDetails = `<h2>Screenshot evidence</h2><p>Capture method: ${result.screenshotMethod ?? "unspecified"}. PNG decoding and byte integrity do not establish visual completeness. Secure inputs or system surfaces may be absent; record an inconclusive human observation when the selected image cannot support the criterion.</p>`
   const timingDetails = timing ? `<h2>Driver timing observations</h2><p>Wall elapsed: ${timing.wallElapsedMs} ms; monotonic elapsed: ${timing.monotonicElapsedMs} ms; configured timeout: ${timing.timeoutMs} ms. Includes owned driver cleanup; excludes preflight, evidence validation and report publication. Clock disagreement or timeout overshoot does not establish host sleep or its cause.</p>` : ""
   const details = diagnostic ? `<h2>Failure diagnostic (cause undetermined)</h2><p>Failed scenario step: ${diagnostic.failedStep}; preceding interaction: ${diagnostic.precedingInteraction ? `${diagnostic.precedingInteraction.action} at ${diagnostic.precedingInteraction.step}` : "unavailable"}. Pixel comparison: ${diagnostic.imageComparison}.</p><p>${escape(diagnostic.nextAction)}</p><p>Bounds are from a unique exact selector in the post-failure hierarchy, not an observed touch coordinate: ${escape(JSON.stringify(diagnostic.targetBounds ?? null))}.</p>${[diagnostic.before, diagnostic.after].map((shot, index) => shot ? `<figure><figcaption>${index ? "Failure" : "Previous checkpoint"}</figcaption><img src="${escape(shot.path.split("/").map(encodeURIComponent).join("/"))}" alt="Diagnostic screenshot"><p>${escape(shot.digest)}</p></figure>` : "").join("")}` : ""
-  await writeFile(resolve(directory, "report.html"), html.replace("<h2>Coverage limits</h2>", `${details}${timingDetails}<h2>Coverage limits</h2>`), { flag: "wx" })
+  await writeFile(resolve(directory, "report.html"), html.replace("<h2>Coverage limits</h2>", `${captureDetails}${details}${timingDetails}<h2>Coverage limits</h2>`), { flag: "wx" })
 }

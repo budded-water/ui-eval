@@ -21,11 +21,11 @@ export async function nativePilotCommand(args: string[], io: { cwd: string; stdo
   if (parsed.values.scope) throw new Error("--scope is only supported by native-pilot progress")
   if (command === "review") {
     const { report, review, decision, reviewer, note } = parsed.values
-    if (parsed.positionals.length || !report || !review || !reviewer || !note || (decision !== "pass" && decision !== "fail")) throw new Error("Usage: native-pilot review --report <project-relative-report> --review <declared-id> --decision pass|fail --reviewer <alias> --note <observation>")
+    if (parsed.positionals.length || !report || !review || !reviewer || !note || (decision !== "pass" && decision !== "fail" && decision !== "inconclusive")) throw new Error("Usage: native-pilot review --report <project-relative-report> --review <declared-id> --decision pass|fail|inconclusive --reviewer <alias> --note <observation>")
     signal?.throwIfAborted()
     const output = await recordNativeReview({ projectRoot: resolve(parsed.values["project-root"] ?? io.cwd), report, review, decision, reviewer, note })
     io.stdout(parsed.values.format === "json" ? JSON.stringify(output) + "\n" : `HUMAN ${decision.toUpperCase()} ${review}\n  HTML: ${output.htmlPath}\n  JSON: ${output.reportPath}\n`)
-    return decision === "pass" ? 0 : 1
+    return decision === "pass" ? 0 : decision === "fail" ? 1 : 2
   }
   if (!parsed.values.device) throw new Error("Native pilot requires --device simulator-uuid")
   const options = { projectRoot: resolve(parsed.values["project-root"] ?? io.cwd), deviceId: parsed.values.device, signal }

@@ -59,7 +59,7 @@ async function fixture(mode: "pass" | "fail" | "missing" | "changed" | "unsafe-s
   const save = () => writeFile(resolve(root, "ui-eval/progress.json"), JSON.stringify(scope))
   await save()
   const summarize = (revision = source) => summarizeNativeProgress({ projectRoot: root, scope: "ui-eval/progress.json" }, revision)
-  const observe = async (decision: "pass" | "fail" = "pass") => {
+  const observe = async (decision: "pass" | "fail" | "inconclusive" = "pass") => {
     const review = await recordNativeReview({ projectRoot: root, report: relative(root, run.reportPath), review: "layout", decision, reviewer: "owner", note: "Synthetic observation" }, source)
     scope.reviews = [{ reviewId: "layout", path: relative(root, review.reportPath) }]; await save()
     return review
@@ -129,6 +129,43 @@ describe("native failure diagnostics", () => {
 })
 
 describe("explicit native acceptance progress", () => {
+  it("retains an unusable visual observation as inconclusive without rewriting automatic evidence", async () => {
+    const f = await fixture()
+    const original = await readFile(f.run.reportPath, "utf8")
+    const review = await f.observe("inconclusive")
+    expect(review.result.decision).toBe("inconclusive")
+    expect(JSON.parse(await readFile(review.reportPath, "utf8"))).toEqual(review.result)
+    expect(await readFile(review.htmlPath, "utf8")).toContain("layout: inconclusive")
+    const progress = await f.summarize()
+    expect(progress.result.status).toBe("pending")
+    expect(progress.result.automatic[0].state).toBe("passed")
+    expect(progress.result.human[0].state).toBe("inconclusive")
+    expect(progress.result.human[0].nextAction).toContain("usable")
+    expect(JSON.parse(await readFile(progress.reportPath, "utf8"))).toEqual(progress.result)
+    expect(await readFile(progress.htmlPath, "utf8")).toContain("inconclusive")
+    expect(await readFile(f.run.reportPath, "utf8")).toBe(original)
+    await writeFile(review.reportPath, JSON.stringify({ ...review.result, screenshotDigest: `sha256:${"0".repeat(64)}` }))
+    expect((await f.summarize()).result.status).toBe("blocked")
+  })
+  it("cannot use an inconclusive observation to waive an automatic failure or corrupt PNG", async () => {
+    const failed = await fixture("fail")
+    await expect(failed.observe("inconclusive")).rejects.toThrow("cannot waive")
+    const passed = await fixture()
+    await writeFile(resolve(dirname(passed.run.reportPath), "opened.png"), "corrupt")
+    await expect(passed.observe("inconclusive")).rejects.toThrow()
+  })
+  it("keeps legacy capture method unspecified and rejects an unsupported claimed method", async () => {
+    const f = await fixture()
+    expect(f.run.result.screenshotMethod).toBe("maestro-take-screenshot")
+    expect(await readFile(f.run.htmlPath, "utf8")).toContain("maestro-take-screenshot")
+    const legacy = { ...f.run.result }; delete legacy.screenshotMethod
+    await writeFile(f.run.reportPath, JSON.stringify(legacy))
+    const review = await f.observe()
+    expect(await readFile(review.htmlPath, "utf8")).toContain("capture method: unspecified")
+    expect((await f.summarize()).result.status).toBe("complete")
+    await writeFile(f.run.reportPath, JSON.stringify({ ...legacy, screenshotMethod: "simctl" }))
+    expect((await f.summarize()).result.automatic[0].state).toBe("invalid")
+  })
   it("requires human evidence after a passed automatic run and publishes matching projections", async () => {
     const f = await fixture()
     const pending = await f.summarize()

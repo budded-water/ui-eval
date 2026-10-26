@@ -105,7 +105,7 @@ export async function nativeIntegrationEvidence(
     reportDigest: canonicalDigest(result), htmlDigest: byteDigest(html),
     evidenceDigest: canonicalDigest(files.sort((left, right) => left.path.localeCompare(right.path))),
     capabilities: [
-      { dimension: "Declared interaction / screenshots", status: result.status === "inconclusive" ? "unknown" : "measured", detail: "Experimental iOS Simulator evidence only; screenshots require human review." },
+      { dimension: "Declared interaction / screenshots", status: result.status === "inconclusive" ? "unknown" : "measured", detail: "Experimental iOS Simulator evidence only; decoded PNGs do not establish visual completeness and require human review." },
       { dimension: "Runtime / network / design / real device", status: "unsupported", detail: "No native release readiness or build-to-source attestation is established." },
     ],
   }]

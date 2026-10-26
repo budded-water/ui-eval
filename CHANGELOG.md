@@ -8,6 +8,17 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Native human reviews accept `inconclusive` (review exit 2) when an intact PNG
+  cannot support a visual criterion. Progress keeps that item inconclusive and
+  the scope pending unless another item blocks it; automatic results remain
+  unchanged. Missing/corrupt/failed evidence still cannot receive a review.
+- Native captures with validated screenshot bytes record optional
+  `screenshotMethod: "maestro-take-screenshot"`; native/review HTML expose it
+  and explain that decoding does not prove visual completeness. Older records
+  remain readable with an unspecified method. Strict pinned consumers must
+  adopt the extended native-result/review schemas; no alternate capture path,
+  automatic omission detector or integration release gate is added.
+
 - Interrupted `integrate` commands retain diagnostic `partialIntegration` in
   JSON errors and summary paths in text stderr after both interrupted summaries
   publish. Programmatic callers receive `IntegrationInterruptedError` with the

@@ -26,6 +26,16 @@ declared human criteria. It does not include integration lifecycle/check stages,
 authenticate human decisions, or attest to installed binaries and backend state.
 It never auto-selects a passing historical run or rewrites an original failure.
 
+Native PNG presence, decoding and byte integrity do not prove visual
+completeness: secure inputs or system surfaces may be absent from a capture.
+Optional `screenshotMethod` records only the driver command, not OS attestation.
+Older reports leave this unspecified. There is no automated omission detector
+or alternate capture path. A human may record `inconclusive` against an intact
+passed automatic capture when the selected image cannot support the criterion;
+this leaves acceptance pending and does not declare a product failure. Invalid
+or missing artifacts still fail validation. Candidate strict readers and pins
+must explicitly adopt the new field/decision before using them.
+
 Optional [verification plans](verification-plans.md) reconcile declared requirements only.
 Risk selection, command levels and assertion adequacy are trusted project decisions.
 Physical-device/manual approvals are not ingested; required visual inspection stays

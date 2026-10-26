@@ -36,13 +36,44 @@ original automatic report nor its status changes. No observation is generated
 automatically, and missing reviews remain pending in the candidate's handoff.
 Notes and screenshots are private local artifacts, not safe-to-publish by default.
 
+Use `--decision inconclusive` when a structurally valid selected screenshot is
+visually insufficient to judge the criterion, such as a missing system surface
+or secure input. Explain the limitation in the bounded note. Review exits are
+0 for pass, 1 for fail and 2 for inconclusive. An inconclusive observation is
+not a product failure: progress retains the human item as inconclusive and the
+overall scope as pending unless another item blocks it. The same original
+evidence validation and source/report/checkpoint binding apply to all decisions;
+corrupt, missing or failed automatic evidence still cannot receive a review.
+Only an actual human observer may supply these records; AI inspection must not
+be recorded as `human-observation`.
+
+New captures with validated screenshot bytes record optional `screenshotMethod:
+"maestro-take-screenshot"` in the native result. It identifies the executed driver
+command, not an attested OS capture implementation or a guarantee of visual
+fidelity. Both native and review HTML expose the method. Older reports without
+it remain readable and display an unspecified method; absence never implies a
+known capture path. The report digest binds the method when present. Unknown
+method values are rejected. No alternate capture method or automatic detection
+of omitted visual content is implemented. A decoded PNG can omit rendered
+content, so do not replace it after capture or disable input protection to obtain
+acceptance. Preserve the original and obtain usable evidence before recording a
+new human decision.
+
+This extends the experimental native result and review schemas: older strict
+readers must adopt this source revision before reading the new field or decision.
+Existing pass/fail review records remain supported, and original reports are not
+migrated or rewritten. Candidate integrations must update their engine pin and
+strict readers explicitly; this change does not make native review part of the
+integration release gate.
+
 See [integration recovery](integration-runner.md#bounded-native-recovery) for
 limited retry and cross-invocation evidence reuse.
 
 `native-pilot` is an additive iOS Simulator experiment. It does not extend Web
 `evaluate`, Agent suites, Web policies or generic native forward contracts.
 Its separate `uieval.io/native-pilot-v1` result assesses declared interactions and
-screenshot completeness. It is not a release or design-conformance gate.
+required PNG presence and decoding. It does not establish visual completeness
+and is not a release or design-conformance gate.
 The [integration runner](integration-runner.md) can aggregate these original
 reports in a mandatory native suite with candidate-owned session startup and
 cleanup. Standalone doctor/evaluate commands retain their behavior.

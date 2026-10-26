@@ -104,6 +104,10 @@
       "const": "observed-source-and-installed-app-only",
       "type": "string"
     },
+    "screenshotMethod": {
+      "const": "maestro-take-screenshot",
+      "type": "string"
+    },
     "assertions": {
       "additionalProperties": false,
       "type": "object",

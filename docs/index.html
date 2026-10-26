@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="e1b6c4378e9c5dd3a9a00fd99f689ff59f6e2d9221131b9c3878e0170b500de6">
+  <meta name="source-sha256" content="c0301cbc7e143779aaab9f85858c121ac15134b8097815232117427e76d24b96">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: e1b6c4378e9c5dd3a9a00fd99f689ff59f6e2d9221131b9c3878e0170b500de6</footer>
+        <footer>Source set SHA-256: c0301cbc7e143779aaab9f85858c121ac15134b8097815232117427e76d24b96</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -936,6 +936,14 @@ Reports without <code>metrics</code> remain structurally readable; absence is no
 a zero result. The additional field extends the current alpha contract; readers
 using older strict schemas need the updated source revision to read new output.</p>
 <h2>Change discipline</h2>
+<p>Native results add optional <code>screenshotMethod: &quot;maestro-take-screenshot&quot;</code> for
+validated capture bytes; absent method metadata stays unspecified. The native
+review <code>decision</code> additionally accepts <code>inconclusive</code>, with CLI exit 2 and an
+inconclusive human progress item that prevents completion. Existing result and
+pass/fail review records remain readable, but older strict readers must adopt
+the updated generated schemas before consuming new output. Report digests bind
+the method when present; no OS capture attestation or pixel-completeness test is
+implied. See <a href="native-pilot.md">native review semantics</a> for the evidence boundary.</p>
 <p>Native results optionally carry <code>diagnostic</code> supplemental observations derived
 from original failed-step artifacts. Their cause is always undetermined; they
 cannot change a visibility failure into a pass. Existing records without the
@@ -1073,6 +1081,14 @@ be one digest; reports withhold raw output. Human review notes and aliases are
 self-reported, private local input and HTML-escaped, with bounded schema fields
 and verified contained evidence paths. Human observations cannot waive failed
 or missing automatic evidence or establish release readiness.</p>
+<p>Native screenshot method metadata identifies the executed driver command, not
+an authenticated OS capture implementation or proof that all rendered content
+was captured. Human <code>inconclusive</code> decisions retain the same original
+source/report/PNG validation and prevent criterion completion without asserting
+a product defect. Notes remain bounded and escaped. Do not silently substitute
+an independent screenshot or disable secure-input protection to obtain an
+accepted observation; alternate capture paths are not implemented. Existing
+reports without method metadata stay unspecified, not retroactively attested.</p>
 <h2>Verification-plan boundary</h2>
 <p><a href="verification-plans.md">Plans</a> are trusted candidate policy, not proof of complete risk
 selection. They use the integration loader&#39;s size/containment/regular-file/symlink
@@ -2431,12 +2447,39 @@ Missing, changed, failed or inconclusive evidence cannot be waived. Neither the
 original automatic report nor its status changes. No observation is generated
 automatically, and missing reviews remain pending in the candidate&#39;s handoff.
 Notes and screenshots are private local artifacts, not safe-to-publish by default.</p>
+<p>Use <code>--decision inconclusive</code> when a structurally valid selected screenshot is
+visually insufficient to judge the criterion, such as a missing system surface
+or secure input. Explain the limitation in the bounded note. Review exits are
+0 for pass, 1 for fail and 2 for inconclusive. An inconclusive observation is
+not a product failure: progress retains the human item as inconclusive and the
+overall scope as pending unless another item blocks it. The same original
+evidence validation and source/report/checkpoint binding apply to all decisions;
+corrupt, missing or failed automatic evidence still cannot receive a review.
+Only an actual human observer may supply these records; AI inspection must not
+be recorded as <code>human-observation</code>.</p>
+<p>New captures with validated screenshot bytes record optional <code>screenshotMethod: &quot;maestro-take-screenshot&quot;</code> in the native result. It identifies the executed driver
+command, not an attested OS capture implementation or a guarantee of visual
+fidelity. Both native and review HTML expose the method. Older reports without
+it remain readable and display an unspecified method; absence never implies a
+known capture path. The report digest binds the method when present. Unknown
+method values are rejected. No alternate capture method or automatic detection
+of omitted visual content is implemented. A decoded PNG can omit rendered
+content, so do not replace it after capture or disable input protection to obtain
+acceptance. Preserve the original and obtain usable evidence before recording a
+new human decision.</p>
+<p>This extends the experimental native result and review schemas: older strict
+readers must adopt this source revision before reading the new field or decision.
+Existing pass/fail review records remain supported, and original reports are not
+migrated or rewritten. Candidate integrations must update their engine pin and
+strict readers explicitly; this change does not make native review part of the
+integration release gate.</p>
 <p>See <a href="integration-runner.md#bounded-native-recovery">integration recovery</a> for
 limited retry and cross-invocation evidence reuse.</p>
 <p><code>native-pilot</code> is an additive iOS Simulator experiment. It does not extend Web
 <code>evaluate</code>, Agent suites, Web policies or generic native forward contracts.
 Its separate <code>uieval.io/native-pilot-v1</code> result assesses declared interactions and
-screenshot completeness. It is not a release or design-conformance gate.
+required PNG presence and decoding. It does not establish visual completeness
+and is not a release or design-conformance gate.
 The <a href="integration-runner.md">integration runner</a> can aggregate these original
 reports in a mandatory native suite with candidate-owned session startup and
 cleanup. Standalone doctor/evaluate commands retain their behavior.</p>
@@ -2626,6 +2669,15 @@ Native progress covers only explicitly selected scenarios and their currently
 declared human criteria. It does not include integration lifecycle/check stages,
 authenticate human decisions, or attest to installed binaries and backend state.
 It never auto-selects a passing historical run or rewrites an original failure.</p>
+<p>Native PNG presence, decoding and byte integrity do not prove visual
+completeness: secure inputs or system surfaces may be absent from a capture.
+Optional <code>screenshotMethod</code> records only the driver command, not OS attestation.
+Older reports leave this unspecified. There is no automated omission detector
+or alternate capture path. A human may record <code>inconclusive</code> against an intact
+passed automatic capture when the selected image cannot support the criterion;
+this leaves acceptance pending and does not declare a product failure. Invalid
+or missing artifacts still fail validation. Candidate strict readers and pins
+must explicitly adopt the new field/decision before using them.</p>
 <p>Optional <a href="verification-plans.md">verification plans</a> reconcile declared requirements only.
 Risk selection, command levels and assertion adequacy are trusted project decisions.
 Physical-device/manual approvals are not ingested; required visual inspection stays
