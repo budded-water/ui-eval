@@ -340,6 +340,15 @@ using older strict schemas need the updated source revision to read new output.
 
 ## Change discipline
 
+Native results add optional `screenshotMethod: "maestro-take-screenshot"` for
+validated capture bytes; absent method metadata stays unspecified. The native
+review `decision` additionally accepts `inconclusive`, with CLI exit 2 and an
+inconclusive human progress item that prevents completion. Existing result and
+pass/fail review records remain readable, but older strict readers must adopt
+the updated generated schemas before consuming new output. Report digests bind
+the method when present; no OS capture attestation or pixel-completeness test is
+implied. See [native review semantics](native-pilot.md) for the evidence boundary.
+
 Native results optionally carry `diagnostic` supplemental observations derived
 from original failed-step artifacts. Their cause is always undetermined; they
 cannot change a visibility failure into a pass. Existing records without the

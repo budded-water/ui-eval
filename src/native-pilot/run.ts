@@ -137,6 +137,7 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
       const screenshots = await nativeScreenshots(commands, scenario)
       for (const screenshot of screenshots) await writeFile(resolve(directory, screenshot.screenshot.path), screenshot.bytes, { flag: "wx" })
       result.screenshots = screenshots.map((shot) => shot.screenshot)
+      result.screenshotMethod = "maestro-take-screenshot"
       result.status = "passed"
       result.reason = "All declared interaction assertions completed and every required screenshot decoded."
     } else if (driver.exitCode === 1 && evidence.failed > 0) {

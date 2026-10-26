@@ -16,7 +16,7 @@ export const NativeReviewResultSchema = Type.Object({
   executionId: Type.String(), projectId: Type.String(), reviewId: Type.String(), scenarioId: Type.String(),
   checkpointId: Type.String(), criterion: Type.String(),
   method: Type.Literal("human-observation"),
-  decision: Type.Union([Type.Literal("pass"), Type.Literal("fail")]),
+  decision: Type.Union([Type.Literal("pass"), Type.Literal("fail"), Type.Literal("inconclusive")]),
   reviewerAlias: Type.String({ pattern: "^[a-z][a-z0-9-]{0,63}$" }),
   note: Type.String({ minLength: 1, maxLength: 1000 }),
   sourceDigest: digest, reportDigest: digest, screenshotDigest: digest,
@@ -24,7 +24,7 @@ export const NativeReviewResultSchema = Type.Object({
 }, { additionalProperties: false })
 export type NativeReviewResult = Static<typeof NativeReviewResultSchema>
 export interface NativeReviewOptions {
-  projectRoot: string; report: string; review: string; decision: "pass" | "fail"; reviewer: string; note: string
+  projectRoot: string; report: string; review: string; decision: NativeReviewResult["decision"]; reviewer: string; note: string
 }
 
 /** Add a human observation without rewriting or waiving the automated result. */
@@ -55,7 +55,7 @@ export async function recordNativeReview(options: NativeReviewOptions, source = 
   const directory = resolve(root, ".ui-eval/native-reviews", result.executionId)
   await ensureContainedDirectory(root, directory)
   const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'"><title>Native human review</title><h1>${escape(result.reviewId)}: ${result.decision}</h1><p>Human observation by ${escape(result.reviewerAlias)}. This does not change automated acceptance or establish release readiness.</p><p>${escape(result.criterion)}</p><p>${escape(result.note)}</p><p>Evidence: ${escape(result.reportDigest)} / ${escape(result.screenshotDigest)}</p><a href="review.json">Canonical human observation</a></html>\n`
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'"><title>Native human review</title><h1>${escape(result.reviewId)}: ${result.decision}</h1><p>Human observation by ${escape(result.reviewerAlias)}. This does not change automated acceptance or establish release readiness.</p><p>Screenshot capture method: ${report.screenshotMethod ?? "unspecified"}. Visual completeness is not established by decoding a PNG. An inconclusive observation leaves this criterion unaccepted; it does not assert a product defect.</p><p>${escape(result.criterion)}</p><p>${escape(result.note)}</p><p>Evidence: ${escape(result.reportDigest)} / ${escape(result.screenshotDigest)}</p><a href="review.json">Canonical human observation</a></html>\n`
   const htmlPath = resolve(directory, "review.html"), reportPath = resolve(directory, "review.json")
   await atomicWriteFile(htmlPath, Buffer.from(html))
   await atomicWriteFile(reportPath, Buffer.from(`${JSON.stringify(result, null, 2)}\n`))

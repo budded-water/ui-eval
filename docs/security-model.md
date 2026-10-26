@@ -11,6 +11,15 @@ self-reported, private local input and HTML-escaped, with bounded schema fields
 and verified contained evidence paths. Human observations cannot waive failed
 or missing automatic evidence or establish release readiness.
 
+Native screenshot method metadata identifies the executed driver command, not
+an authenticated OS capture implementation or proof that all rendered content
+was captured. Human `inconclusive` decisions retain the same original
+source/report/PNG validation and prevent criterion completion without asserting
+a product defect. Notes remain bounded and escaped. Do not silently substitute
+an independent screenshot or disable secure-input protection to obtain an
+accepted observation; alternate capture paths are not implemented. Existing
+reports without method metadata stay unspecified, not retroactively attested.
+
 ## Verification-plan boundary
 
 [Plans](verification-plans.md) are trusted candidate policy, not proof of complete risk

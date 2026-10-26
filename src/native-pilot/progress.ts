@@ -90,7 +90,7 @@ export async function summarizeNativeProgress(options: { projectRoot: string; sc
     const selected = scope.reviews.find((item) => item.reviewId === criterion.id)
     const automatic = result.automatic.find((item) => item.id === criterion.scenarioId)!
     if (!selected) {
-      if (automatic.state === "passed") entry.nextAction = "Inspect the declared checkpoint and record an explicit human pass or fail."
+      if (automatic.state === "passed") entry.nextAction = "Inspect the declared checkpoint and record an explicit human pass, fail or inconclusive observation."
       continue
     }
     try {
@@ -108,8 +108,10 @@ export async function summarizeNativeProgress(options: { projectRoot: string; sc
       recheck.push(async () => {
         if (canonicalDigest(await readIntegrationJson(root, selected.path)) !== entry.observationDigest || !(await boundedFile(await containedPath(root, htmlPath), 1024 * 1024)).equals(html)) throw new Error("Human observation changed during summarization")
       })
-      entry.state = review.decision === "pass" ? "passed" : "failed"
-      entry.nextAction = review.decision === "pass" ? "No remaining action for this selected criterion." : "Address the observed issue, capture again and record a new observation; retain this failure."
+      entry.state = ({ pass: "passed", fail: "failed", inconclusive: "inconclusive" } as const)[review.decision]
+      entry.nextAction = review.decision === "pass" ? "No remaining action for this selected criterion."
+        : review.decision === "fail" ? "Address the observed issue, capture again and record a new observation; retain this failure."
+        : "Obtain usable checkpoint evidence, then record a new human observation; retain the original capture and this inconclusive observation."
     } catch {
       entry.state = "invalid"; entry.nextAction = "Select an intact human observation bound to this criterion and the selected passed capture."
     }
