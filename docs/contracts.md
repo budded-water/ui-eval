@@ -340,6 +340,17 @@ using older strict schemas need the updated source revision to read new output.
 
 ## Change discipline
 
+Native screenshot steps optionally declare `supplementalCapture: "simctl"`.
+Trusted human criteria and new review records can explicitly select
+`screenshotMethod: "simctl"`; missing selection means the primary image only.
+Native results optionally add `supplementalScreenshots` and
+`serialExecutionDigest`, binding `native-serial-execution.schema.json` evidence
+and the exact segment plan. Each opted-in capture and original step/image stays
+mandatory. Strict consumers must adopt the generated input/result/review schemas
+and verifier together; declaring a schema alone does not implement this path.
+See [serial capture](native-pilot.md#optional-supplemental-simulator-screenshots)
+for timing, failure, sensitivity and compatibility boundaries.
+
 Native results add optional `screenshotMethod: "maestro-take-screenshot"` for
 validated capture bytes; absent method metadata stays unspecified. The native
 review `decision` additionally accepts `inconclusive`, with CLI exit 2 and an

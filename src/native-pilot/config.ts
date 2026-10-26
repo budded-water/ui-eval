@@ -21,7 +21,7 @@ export const NativePilotScenarioSchema = Type.Object({
     Type.Object({ action: Type.Literal("drag"), start: point, end: point, durationMs: Type.Integer({ minimum: 400, maximum: 2000 }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-visible"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-hidden"), selector }, { additionalProperties: false }),
-    Type.Object({ action: Type.Literal("screenshot"), checkpointId: id }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("screenshot"), checkpointId: id, supplementalCapture: Type.Optional(Type.Literal("simctl")) }, { additionalProperties: false }),
   ]), { minItems: 2, maxItems: 100 }),
 }, { additionalProperties: false })
 
@@ -37,6 +37,7 @@ export const NativePilotProjectSchema = Type.Object({
   reviews: Type.Optional(Type.Array(Type.Object({
     id, scenarioId: id, checkpointId: id,
     criterion: Type.String({ minLength: 1, maxLength: 1000 }),
+    screenshotMethod: Type.Optional(Type.Union([Type.Literal("maestro-take-screenshot"), Type.Literal("simctl")])),
   }, { additionalProperties: false }), { maxItems: 40 })),
   timeoutMs: Type.Integer({ minimum: 1000, maximum: 600000 }),
   scenarios: Type.Record(id, Type.String({ pattern: "^[a-zA-Z0-9/_-]+\\.json$" })),
@@ -74,6 +75,8 @@ export async function loadNativePilotScenario(root: string, project: NativePilot
   const checkpoints = data.steps.filter((step) => step.action === "screenshot").map((step) => step.checkpointId)
   if (!checkpoints.length || new Set(checkpoints).size !== checkpoints.length) throw new Error("Native pilot needs unique screenshot checkpoints")
   if (project.reviews?.some((review) => review.scenarioId === name && !checkpoints.includes(review.checkpointId))) throw new Error("Native review checkpoint must exist in its declared scenario")
+  if (project.reviews?.some((review) => review.scenarioId === name && review.screenshotMethod === "simctl" &&
+    !data.steps.some((step) => step.action === "screenshot" && step.checkpointId === review.checkpointId && step.supplementalCapture === "simctl"))) throw new Error("Native simctl review requires an explicitly enabled supplemental checkpoint")
   if (!data.steps.some((step) => step.action === "assert-visible")) throw new Error("Native pilot needs a visibility assertion")
   for (let index = 0; index < data.steps.length; index++) {
     const step = data.steps[index]

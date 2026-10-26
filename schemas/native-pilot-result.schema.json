@@ -108,6 +108,51 @@
       "const": "maestro-take-screenshot",
       "type": "string"
     },
+    "serialExecutionDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "supplementalScreenshots": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "checkpointId",
+          "method",
+          "path",
+          "digest",
+          "widthPx",
+          "heightPx"
+        ],
+        "properties": {
+          "checkpointId": {
+            "type": "string"
+          },
+          "method": {
+            "const": "simctl",
+            "type": "string"
+          },
+          "path": {
+            "pattern": "^supplemental/[a-z][a-z0-9-]*\\.png$",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "widthPx": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "heightPx": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      }
+    },
     "assertions": {
       "additionalProperties": false,
       "type": "object",

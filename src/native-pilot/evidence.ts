@@ -14,8 +14,9 @@ function object(value: unknown): JsonObject {
 }
 
 /** Bind Maestro 2.9.0 command evidence to every generated step, in order. */
-export function inspectNativeCommands(data: unknown, project: NativePilotProject, scenario: NativePilotScenario, deviceId: string): { passed: number; failed: number; complete: boolean } {
-  if (!Array.isArray(data) || data.length > scenario.steps.length + 3 || data.length < 3) throw new Error("Native command coverage mismatch")
+export function inspectNativeCommands(data: unknown, project: NativePilotProject, scenario: NativePilotScenario, deviceId: string, launchApp = true): { passed: number; failed: number; complete: boolean } {
+  const prefix = launchApp ? 3 : 2
+  if (!Array.isArray(data) || data.length > scenario.steps.length + prefix || data.length < prefix) throw new Error("Native command coverage mismatch")
   let passed = 0
   let failed = 0
   let stopped = false
@@ -34,10 +35,10 @@ export function inspectNativeCommands(data: unknown, project: NativePilotProject
     } else if (index === 1) {
       const expected = { applyConfigurationCommand: { config: { appId: project.appId, name: scenario.scenarioId }, optional: false } }
       if (canonicalDigest(command) !== canonicalDigest(expected)) throw new Error("Native scenario binding mismatch")
-    } else if (index === 2) {
+    } else if (index === 2 && launchApp) {
       if (canonicalDigest(command) !== canonicalDigest({ launchAppCommand: { appId: project.appId, stopApp: project.restartApp ?? true, optional: false } })) throw new Error("Native launch binding mismatch")
     } else {
-      const step = scenario.steps[index - 3]
+      const step = scenario.steps[index - prefix]
       if (step.action === "screenshot") {
         if (canonicalDigest(command) !== canonicalDigest({ takeScreenshotCommand: { path: step.checkpointId, optional: false } })) throw new Error("Native screenshot binding mismatch")
       } else if (step.action === "input-text" || step.action === "erase-text" || step.action === "swipe" || step.action === "drag") {
@@ -86,7 +87,7 @@ export function inspectNativeCommands(data: unknown, project: NativePilotProject
       stopped = true
     }
   }
-  return { passed, failed, complete: !stopped && data.length === scenario.steps.length + 3 }
+  return { passed, failed, complete: !stopped && data.length === scenario.steps.length + prefix }
 }
 
 /** Driver output is untrusted: no symlinks, bounded traversal, unique metadata. */

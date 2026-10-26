@@ -17,7 +17,8 @@ was captured. Human `inconclusive` decisions retain the same original
 source/report/PNG validation and prevent criterion completion without asserting
 a product defect. Notes remain bounded and escaped. Do not silently substitute
 an independent screenshot or disable secure-input protection to obtain an
-accepted observation; alternate capture paths are not implemented. Existing
+accepted observation. Supplemental `simctl` capture requires explicit trusted
+checkpoint and review-method selection as described below. Existing
 reports without method metadata stay unspecified, not retroactively attested.
 
 ## Verification-plan boundary
@@ -101,6 +102,20 @@ The trusted project's optional `restartApp` policy is bound to observed launch
 metadata. Omitted values restart; `false` reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
 a fresh session or reducing assertion/screenshot requirements.
+
+Trusted checkpoint `supplementalCapture: "simctl"` enables an additional local
+capture on the same explicit Simulator UUID, after the corresponding Maestro
+segment returns and before continuation. Original steps and images remain
+mandatory; continuations do not relaunch the App. One monotonic deadline bounds
+the sequence, and capture failure/interruption never authorizes image fallback,
+retry or later commands. Offline consumers bind the canonical segment plan,
+transcript, device, command metadata, order and both image digests; all artifact
+reads retain containment, symlink rejection and PNG budgets. These are producer
+observations, not signed attestations or atomic snapshots. Raw supplemental
+images can contain private system surfaces absent from primary captures, have
+no automatic redaction, and require synthetic state and private retention.
+Trusted human criteria explicitly choose the screenshot method; an omitted
+selection retains primary-image behavior, never silently selecting a supplement.
 
 ## WeChat DevTools pilot boundary
 

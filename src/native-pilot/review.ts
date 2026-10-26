@@ -16,6 +16,7 @@ export const NativeReviewResultSchema = Type.Object({
   executionId: Type.String(), projectId: Type.String(), reviewId: Type.String(), scenarioId: Type.String(),
   checkpointId: Type.String(), criterion: Type.String(),
   method: Type.Literal("human-observation"),
+  screenshotMethod: Type.Optional(Type.Union([Type.Literal("maestro-take-screenshot"), Type.Literal("simctl")])),
   decision: Type.Union([Type.Literal("pass"), Type.Literal("fail"), Type.Literal("inconclusive")]),
   reviewerAlias: Type.String({ pattern: "^[a-z][a-z0-9-]{0,63}$" }),
   note: Type.String({ minLength: 1, maxLength: 1000 }),
@@ -41,12 +42,13 @@ export async function recordNativeReview(options: NativeReviewOptions, source = 
     apiVersion: "uieval.io/integration-v1alpha1", kind: "IntegrationSuite", id: "human-review-evidence",
     projectId: project.projectId, adapter: "native-pilot", scenarios: [{ id: report.scenarioId, timeoutMs: project.timeoutMs }], checks: [],
   }, report.scenarioId, { result: report, reportPath: resolve(root, options.report), htmlPath: resolve(root, options.report, "../report.html") }, sourceDigest, report.device.id)
-  const screenshot = report.screenshots.find((shot) => shot.checkpointId === review.checkpointId)
+  const screenshotMethod = review.screenshotMethod ?? "maestro-take-screenshot"
+  const screenshot = (screenshotMethod === "simctl" ? report.supplementalScreenshots : report.screenshots)?.find((shot) => shot.checkpointId === review.checkpointId)
   if (!screenshot) throw new Error("Human review checkpoint evidence is missing")
   const result: NativeReviewResult = {
     apiVersion: "uieval.io/native-review-v1", kind: "NativeReviewResult", executionId: randomUUID(),
     projectId: project.projectId, reviewId: review.id, scenarioId: report.scenarioId, checkpointId: review.checkpointId,
-    criterion: review.criterion, method: "human-observation", decision: options.decision,
+    criterion: review.criterion, method: "human-observation", screenshotMethod, decision: options.decision,
     reviewerAlias: options.reviewer, note: options.note, sourceDigest, reportDigest: canonicalDigest(report),
     screenshotDigest: screenshot.digest, reportPath: relative(root, resolve(root, options.report)), recordedAt: new Date().toISOString(),
   }
@@ -55,7 +57,7 @@ export async function recordNativeReview(options: NativeReviewOptions, source = 
   const directory = resolve(root, ".ui-eval/native-reviews", result.executionId)
   await ensureContainedDirectory(root, directory)
   const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'"><title>Native human review</title><h1>${escape(result.reviewId)}: ${result.decision}</h1><p>Human observation by ${escape(result.reviewerAlias)}. This does not change automated acceptance or establish release readiness.</p><p>Screenshot capture method: ${report.screenshotMethod ?? "unspecified"}. Visual completeness is not established by decoding a PNG. An inconclusive observation leaves this criterion unaccepted; it does not assert a product defect.</p><p>${escape(result.criterion)}</p><p>${escape(result.note)}</p><p>Evidence: ${escape(result.reportDigest)} / ${escape(result.screenshotDigest)}</p><a href="review.json">Canonical human observation</a></html>\n`
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'"><title>Native human review</title><h1>${escape(result.reviewId)}: ${result.decision}</h1><p>Human observation by ${escape(result.reviewerAlias)}. This does not change automated acceptance or establish release readiness.</p><p>Screenshot capture method: ${screenshotMethod === "simctl" ? "simctl" : report.screenshotMethod ?? "unspecified"}. Visual completeness is not established by decoding a PNG. An inconclusive observation leaves this criterion unaccepted; it does not assert a product defect.</p><p>${escape(result.criterion)}</p><p>${escape(result.note)}</p><p>Evidence: ${escape(result.reportDigest)} / ${escape(result.screenshotDigest)}</p><a href="review.json">Canonical human observation</a></html>\n`
   const htmlPath = resolve(directory, "review.html"), reportPath = resolve(directory, "review.json")
   await atomicWriteFile(htmlPath, Buffer.from(html))
   await atomicWriteFile(reportPath, Buffer.from(`${JSON.stringify(result, null, 2)}\n`))

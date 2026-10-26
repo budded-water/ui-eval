@@ -8,6 +8,18 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Native checkpoints can explicitly request supplemental `simctl` screenshots.
+  Ordered Maestro segments preserve every original step/image and share one
+  monotonic timeout budget. Continuations never relaunch the App; failed or
+  invalid captures stop without fallback. Original and supplemental bytes,
+  device, segment plan and timing transcript are revalidated offline. Trusted
+  human criteria explicitly select the image method, and review/progress bind
+  that choice. JSON/HTML expose both images; no automatic visual decision is
+  added. Strict consumers must adopt the new schemas and verifier together.
+  Serial failures retain raw artifacts without the single-flow diagnostic
+  projection. Supplemental images are private and can contain system surfaces;
+  ordered captures are not simultaneous or guaranteed visually complete.
+
 - Native human reviews accept `inconclusive` (review exit 2) when an intact PNG
   cannot support a visual criterion. Progress keeps that item inconclusive and
   the scope pending unless another item blocks it; automatic results remain
@@ -16,8 +28,8 @@ The source repository is public, but the project has no package release or confi
   `screenshotMethod: "maestro-take-screenshot"`; native/review HTML expose it
   and explain that decoding does not prove visual completeness. Older records
   remain readable with an unspecified method. Strict pinned consumers must
-  adopt the extended native-result/review schemas; no alternate capture path,
-  automatic omission detector or integration release gate is added.
+  adopt the extended native-result/review schemas; no automatic omission
+  detector or integration release gate is added.
 
 - Interrupted `integrate` commands retain diagnostic `partialIntegration` in
   JSON errors and summary paths in text stderr after both interrupted summaries

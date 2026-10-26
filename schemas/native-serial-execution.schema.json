@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "method",
+    "deviceId",
+    "segments"
+  ],
+  "properties": {
+    "method": {
+      "const": "serial-maestro-simctl",
+      "type": "string"
+    },
+    "deviceId": {
+      "type": "string"
+    },
+    "segments": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index",
+          "startedMs",
+          "driverFinishedMs",
+          "exitCode"
+        ],
+        "properties": {
+          "index": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "startedMs": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "driverFinishedMs": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "const": 0,
+                "type": "number"
+              },
+              {
+                "const": 1,
+                "type": "number"
+              }
+            ]
+          },
+          "capture": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "checkpointId",
+              "method",
+              "startedMs",
+              "finishedMs"
+            ],
+            "properties": {
+              "checkpointId": {
+                "type": "string"
+              },
+              "method": {
+                "const": "simctl",
+                "type": "string"
+              },
+              "startedMs": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "finishedMs": {
+                "minimum": 0,
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

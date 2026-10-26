@@ -100,7 +100,10 @@ export async function summarizeNativeProgress(options: { projectRoot: string; sc
       if (resolve(root, selected.path) !== resolve(root, ".ui-eval/native-reviews", review.executionId, "review.json")) throw new Error("Human observation path mismatch")
       if (review.sourceDigest !== sourceDigest) { entry.state = "stale"; entry.nextAction = "Review a current-source capture and record a new observation."; continue }
       const report = reports.get(criterion.scenarioId)
-      if (automatic.state !== "passed" || !report || review.reportDigest !== canonicalDigest(report) || review.screenshotDigest !== report.screenshots.find((shot) => shot.checkpointId === criterion.checkpointId)?.digest || resolve(root, review.reportPath) !== resolve(root, automatic.reportPath!)) throw new Error("Human observation is not bound to the selected passed capture")
+      const method = criterion.screenshotMethod ?? "maestro-take-screenshot"
+      const images = method === "simctl" ? report?.supplementalScreenshots : report?.screenshots
+      if (automatic.state !== "passed" || !report || (review.screenshotMethod ?? "maestro-take-screenshot") !== method ||
+        review.reportDigest !== canonicalDigest(report) || review.screenshotDigest !== images?.find((shot) => shot.checkpointId === criterion.checkpointId)?.digest || resolve(root, review.reportPath) !== resolve(root, automatic.reportPath!)) throw new Error("Human observation is not bound to the selected passed capture")
       const htmlPath = relative(root, resolve(root, selected.path, "../review.html"))
       const html = await boundedFile(await containedPath(root, htmlPath), 1024 * 1024)
       if (!html.length) throw new Error("Missing human observation projection")

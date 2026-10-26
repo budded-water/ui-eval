@@ -6,7 +6,8 @@ import { collectSourceRevision } from "../orchestrator/identity"
 import { runCommand } from "../runtime/command"
 import { hasIncompleteCleanup } from "../runtime/cleanup"
 import { loadNativePilotProject, loadNativePilotScenario } from "./config"
-import { compileNativePilotFlow } from "./flow"
+import { compileNativePilotFlow, nativeCaptureSegments } from "./flow"
+import { runSerialCapture } from "./serial-capture"
 import { findNativeCommandFile, inspectNativeCommands, nativeScreenshots, readNativeEvidence } from "./evidence"
 import { writeNativePilotReport, type NativePilotResult } from "./report"
 import { NativePrerequisiteError, nativeStorage } from "./preflight"
@@ -93,14 +94,16 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
   if (canonicalDigest(await source(options.projectRoot)) !== sourceDigest) throw new Error("Candidate source changed while loading native inputs")
   const directory = await outputDirectory(options.projectRoot)
   const flow = compileNativePilotFlow(project, scenario)
-  await writeFile(resolve(directory, "plan.json"), JSON.stringify({ project, scenario, device, flow }, null, 2) + "\n", { flag: "wx" })
+  const segments = nativeCaptureSegments(project, scenario)
+  const plan = { project, scenario, device, flow, ...(segments ? { segments } : {}) }
+  await writeFile(resolve(directory, "plan.json"), JSON.stringify(plan, null, 2) + "\n", { flag: "wx" })
   await writeFile(resolve(directory, "source.json"), JSON.stringify(sourceRevision, null, 2) + "\n", { flag: "wx" })
   await writeFile(resolve(directory, "flow.yaml"), flow, { flag: "wx" })
   const result: NativePilotResult = {
     apiVersion: "uieval.io/native-pilot-v1", kind: "NativePilotResult", experimental: true,
     projectId: project.projectId, scenarioId: scenario.scenarioId, executionId: directory.split("/").at(-1)!,
     status: "inconclusive", reason: "Native evidence was not completed.",
-    planDigest: canonicalDigest({ project, scenario, device, flow }), sourceDigest, sourceCommit: sourceRevision.commitSha,
+    planDigest: canonicalDigest(plan), sourceDigest, sourceCommit: sourceRevision.commitSha,
     device, appId: project.appId, provenanceAssurance: "observed-source-and-installed-app-only",
     assertions: { passed: 0, failed: 0 }, screenshots: [],
     limitations: [
@@ -115,6 +118,25 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
   try {
     const wallStart = Date.now()
     const monotonicStart = performance.now()
+    if (segments) {
+      const observed = await (async () => {
+        try {
+          return await runSerialCapture(options.projectRoot, directory, project, scenario, device.id, dependencies.command ?? runCommand, options.signal)
+        } finally {
+          result.driverTiming = { wallElapsedMs: Date.now() - wallStart, monotonicElapsedMs: performance.now() - monotonicStart, timeoutMs: project.timeoutMs }
+        }
+      })()
+      result.assertions = observed.assertions
+      result.serialExecutionDigest = observed.executionDigest
+      result.status = observed.status
+      if (observed.status === "passed") {
+        for (const shot of observed.screenshots) await writeFile(resolve(directory, shot.screenshot.path), shot.bytes, { flag: "wx" })
+        result.screenshots = observed.screenshots.map((shot) => shot.screenshot)
+        result.supplementalScreenshots = observed.supplemental
+        result.screenshotMethod = "maestro-take-screenshot"
+        result.reason = "All declared interactions, original screenshots and opted-in supplemental captures completed."
+      } else result.reason = "A declared Maestro visibility assertion failed during serial capture; no continuation was executed."
+    } else {
     const driver = await (async () => {
       try {
         return await (dependencies.command ?? runCommand)("maestro", [
@@ -146,6 +168,7 @@ export async function evaluateNativePilot(options: NativePilotOptions, dependenc
       result.diagnostic = (await nativeFailureDiagnostic(directory, commands, records, scenario)).diagnostic
     } else {
       result.reason = "Driver exit and bound command evidence did not establish a complete run."
+    }
     }
     if (canonicalDigest(await source(options.projectRoot)) !== sourceDigest) {
       result.status = "inconclusive"
