@@ -74,6 +74,18 @@
             "minLength": 1,
             "maxLength": 1000,
             "type": "string"
+          },
+          "screenshotMethod": {
+            "anyOf": [
+              {
+                "const": "maestro-take-screenshot",
+                "type": "string"
+              },
+              {
+                "const": "simctl",
+                "type": "string"
+              }
+            ]
           }
         }
       }

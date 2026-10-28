@@ -29,8 +29,13 @@ It never auto-selects a passing historical run or rewrites an original failure.
 Native PNG presence, decoding and byte integrity do not prove visual
 completeness: secure inputs or system surfaces may be absent from a capture.
 Optional `screenshotMethod` records only the driver command, not OS attestation.
-Older reports leave this unspecified. There is no automated omission detector
-or alternate capture path. A human may record `inconclusive` against an intact
+Older reports leave this unspecified. Opted-in checkpoints can add serial
+`simctl` captures while retaining primary images; these are ordered, not
+simultaneous frames, and can expose additional sensitive system surfaces.
+Neither capture method guarantees visual completeness. There is no automated
+omission detector or best-image fallback. Human criteria explicitly select the
+image method; serial assertion failures retain raw artifacts without the
+single-flow diagnostic projection. A human may record `inconclusive` against an intact
 passed automatic capture when the selected image cannot support the criterion;
 this leaves acceptance pending and does not declare a product failure. Invalid
 or missing artifacts still fail validation. Candidate strict readers and pins

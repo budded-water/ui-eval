@@ -354,6 +354,10 @@
               "checkpointId": {
                 "pattern": "^[a-z][a-z0-9-]{0,63}$",
                 "type": "string"
+              },
+              "supplementalCapture": {
+                "const": "simctl",
+                "type": "string"
               }
             }
           }

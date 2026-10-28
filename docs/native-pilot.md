@@ -18,7 +18,7 @@ Movement/resize requires an actual changed-state assertion or separate human
 review; neither a screenshot nor an unchanged visible control proves movement.
 
 Optional project `reviews` declare a fixed list of `{id, scenarioId,
-checkpointId, criterion}`. Scenario/checkpoint references are validated.
+checkpointId, criterion, screenshotMethod?}`. Scenario/checkpoint references are validated.
 After inspecting complete native evidence, an operator can record a bounded,
 synthetic-data observation with a local reviewer alias:
 
@@ -53,8 +53,8 @@ command, not an attested OS capture implementation or a guarantee of visual
 fidelity. Both native and review HTML expose the method. Older reports without
 it remain readable and display an unspecified method; absence never implies a
 known capture path. The report digest binds the method when present. Unknown
-method values are rejected. No alternate capture method or automatic detection
-of omitted visual content is implemented. A decoded PNG can omit rendered
+method values are rejected. Optional supplemental capture is described below;
+no automatic detection of omitted visual content is implemented. A decoded PNG can omit rendered
 content, so do not replace it after capture or disable input protection to obtain
 acceptance. Preserve the original and obtain usable evidence before recording a
 new human decision.
@@ -125,6 +125,59 @@ an assertion remain inconclusive; other driver failures, timeouts, incomplete or
 evidence are inconclusive. Source identity is checked before/after capture;
 source changes invalidate acceptance.
 
+### Optional supplemental Simulator screenshots
+
+A trusted scenario can opt individual checkpoints into an additional capture:
+
+```json
+{"action":"screenshot","checkpointId":"keyboard","supplementalCapture":"simctl"}
+```
+
+The engine partitions the original steps at these checkpoints, runs the first
+Maestro segment with the declared launch policy, and runs subsequent segments
+without `launchApp`. Every original step remains mandatory and ordered. After a
+segment returns and its commands and original PNGs validate, it invokes
+`xcrun simctl io <selected-uuid> screenshot --type=png <owned-output>` before
+any continuation. There are no retries, added UI actions or arbitrary sleeps.
+One monotonic `timeoutMs` budget covers all segments, capture commands and
+intermediate evidence validation. Timeout, cancellation, missing/corrupt images
+or nonzero capture exits stop the sequence and remain inconclusive. A bound
+Maestro assertion mismatch remains failed and stops subsequent segments.
+
+Both images are retained: original PNGs remain beside the report; supplemental
+PNGs are under `supplemental/`. The result adds `supplementalScreenshots` with
+explicit `simctl` method and image digests, plus `serialExecutionDigest` binding
+`serial-execution.json`. That transcript records the selected device, segment
+indexes, command exit codes and monotonic start/finish offsets. `plan.json`
+includes the exact segment ranges (zero-based, exclusive end) and flow text;
+each `segments/<index>/` holds its flow and original driver evidence. Offline
+integration, review and progress validation reconstruct these bindings, check
+ordering/deadlines and re-read both image methods. They do not execute commands.
+Incomplete infrastructure runs can retain diagnostic files without an accepted
+transcript or screenshot references; files alone never establish a pass.
+
+These captures are ordered observations, **not simultaneous frames**. Driver
+cleanup and validation introduce a gap; animations or external state may change.
+Neither method guarantees secure-input/system-surface fidelity, detects omitted
+content, authenticates the producer, or attests the installed binary. Use a
+dedicated Simulator, synthetic input and private artifact storage: supplemental
+images can include sensitive system surfaces absent from the primary image.
+There is no change to input protection, redaction or retention policy.
+
+To review the supplemental image, set `screenshotMethod: "simctl"` on the
+corresponding trusted project `reviews` entry. This requires that checkpoint's
+explicit capture opt-in. Omitted or `"maestro-take-screenshot"` selects the
+original image. The human record binds the selected method and digest; there is
+no best-image selection or fallback. Existing records lacking method selection
+remain valid only for primary-image criteria. A human must still inspect the
+selected image; the engine never creates a human decision automatically.
+
+Without any opt-in, the existing single-flow capture path is unchanged. Older
+strict readers must update their engine pin and generated project, scenario,
+result and review schemas to consume this extension. The new transcript schema
+is `native-serial-execution.schema.json`. Serial failures retain raw artifacts
+but do not emit the single-flow `diagnostic` projection.
+
 ## Reports and limits
 
 Each run writes `.ui-eval/native-runs/<execution-id>/report.json` and `report.html`.
@@ -159,13 +212,16 @@ callers relying on abort-error identity must handle this wrapper explicitly.
 
 New captures add optional `driverTiming` to the result and HTML: signed
 `wallElapsedMs` from `Date.now()`, `monotonicElapsedMs` from `performance.now()`,
-and the unchanged configured `timeoutMs`. The interval covers the driver command
-through owned-process cleanup, excluding preflight, evidence validation and
-report publication. A wall-clock adjustment can produce a negative value;
+and the configured `timeoutMs`. For a single flow the interval covers the driver
+command through owned-process cleanup, excluding evidence validation. For
+serial capture it also includes segment preparation, supplemental capture and
+intermediate evidence validation. Both exclude preflight and report publication.
+A wall-clock adjustment can produce a negative value;
 monotonic clock behavior across host suspension depends on the platform/runtime.
 Neither clock is a portable measure of active CPU time. Clock disagreement and
 deadline overshoot are observations, not proof of sleep, a timeout cause or a
-product failure. No power logs are collected and timeout policy is unchanged.
+product failure. No power logs are collected; serial execution enforces the
+shared monotonic deadline described above.
 Older records without timing remain readable; older strict readers need an
 explicit engine/schema update before consuming new records or `partialRun`.
 An existing consumer pin does not gain this behavior automatically.

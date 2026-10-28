@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="c0301cbc7e143779aaab9f85858c121ac15134b8097815232117427e76d24b96">
+  <meta name="source-sha256" content="25b0e5d2abfdd1c6228ac9a804b92a5cb663901b1601bdbfd5a62222fc9cc1e5">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: c0301cbc7e143779aaab9f85858c121ac15134b8097815232117427e76d24b96</footer>
+        <footer>Source set SHA-256: 25b0e5d2abfdd1c6228ac9a804b92a5cb663901b1601bdbfd5a62222fc9cc1e5</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -936,6 +936,16 @@ Reports without <code>metrics</code> remain structurally readable; absence is no
 a zero result. The additional field extends the current alpha contract; readers
 using older strict schemas need the updated source revision to read new output.</p>
 <h2>Change discipline</h2>
+<p>Native screenshot steps optionally declare <code>supplementalCapture: &quot;simctl&quot;</code>.
+Trusted human criteria and new review records can explicitly select
+<code>screenshotMethod: &quot;simctl&quot;</code>; missing selection means the primary image only.
+Native results optionally add <code>supplementalScreenshots</code> and
+<code>serialExecutionDigest</code>, binding <code>native-serial-execution.schema.json</code> evidence
+and the exact segment plan. Each opted-in capture and original step/image stays
+mandatory. Strict consumers must adopt the generated input/result/review schemas
+and verifier together; declaring a schema alone does not implement this path.
+See <a href="native-pilot.md#optional-supplemental-simulator-screenshots">serial capture</a>
+for timing, failure, sensitivity and compatibility boundaries.</p>
 <p>Native results add optional <code>screenshotMethod: &quot;maestro-take-screenshot&quot;</code> for
 validated capture bytes; absent method metadata stays unspecified. The native
 review <code>decision</code> additionally accepts <code>inconclusive</code>, with CLI exit 2 and an
@@ -1087,7 +1097,8 @@ was captured. Human <code>inconclusive</code> decisions retain the same original
 source/report/PNG validation and prevent criterion completion without asserting
 a product defect. Notes remain bounded and escaped. Do not silently substitute
 an independent screenshot or disable secure-input protection to obtain an
-accepted observation; alternate capture paths are not implemented. Existing
+accepted observation. Supplemental <code>simctl</code> capture requires explicit trusted
+checkpoint and review-method selection as described below. Existing
 reports without method metadata stay unspecified, not retroactively attested.</p>
 <h2>Verification-plan boundary</h2>
 <p><a href="verification-plans.md">Plans</a> are trusted candidate policy, not proof of complete risk
@@ -1161,6 +1172,19 @@ The trusted project&#39;s optional <code>restartApp</code> policy is bound to ob
 metadata. Omitted values restart; <code>false</code> reuses the current App and leaves
 startup readiness and navigation state to candidate setup, without certifying
 a fresh session or reducing assertion/screenshot requirements.</p>
+<p>Trusted checkpoint <code>supplementalCapture: &quot;simctl&quot;</code> enables an additional local
+capture on the same explicit Simulator UUID, after the corresponding Maestro
+segment returns and before continuation. Original steps and images remain
+mandatory; continuations do not relaunch the App. One monotonic deadline bounds
+the sequence, and capture failure/interruption never authorizes image fallback,
+retry or later commands. Offline consumers bind the canonical segment plan,
+transcript, device, command metadata, order and both image digests; all artifact
+reads retain containment, symlink rejection and PNG budgets. These are producer
+observations, not signed attestations or atomic snapshots. Raw supplemental
+images can contain private system surfaces absent from primary captures, have
+no automatic redaction, and require synthetic state and private retention.
+Trusted human criteria explicitly choose the screenshot method; an omitted
+selection retains primary-image behavior, never silently selecting a supplement.</p>
 <h2>WeChat DevTools pilot boundary</h2>
 <p>The separate <a href="wechat-pilot.md">WeChat pilot</a> executes trusted, bounded official
 CLI argv against a declared synthetic runtime below the candidate root. It
@@ -2433,7 +2457,7 @@ an observable outcome. It compiles to Maestro&#39;s point-to-point swipe and bin
 the exact pinned command metadata. Driver completion is not a geometry check.
 Movement/resize requires an actual changed-state assertion or separate human
 review; neither a screenshot nor an unchanged visible control proves movement.</p>
-<p>Optional project <code>reviews</code> declare a fixed list of <code>{id, scenarioId, checkpointId, criterion}</code>. Scenario/checkpoint references are validated.
+<p>Optional project <code>reviews</code> declare a fixed list of <code>{id, scenarioId, checkpointId, criterion, screenshotMethod?}</code>. Scenario/checkpoint references are validated.
 After inspecting complete native evidence, an operator can record a bounded,
 synthetic-data observation with a local reviewer alias:</p>
 <pre><code class="language-sh">bun run ui-eval native-pilot review --project-root /path/to/app \
@@ -2462,8 +2486,8 @@ command, not an attested OS capture implementation or a guarantee of visual
 fidelity. Both native and review HTML expose the method. Older reports without
 it remain readable and display an unspecified method; absence never implies a
 known capture path. The report digest binds the method when present. Unknown
-method values are rejected. No alternate capture method or automatic detection
-of omitted visual content is implemented. A decoded PNG can omit rendered
+method values are rejected. Optional supplemental capture is described below;
+no automatic detection of omitted visual content is implemented. A decoded PNG can omit rendered
 content, so do not replace it after capture or disable input protection to obtain
 acceptance. Preserve the original and obtain usable evidence before recording a
 new human decision.</p>
@@ -2524,6 +2548,50 @@ failed interaction. Missing/unknown diagnostics or infrastructure errors during
 an assertion remain inconclusive; other driver failures, timeouts, incomplete or invalid
 evidence are inconclusive. Source identity is checked before/after capture;
 source changes invalidate acceptance.</p>
+<h3>Optional supplemental Simulator screenshots</h3>
+<p>A trusted scenario can opt individual checkpoints into an additional capture:</p>
+<pre><code class="language-json">{&quot;action&quot;:&quot;screenshot&quot;,&quot;checkpointId&quot;:&quot;keyboard&quot;,&quot;supplementalCapture&quot;:&quot;simctl&quot;}
+</code></pre>
+<p>The engine partitions the original steps at these checkpoints, runs the first
+Maestro segment with the declared launch policy, and runs subsequent segments
+without <code>launchApp</code>. Every original step remains mandatory and ordered. After a
+segment returns and its commands and original PNGs validate, it invokes
+<code>xcrun simctl io &lt;selected-uuid&gt; screenshot --type=png &lt;owned-output&gt;</code> before
+any continuation. There are no retries, added UI actions or arbitrary sleeps.
+One monotonic <code>timeoutMs</code> budget covers all segments, capture commands and
+intermediate evidence validation. Timeout, cancellation, missing/corrupt images
+or nonzero capture exits stop the sequence and remain inconclusive. A bound
+Maestro assertion mismatch remains failed and stops subsequent segments.</p>
+<p>Both images are retained: original PNGs remain beside the report; supplemental
+PNGs are under <code>supplemental/</code>. The result adds <code>supplementalScreenshots</code> with
+explicit <code>simctl</code> method and image digests, plus <code>serialExecutionDigest</code> binding
+<code>serial-execution.json</code>. That transcript records the selected device, segment
+indexes, command exit codes and monotonic start/finish offsets. <code>plan.json</code>
+includes the exact segment ranges (zero-based, exclusive end) and flow text;
+each <code>segments/&lt;index&gt;/</code> holds its flow and original driver evidence. Offline
+integration, review and progress validation reconstruct these bindings, check
+ordering/deadlines and re-read both image methods. They do not execute commands.
+Incomplete infrastructure runs can retain diagnostic files without an accepted
+transcript or screenshot references; files alone never establish a pass.</p>
+<p>These captures are ordered observations, <strong>not simultaneous frames</strong>. Driver
+cleanup and validation introduce a gap; animations or external state may change.
+Neither method guarantees secure-input/system-surface fidelity, detects omitted
+content, authenticates the producer, or attests the installed binary. Use a
+dedicated Simulator, synthetic input and private artifact storage: supplemental
+images can include sensitive system surfaces absent from the primary image.
+There is no change to input protection, redaction or retention policy.</p>
+<p>To review the supplemental image, set <code>screenshotMethod: &quot;simctl&quot;</code> on the
+corresponding trusted project <code>reviews</code> entry. This requires that checkpoint&#39;s
+explicit capture opt-in. Omitted or <code>&quot;maestro-take-screenshot&quot;</code> selects the
+original image. The human record binds the selected method and digest; there is
+no best-image selection or fallback. Existing records lacking method selection
+remain valid only for primary-image criteria. A human must still inspect the
+selected image; the engine never creates a human decision automatically.</p>
+<p>Without any opt-in, the existing single-flow capture path is unchanged. Older
+strict readers must update their engine pin and generated project, scenario,
+result and review schemas to consume this extension. The new transcript schema
+is <code>native-serial-execution.schema.json</code>. Serial failures retain raw artifacts
+but do not emit the single-flow <code>diagnostic</code> projection.</p>
 <h2>Reports and limits</h2>
 <p>Each run writes <code>.ui-eval/native-runs/&lt;execution-id&gt;/report.json</code> and <code>report.html</code>.
 The result schema is <code>schemas/native-pilot-result.schema.json</code>; HTML derives from
@@ -2554,13 +2622,16 @@ the original abort reason as <code>cause</code> after successful interrupted pub
 callers relying on abort-error identity must handle this wrapper explicitly.</p>
 <p>New captures add optional <code>driverTiming</code> to the result and HTML: signed
 <code>wallElapsedMs</code> from <code>Date.now()</code>, <code>monotonicElapsedMs</code> from <code>performance.now()</code>,
-and the unchanged configured <code>timeoutMs</code>. The interval covers the driver command
-through owned-process cleanup, excluding preflight, evidence validation and
-report publication. A wall-clock adjustment can produce a negative value;
+and the configured <code>timeoutMs</code>. For a single flow the interval covers the driver
+command through owned-process cleanup, excluding evidence validation. For
+serial capture it also includes segment preparation, supplemental capture and
+intermediate evidence validation. Both exclude preflight and report publication.
+A wall-clock adjustment can produce a negative value;
 monotonic clock behavior across host suspension depends on the platform/runtime.
 Neither clock is a portable measure of active CPU time. Clock disagreement and
 deadline overshoot are observations, not proof of sleep, a timeout cause or a
-product failure. No power logs are collected and timeout policy is unchanged.
+product failure. No power logs are collected; serial execution enforces the
+shared monotonic deadline described above.
 Older records without timing remain readable; older strict readers need an
 explicit engine/schema update before consuming new records or <code>partialRun</code>.
 An existing consumer pin does not gain this behavior automatically.</p>
@@ -2672,8 +2743,13 @@ It never auto-selects a passing historical run or rewrites an original failure.<
 <p>Native PNG presence, decoding and byte integrity do not prove visual
 completeness: secure inputs or system surfaces may be absent from a capture.
 Optional <code>screenshotMethod</code> records only the driver command, not OS attestation.
-Older reports leave this unspecified. There is no automated omission detector
-or alternate capture path. A human may record <code>inconclusive</code> against an intact
+Older reports leave this unspecified. Opted-in checkpoints can add serial
+<code>simctl</code> captures while retaining primary images; these are ordered, not
+simultaneous frames, and can expose additional sensitive system surfaces.
+Neither capture method guarantees visual completeness. There is no automated
+omission detector or best-image fallback. Human criteria explicitly select the
+image method; serial assertion failures retain raw artifacts without the
+single-flow diagnostic projection. A human may record <code>inconclusive</code> against an intact
 passed automatic capture when the selected image cannot support the criterion;
 this leaves acceptance pending and does not declare a product failure. Invalid
 or missing artifacts still fail validation. Candidate strict readers and pins

@@ -163,6 +163,9 @@ describe("explicit native acceptance progress", () => {
     const review = await f.observe()
     expect(await readFile(review.htmlPath, "utf8")).toContain("capture method: unspecified")
     expect((await f.summarize()).result.status).toBe("complete")
+    const legacyReview = { ...review.result }; delete legacyReview.screenshotMethod
+    await writeFile(review.reportPath, JSON.stringify(legacyReview))
+    expect((await f.summarize()).result.status).toBe("complete")
     await writeFile(f.run.reportPath, JSON.stringify({ ...legacy, screenshotMethod: "simctl" }))
     expect((await f.summarize()).result.automatic[0].state).toBe("invalid")
   })

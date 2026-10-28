@@ -4,7 +4,8 @@ import { Value } from "@sinclair/typebox/value"
 import { canonicalDigest } from "../contracts/canonical-json"
 import { loadNativePilotProject, loadNativePilotScenario } from "../native-pilot/config"
 import { findNativeCommandFile, inspectNativeCommands } from "../native-pilot/evidence"
-import { compileNativePilotFlow } from "../native-pilot/flow"
+import { compileNativePilotFlow, nativeCaptureSegments } from "../native-pilot/flow"
+import { inspectSerialCapture } from "../native-pilot/serial-capture"
 import { NativePilotResultSchema } from "../native-pilot/report"
 import { nativeFailureDiagnostic } from "../native-pilot/diagnostics"
 import type { evaluateNativePilot } from "../native-pilot/run"
@@ -48,7 +49,8 @@ export async function nativeIntegrationEvidence(
   const project = await loadNativePilotProject(root)
   const scenario = await loadNativePilotScenario(root, project, scenarioId)
   const flow = compileNativePilotFlow(project, scenario)
-  const plan = { project, scenario, device: result.device, flow }
+  const segments = nativeCaptureSegments(project, scenario)
+  const plan = { project, scenario, device: result.device, flow, ...(segments ? { segments } : {}) }
   if (project.projectId !== suite.projectId || result.appId !== project.appId || result.device.maestroVersion !== project.maestroVersion ||
     !result.device.runtime.startsWith("com.apple.CoreSimulator.SimRuntime.iOS-") ||
     result.planDigest !== canonicalDigest(plan)) throw new Error("Native result does not match the declared plan")
@@ -60,7 +62,26 @@ export async function nativeIntegrationEvidence(
     throw new Error("Native sealed source or flow does not match its report")
   }
 
-  if (result.status !== "inconclusive" || result.screenshots.length || result.diagnostic) {
+  if (segments) {
+    if (result.diagnostic) throw new Error("Legacy failure diagnostics do not describe serial capture")
+    if (result.status !== "inconclusive" || result.serialExecutionDigest || result.screenshots.length || result.supplementalScreenshots) {
+      const observed = await inspectSerialCapture(directory, project, scenario, deviceId, read)
+      if (result.serialExecutionDigest !== observed.executionDigest || canonicalDigest(result.assertions) !== canonicalDigest(observed.assertions) ||
+        (result.status !== "inconclusive" && result.status !== observed.status)) throw new Error("Native serial result contradicts its evidence")
+      if (result.status === "passed" && (result.screenshotMethod !== "maestro-take-screenshot" ||
+        canonicalDigest(result.screenshots) !== canonicalDigest(observed.screenshots.map((shot) => shot.screenshot)) ||
+        canonicalDigest(result.supplementalScreenshots) !== canonicalDigest(observed.supplemental))) throw new Error("Native serial pass is missing declared images")
+      if (result.status === "failed" && (result.screenshots.length || result.supplementalScreenshots)) throw new Error("Native serial failure cannot publish acceptance images")
+      for (const shot of result.screenshots) {
+        const expected = observed.screenshots.find((item) => item.screenshot.checkpointId === shot.checkpointId)
+        if (!expected || canonicalDigest(shot) !== canonicalDigest(expected.screenshot) ||
+          !expected.bytes.equals(await read(resolve(directory, shot.path), 32 * 1024 * 1024))) throw new Error("Native serial original image changed")
+      }
+      if (result.supplementalScreenshots && canonicalDigest(result.supplementalScreenshots) !== canonicalDigest(observed.supplemental)) throw new Error("Native supplemental images changed")
+    } else if (result.assertions.passed || result.assertions.failed) throw new Error("Native serial assertions require execution evidence")
+  } else if (result.serialExecutionDigest || result.supplementalScreenshots) {
+    throw new Error("Undeclared native serial evidence")
+  } else if (result.status !== "inconclusive" || result.screenshots.length || result.diagnostic) {
     const driverRoot = await containedPath(root, relative(root, resolve(directory, "driver")))
     const commandPath = await findNativeCommandFile(driverRoot)
     const commands: unknown = JSON.parse((await read(commandPath)).toString("utf8"))

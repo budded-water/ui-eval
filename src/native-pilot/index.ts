@@ -1,6 +1,7 @@
 export { NativePilotProjectSchema, NativePilotScenarioSchema, loadNativePilotProject, loadNativePilotScenario } from "./config"
 export type { NativePilotProject, NativePilotScenario } from "./config"
 export { NativePilotResultSchema } from "./report"
+export { NativeSerialExecutionSchema } from "./serial-capture"
 export type { NativePilotResult } from "./report"
 export { doctorNativePilot, evaluateNativePilot, NativePilotInterruptedError } from "./run"
 export type { NativePilotOptions, NativePilotRun } from "./run"
