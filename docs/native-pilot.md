@@ -89,6 +89,17 @@ The native adapter does not install/reset apps, boot devices, start Metro, suppl
 credentials or isolate backend calls. Reviewed integration prepare/session
 commands may perform candidate setup; those commands own that behavior.
 
+For repeated runs, prefer an existing dedicated test simulator when its runtime,
+architecture, availability and initial state meet the scenario requirements.
+Inspect the intended device and ensure another task is not using it before
+preparation. Reuse the device, not an earlier test result: each run still binds
+its own device, app, source and evidence. Use a separate simulator when a
+different environment, concurrent isolation or preservation of existing state
+requires it. Do not erase device, App or keychain state, sign out an account,
+or remove a simulator merely to prepare a run without the relevant authority.
+Candidate-owned setup remains responsible for selection and lifecycle; this
+pilot neither discovers a reusable device nor creates one automatically.
+
 ```sh
 bun run ui-eval native-pilot doctor --project-root /path/to/app --device <uuid>
 bun run ui-eval native-pilot evaluate guest-home --project-root /path/to/app --device <uuid> --format json
