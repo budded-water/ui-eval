@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="a545727e5c67296025eb5cca2b168735ba70a76b3bab78a8bfc654bbcef25d67">
+  <meta name="source-sha256" content="5196b346775250d9bc7bbb48166bf3b36b203eb53f5a4b83ddf768fcaa132ffa">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: a545727e5c67296025eb5cca2b168735ba70a76b3bab78a8bfc654bbcef25d67</footer>
+        <footer>Source set SHA-256: 5196b346775250d9bc7bbb48166bf3b36b203eb53f5a4b83ddf768fcaa132ffa</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2375,6 +2375,9 @@ the original PNG, run:</p>
 <p>The private JSON/HTML pair under <code>.ui-eval/wechat-reviews/</code> binds source, original
 report, checkpoint PNG and declared criterion. Recording revalidates original
 evidence and unchanged source. Failed/inconclusive runs cannot receive a review.
+The original human report must exactly render the validated JSON and its image
+references; unrelated or modified original HTML is rejected. Available visual
+failures remain failures when another applicable run lacks its observation.
 The automated result is unchanged. Aliases are self-reported, not authenticated
 identity or approval. Review exits are pass 0, fail 1 and inconclusive 2.</p>
 <h2>Reconcile a declared scope</h2>

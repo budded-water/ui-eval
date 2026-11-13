@@ -10,7 +10,7 @@ import { atomicWriteFile, ensureContainedDirectory } from "../storage-local/file
 import { CheckpointReviewFields } from "../verification/checkpoint-review"
 import { containedPath, loadWechatProject } from "./config"
 import { boundedFile } from "./evidence"
-import { WechatPilotResultSchema, type WechatPilotResult } from "./report"
+import { renderWechatReport, WechatPilotResultSchema, type WechatPilotResult } from "./report"
 
 export const WechatReviewResultSchema = Type.Object({
   apiVersion: Type.Literal("uieval.io/wechat-review-v1"), kind: Type.Literal("WechatReviewResult"), ...CheckpointReviewFields,
@@ -33,6 +33,8 @@ export async function verifyWechatReport(root: string, reference: string, source
     apiVersion: "uieval.io/integration-v1alpha1", kind: "IntegrationSuite", id: "wechat-review-evidence", projectId: project.projectId,
     adapter: "wechat-pilot", scenarios: [{ id: report.scenarioId, timeoutMs: project.timeoutMs }], checks: [],
   }, report.scenarioId, { result: report, reportPath: resolve(root, reference), htmlPath: resolve(root, reference, "../report.html") }, sourceDigest)
+  const html = await boundedFile(await containedPath(root, relative(root, resolve(root, reference, "../report.html"))), 8 * 1024 * 1024)
+  if (html.toString("utf8") !== renderWechatReport(report)) throw new Error("Original WeChat JSON/HTML pair differs")
   return { project, report }
 }
 

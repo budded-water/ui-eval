@@ -28,11 +28,15 @@ export const WechatPilotResultSchema = Type.Object({
 }, strict)
 export type WechatPilotResult = Static<typeof WechatPilotResultSchema>
 const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)
-export async function writeWechatReport(directory: string, result: WechatPilotResult): Promise<void> {
+export function renderWechatReport(result: WechatPilotResult): string {
   if (!Value.Check(WechatPilotResultSchema, result)) throw new Error("Invalid WeChat pilot result")
   if (result.status === "passed" && (result.cleanup !== "completed" || result.steps.some((step) => step.status !== "passed") || result.assertions.passed < 1 || result.assertions.failed !== 0 || result.screenshots.length < 1)) throw new Error("WeChat pilot pass is missing acceptance evidence")
   const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"><title>WeChat UI Eval pilot</title><style>body{font:16px system-ui;max-width:1100px;margin:32px auto;padding:0 24px}img{width:100%;max-width:340px;border:1px solid #ddd}figure{display:inline-block;vertical-align:top;margin:16px}code{overflow-wrap:anywhere}td,th{padding:8px;text-align:left}</style><h1>${escape(result.scenarioId)}: ${escape(result.status)}</h1><p>${escape(result.reason)}</p><p>Experimental WeChat DevTools evidence · assertions: ${result.assertions.passed} passed, ${result.assertions.failed} failed · cleanup: ${escape(result.cleanup)}</p><p>Source: <code>${escape(result.sourceCommit)}</code> · compiled runtime: <code>${escape(result.runtimeDigest)}</code></p><table><tr><th>Step</th><th>Action</th><th>Result</th></tr>${result.steps.map((step) => `<tr><td>${step.index + 1}</td><td>${escape(step.action)}</td><td>${escape(step.status)}</td></tr>`).join("")}</table>${result.screenshots.map((shot) => `<figure><figcaption>${escape(shot.checkpointId)} (${shot.widthPx} × ${shot.heightPx})</figcaption><img src="${escape(shot.path)}" alt="${escape(shot.checkpointId)}"></figure>`).join("")}<h2>Coverage limits</h2><ul>${result.limitations.map((item) => `<li>${escape(item)}</li>`).join("")}</ul><p>Machine record: <a href="report.json">report.json</a></p></html>\n`
-  await writeFile(resolve(directory, "report.json"), JSON.stringify(result, null, 2) + "\n", { flag: "wx", mode: 0o600 })
   const diagnostics = result.diagnostics?.length ? `<h2>Sanitized failure stages</h2><ul>${result.diagnostics.map((entry) => `<li>${escape(entry.phase)} / ${escape(entry.tool)} / ${escape(entry.code)} (${entry.elapsedMs} ms; budget ${entry.budgetMs} ms)</li>`).join("")}</ul>` : ""
-  await writeFile(resolve(directory, "report.html"), html + diagnostics, { flag: "wx", mode: 0o600 })
+  return html + diagnostics
+}
+export async function writeWechatReport(directory: string, result: WechatPilotResult): Promise<void> {
+  const html = renderWechatReport(result)
+  await writeFile(resolve(directory, "report.json"), JSON.stringify(result, null, 2) + "\n", { flag: "wx", mode: 0o600 })
+  await writeFile(resolve(directory, "report.html"), html, { flag: "wx", mode: 0o600 })
 }

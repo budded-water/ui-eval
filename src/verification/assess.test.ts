@@ -59,6 +59,7 @@ describe("verification reconciliation", () => {
     expect(assessVerification(plan, source, [evidence, { ...evidence, id: "variant", environment: { platform: "web", variantKey: "second" }, visualReviews: [] }]).conclusions.ui).toBe("needs-review")
     evidence.visualReviews[0].decision = "fail"
     expect(assessVerification(plan, source, [evidence]).exitCode).toBe(1)
+    expect(assessVerification(plan, source, [evidence, { ...evidence, id: "missing-observation", visualReviews: [] }])).toMatchObject({ exitCode: 1, conclusions: { ui: "fail" } })
     evidence.visualReviews[0].decision = "pass"; evidence.status = "inconclusive"
     expect(assessVerification(plan, source, [evidence]).conclusions.ui).toBe("inconclusive")
     evidence.status = "fail"

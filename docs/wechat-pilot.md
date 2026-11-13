@@ -85,6 +85,9 @@ bun run ui-eval wechat-pilot review --project-root /path/to/candidate \
 The private JSON/HTML pair under `.ui-eval/wechat-reviews/` binds source, original
 report, checkpoint PNG and declared criterion. Recording revalidates original
 evidence and unchanged source. Failed/inconclusive runs cannot receive a review.
+The original human report must exactly render the validated JSON and its image
+references; unrelated or modified original HTML is rejected. Available visual
+failures remain failures when another applicable run lacks its observation.
 The automated result is unchanged. Aliases are self-reported, not authenticated
 identity or approval. Review exits are pass 0, fail 1 and inconclusive 2.
 

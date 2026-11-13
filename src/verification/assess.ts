@@ -41,12 +41,9 @@ export function assessVerification(plan: VerificationPlan, sourceDigest: string,
       }
       if (status === "pass" && requirement.visualReview) {
         const reviews = applicable.map((item) => item.visualReviews?.find((review) => review.id === requirement.visualReviewId))
-        if (!requirement.visualReviewId || reviews.some((review) => !review)) {
-          status = "needs-review"; reasons.push("Visual inspection is required; driver success alone does not establish it")
-        } else {
-          status = combine(reviews.map((review) => review!.decision))
-          if (status !== "pass") reasons.push("Bound visual observations did not pass")
-        }
+        status = combine(reviews.map((review) => review?.decision ?? "needs-review"))
+        if (reviews.some((review) => !review)) reasons.push("Visual inspection is required; driver success alone does not establish it")
+        if (status !== "pass" && status !== "needs-review") reasons.push("Bound visual observations did not pass")
       }
       if (status !== "pass" && !reasons.length) reasons.push("Required evidence has not passed")
     }
