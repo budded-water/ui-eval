@@ -1,5 +1,12 @@
 # Security Model
 
+WeChat human observations bind declared criteria, unchanged source, original
+reports and PNG digests; their JSON/HTML pair is checked on consumption. Aliases
+are self-reported, do not grant release authority and cannot waive failed raw
+execution. WeChat diagnostics exclude raw output, identities, storage contents
+and arguments. The explicit probe reads only an already-open synthetic runtime
+under its existing isolation/lock contract.
+
 Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks

@@ -67,6 +67,39 @@
           "type": "string"
         }
       }
+    },
+    "reviews": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "scenarioId",
+          "checkpointId",
+          "criterion"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]{0,79}$",
+            "type": "string"
+          },
+          "scenarioId": {
+            "pattern": "^[a-z][a-z0-9-]{0,79}$",
+            "type": "string"
+          },
+          "checkpointId": {
+            "pattern": "^[a-z][a-z0-9-]{0,79}$",
+            "type": "string"
+          },
+          "criterion": {
+            "minLength": 1,
+            "maxLength": 2048,
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

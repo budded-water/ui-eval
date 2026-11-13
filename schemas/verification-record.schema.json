@@ -205,6 +205,10 @@
               },
               "visualReview": {
                 "type": "boolean"
+              },
+              "visualReviewId": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+                "type": "string"
               }
             }
           }
@@ -413,6 +417,45 @@
                 "type": "string"
               }
             ]
+          },
+          "visualReviews": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "decision",
+                "receiptDigest"
+              ],
+              "properties": {
+                "id": {
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$",
+                  "type": "string"
+                },
+                "decision": {
+                  "anyOf": [
+                    {
+                      "const": "pass",
+                      "type": "string"
+                    },
+                    {
+                      "const": "fail",
+                      "type": "string"
+                    },
+                    {
+                      "const": "inconclusive",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "receiptDigest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
