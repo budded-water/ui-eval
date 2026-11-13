@@ -68,6 +68,19 @@ function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: b
 }
 
 describe("WeChat pilot acceptance", () => {
+  it("keeps the full-window automator available before changing and restoring synthetic storage", async () => {
+    const root = await fixture(); const driver = fakeDriver()
+    let fullWindow = false
+    const command: CommandRunner = async (binary, args, options) => {
+      if (args[2] === "open_project_window") fullWindow = args[args.indexOf("--window-mode") + 1] === "fullMode"
+      if (args[2] === "automation_wx_api" && !fullWindow) return { exitCode: 1, stdout: "", stderr: "automator unavailable after lite-window switch" }
+      return driver.command(binary, args, options)
+    }
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result.status).toBe("passed")
+    expect(output.result.cleanup).toBe("completed")
+    expect(driver.storage.get("pilot-market")).toBe("FRA")
+  })
   it("runs the declared scope, validates PNGs, restores state and synchronizes JSON/HTML", async () => {
     const root = await fixture(); const driver = fakeDriver()
     const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command: driver.command, source })

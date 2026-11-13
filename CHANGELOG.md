@@ -61,6 +61,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Fixed
 
+- WeChat pilot evaluation keeps its dedicated DevTools window in `fullMode` to
+  avoid the observed automator loss after switching an initialized window to
+  `liteMode`. Version/authentication, evidence and cleanup checks stay unchanged.
+
 - Cleanup unit tests use controlled timers and monotonic time for route-teardown
   and deadline assertions. Invalid integration-evidence tests reach their target
   without an unrelated prepare process, with preparation timeout gating covered

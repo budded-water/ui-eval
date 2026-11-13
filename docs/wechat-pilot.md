@@ -15,6 +15,14 @@ with the declared skill version. Pending authorization and unavailable evidence
 are inconclusive, never passes. Commands use bounded argv subprocesses and
 operate only on the declared runtime project.
 
+Evaluation opens that dedicated project in `fullMode`. In a controlled DevTools
+run, switching an initialized window to `liteMode` left the first storage API
+call waiting for an automator response; the same scenario completed in
+`fullMode`. The editor/debugger may therefore be visible during evaluation.
+This does not change the declared project, readiness checks, deadlines, state
+restoration or evidence requirements. It is not a guarantee that every DevTools
+transport failure is resolved.
+
 Compiled files must stay inside the dedicated runtime. Private DevTools
 configuration overrides are rejected. Missing action acknowledgements cannot
 pass. If process or state cleanup is incomplete, the runtime lock remains:

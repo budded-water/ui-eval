@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="b923e69c7272d4b43a0f7c5ad893e08e14847d6b2b27c68a108d45659227cf04">
+  <meta name="source-sha256" content="c32696aa32d568b61eecd2ab4512e88199ef7fdb2f2433437ff9f6cfc60a127c">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: b923e69c7272d4b43a0f7c5ad893e08e14847d6b2b27c68a108d45659227cf04</footer>
+        <footer>Source set SHA-256: c32696aa32d568b61eecd2ab4512e88199ef7fdb2f2433437ff9f6cfc60a127c</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2308,6 +2308,13 @@ submit payments or publish a mini program. No new driver dependency is needed.</
 with the declared skill version. Pending authorization and unavailable evidence
 are inconclusive, never passes. Commands use bounded argv subprocesses and
 operate only on the declared runtime project.</p>
+<p>Evaluation opens that dedicated project in <code>fullMode</code>. In a controlled DevTools
+run, switching an initialized window to <code>liteMode</code> left the first storage API
+call waiting for an automator response; the same scenario completed in
+<code>fullMode</code>. The editor/debugger may therefore be visible during evaluation.
+This does not change the declared project, readiness checks, deadlines, state
+restoration or evidence requirements. It is not a guarantee that every DevTools
+transport failure is resolved.</p>
 <p>Compiled files must stay inside the dedicated runtime. Private DevTools
 configuration overrides are rejected. Missing action acknowledgements cannot
 pass. If process or state cleanup is incomplete, the runtime lock remains:
