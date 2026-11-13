@@ -8,6 +8,12 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- WeChat runtime probes separate transport readiness from UI acceptance.
+  Sanitized phase diagnostics identify bounded failures without raw output.
+  Optional declared visual criteria support original-image-bound observations
+  and scoped code/UI/release conclusions. Missing physical-device evidence
+  remains pending. Strict consumers must adopt new schemas/runtime together.
+
 - Native checkpoints can explicitly request supplemental `simctl` screenshots.
   Ordered Maestro segments preserve every original step/image and share one
   monotonic timeout budget. Continuations never relaunch the App; failed or

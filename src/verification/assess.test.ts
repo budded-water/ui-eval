@@ -49,6 +49,23 @@ describe("verification reconciliation", () => {
     const { plan, evidence } = fixture(); evidence.origin = "declared-command"
     expect(assessVerification(plan, source, [evidence]).exitCode).toBe(2)
   })
+  it("binds visual decisions to a required criterion without waiving raw execution failures", () => {
+    const { plan, evidence } = fixture()
+    plan.requirements[0].visualReview = true; plan.requirements[0].visualReviewId = "spacing"
+    evidence.visualReviews = [{ id: "another", decision: "pass", receiptDigest: source }]
+    expect(assessVerification(plan, source, [evidence]).conclusions.ui).toBe("needs-review")
+    evidence.visualReviews[0].id = "spacing"
+    expect(assessVerification(plan, source, [evidence]).conclusions.ui).toBe("pass")
+    expect(assessVerification(plan, source, [evidence, { ...evidence, id: "variant", environment: { platform: "web", variantKey: "second" }, visualReviews: [] }]).conclusions.ui).toBe("needs-review")
+    evidence.visualReviews[0].decision = "fail"
+    expect(assessVerification(plan, source, [evidence]).exitCode).toBe(1)
+    evidence.visualReviews[0].decision = "pass"; evidence.status = "inconclusive"
+    expect(assessVerification(plan, source, [evidence]).conclusions.ui).toBe("inconclusive")
+    evidence.status = "fail"
+    expect(assessVerification(plan, source, [evidence]).exitCode).toBe(1)
+    plan.requirements[0].visualReview = false
+    expect(() => assertVerificationPlan(plan)).toThrow()
+  })
   it("rejects duplicate requirements/evidence and malformed wire values", () => {
     const { plan, evidence } = fixture()
     expect(() => assessVerification(plan, source, [evidence, evidence])).toThrow("Duplicate")

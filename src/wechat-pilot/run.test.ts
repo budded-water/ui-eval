@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { resolve } from "node:path"
+import { relative, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { PNG } from "pngjs"
 import { loadWechatProject, loadWechatScenario } from "./config"
@@ -10,6 +10,10 @@ import { doctorWechatPilot, evaluateWechatPilot } from "./run"
 import { runWechatPilotCli } from "./cli"
 import { collectSourceRevision } from "../orchestrator/identity"
 import { IncompleteCleanupError } from "../runtime/cleanup"
+import { probeWechatPilot } from "./probe"
+import { recordWechatReview, verifyWechatReport, verifyWechatReview } from "./review"
+import { assessWechatScope } from "./assess"
+import { canonicalDigest } from "../contracts/canonical-json"
 
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
@@ -68,6 +72,65 @@ function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: b
 }
 
 describe("WeChat pilot acceptance", () => {
+  async function visualFixture() {
+    const root = await fixture()
+    await writeFile(resolve(root, "ui-eval/wechat.json"), JSON.stringify({ ...project, reviews: [{ id: "spacing", scenarioId: "login", checkpointId: "login", criterion: "Controls remain visibly separated" }] }))
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command: fakeDriver().command, source })
+    const report = relative(root, output.reportPath)
+    const review = await recordWechatReview({ projectRoot: root, report, review: "spacing", decision: "pass", reviewer: "operator", note: "Inspected the original checkpoint image" }, source)
+    const plan = { apiVersion: "uieval.io/verification-v1alpha1", kind: "VerificationPlan", id: "visual", projectId: project.projectId, outcome: "Controls are usable", plannedAt: "2026-10-22T00:00:00.000Z", planningContext: "Declared before capture",
+      requirements: [{ id: "spacing", category: "ui", rationale: "Reported spacing regression", expectedOutcome: "Controls remain separated", level: "L4", environment: { platform: "wechat-devtools" }, selector: { kind: "scenario", id: "login" }, visualReview: true, visualReviewId: "spacing" }], omissions: [] }
+    await writeFile(resolve(root, "ui-eval/verification.json"), JSON.stringify(plan))
+    const scope = { apiVersion: "uieval.io/wechat-assessment-v1", kind: "WechatAssessmentScope", verificationPlan: "ui-eval/verification.json", reports: [report], reviews: [relative(root, review.reportPath)] }
+    await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify(scope))
+    return { root, output, review, plan, scope }
+  }
+  it("records a screenshot-bound observation and reconciles only the declared simulator scope", async () => {
+    const { root, scope, plan } = await visualFixture()
+    const run = () => assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json\n")
+    expect((await run()).record.assessment.conclusions).toEqual({ code: "not-assessed", ui: "pass", release: "not-assessed" })
+    await writeFile(resolve(root, "ui-eval/verification.json"), JSON.stringify({ ...plan, requirements: [...plan.requirements, { id: "phone", category: "release", rationale: "Actual permissions", expectedOutcome: "Real GPS works", level: "L5", environment: { platform: "physical-device" }, selector: { kind: "external", id: "gps" }, visualReview: false }] }))
+    expect((await run()).record.assessment).toMatchObject({ exitCode: 2, conclusions: { ui: "pass", release: "not-run" } })
+    await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify({ ...scope, reviews: [] }))
+    expect((await run()).record.assessment.conclusions.ui).toBe("needs-review")
+  })
+  it("rejects stale or altered visual evidence, untracked plans and conflicting observations", async () => {
+    const { root, output, review, scope } = await visualFixture()
+    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "")).rejects.toThrow("tracked")
+    await expect(recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "undeclared", decision: "pass", reviewer: "operator", note: "Observed" }, source)).rejects.toThrow("declared")
+    await expect(recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "spacing", decision: "pass", reviewer: "operator", note: "Observed" }, async () => ({ repository: "local:test", commitSha: "b".repeat(40), dirtyTree: false }))).rejects.toThrow()
+    const other = await recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "spacing", decision: "fail", reviewer: "operator", note: "Conflicting later observation" }, source)
+    await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify({ ...scope, reviews: [...scope.reviews, relative(root, other.reportPath)] }))
+    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json")).rejects.toThrow("Conflicting")
+    await writeFile(review.htmlPath, "altered derived report")
+    await expect(verifyWechatReview(root, scope.reviews[0], output.result)).rejects.toThrow("pair")
+    await writeFile(resolve(output.reportPath, "..", output.result.screenshots[0].path), "altered image")
+    await expect(verifyWechatReport(root, scope.reports[0], canonicalDigest(await source(root)))).rejects.toThrow()
+  })
+  it("records only sanitized phase diagnostics for an automator timeout", async () => {
+    const driver = fakeDriver()
+    const command: CommandRunner = async (bin, args, options) => args[2] === "automation_wx_api" ? {
+      exitCode: 1, stderr: "PRIVATE_STDERR_SENTINEL", stdout: JSON.stringify({ ok: false, tool: args[2], clientName: "Codex", message: "timeout waiting for automator response", private: "PRIVATE_PAYLOAD_SENTINEL" }),
+    } : driver.command(bin, args, options)
+    const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command, source })
+    expect(output.result.status).toBe("inconclusive")
+    expect(output.result.diagnostics?.[0]).toMatchObject({ phase: "state", tool: "automation_wx_api", code: "automator-timeout", exitCode: 1 })
+    expect(JSON.stringify(output.result)).not.toContain("PRIVATE_")
+    expect(await readFile(output.htmlPath, "utf8")).toContain("automator-timeout")
+  })
+  it("probes an existing synthetic runtime without opening windows or writing storage", async () => {
+    const root = await fixture(), driver = fakeDriver()
+    const command: CommandRunner = async (bin, args, options) => args[2] === "automation_runtime_info" ? {
+      exitCode: 0, stderr: "", stdout: JSON.stringify({ ok: true, tool: args[2], clientName: "Codex", result: { success: true, currentPage: { path: "pages/login/index", query: "PRIVATE_QUERY" } } }),
+    } : driver.command(bin, args, options)
+    const result = await probeWechatPilot({ projectRoot: root }, { command, source })
+    expect(result.status).toBe("ready"); expect(result.storageKeyCount).toBe(1)
+    expect(driver.calls).not.toContain("open_project_window")
+    expect(JSON.stringify(result)).not.toContain("pilot-market")
+    expect(JSON.stringify(result)).not.toContain("PRIVATE_")
+    expect(driver.storage.get("pilot-market")).toBe("FRA")
+    await expect(readFile(resolve(root, project.runtimeProject, ".ui-eval-pilot.lock"))).rejects.toThrow()
+  })
   it("keeps the full-window automator available before changing and restoring synthetic storage", async () => {
     const root = await fixture(); const driver = fakeDriver()
     let fullWindow = false

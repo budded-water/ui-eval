@@ -9,19 +9,12 @@ import { nativeIntegrationEvidence } from "../integration/native-evidence"
 import { atomicWriteFile, ensureContainedDirectory } from "../storage-local/filesystem"
 import { loadNativePilotProject } from "./config"
 import { NativePilotResultSchema } from "./report"
+import { CheckpointReviewFields } from "../verification/checkpoint-review"
 
-const digest = Type.String({ pattern: "^sha256:[a-f0-9]{64}$" })
 export const NativeReviewResultSchema = Type.Object({
   apiVersion: Type.Literal("uieval.io/native-review-v1"), kind: Type.Literal("NativeReviewResult"),
-  executionId: Type.String(), projectId: Type.String(), reviewId: Type.String(), scenarioId: Type.String(),
-  checkpointId: Type.String(), criterion: Type.String(),
-  method: Type.Literal("human-observation"),
+  ...CheckpointReviewFields,
   screenshotMethod: Type.Optional(Type.Union([Type.Literal("maestro-take-screenshot"), Type.Literal("simctl")])),
-  decision: Type.Union([Type.Literal("pass"), Type.Literal("fail"), Type.Literal("inconclusive")]),
-  reviewerAlias: Type.String({ pattern: "^[a-z][a-z0-9-]{0,63}$" }),
-  note: Type.String({ minLength: 1, maxLength: 1000 }),
-  sourceDigest: digest, reportDigest: digest, screenshotDigest: digest,
-  reportPath: Type.String(), recordedAt: Type.String(),
 }, { additionalProperties: false })
 export type NativeReviewResult = Static<typeof NativeReviewResultSchema>
 export interface NativeReviewOptions {

@@ -1,5 +1,11 @@
 # Current Limitations
 
+WeChat `doctor` is readiness-only; `probe` demonstrates a bounded read from an
+existing synthetic runtime. Neither proves UI acceptance. Human observations
+are source/report/image-bound with self-reported aliases. WeChat assessment
+provides L4 evidence only; physical GPS, OS permissions, overseas map tiles and
+publication remain separate requirements.
+
 Integration interruption exposes diagnostic `partialIntegration` only after
 both interrupted summaries publish. Unlike a standalone native partial run, an
 integration summary can record failed or unsettled cleanup; consumers must

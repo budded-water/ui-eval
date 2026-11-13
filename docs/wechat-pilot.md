@@ -34,6 +34,7 @@ Run from an authorized, pinned engine checkout:
 
 ```sh
 bun run ui-eval wechat-pilot doctor --project-root /path/to/candidate
+bun run ui-eval wechat-pilot probe --project-root /path/to/candidate
 bun run ui-eval wechat-pilot evaluate login-controls --project-root /path/to/candidate
 ```
 
@@ -55,3 +56,52 @@ Scenario JSON is canonical for acceptance scope; the report records actual
 coverage, including missing steps. Runtime project configuration and candidate
 build output are a second source of state: the integration must regenerate
 them from the reviewed candidate inputs before running evaluation.
+
+## Diagnose before accepting
+
+`doctor` checks CLI readiness only. `probe` reads the current page and storage-key
+count from an already-open synthetic runtime. It uses the runtime lock and
+integrity checks, writes no application storage, and never opens or restarts a
+window. Its JSON/text response is transport evidence, not an acceptance report.
+
+Failed calls record bounded diagnostics: phase, tool, failure code, elapsed and
+budget milliseconds, exit code. Phases separate readiness, open, state, action,
+evidence and cleanup. Raw output, identities, arguments, storage contents and
+pending task IDs are excluded. The known automator timeout has its own code.
+Diagnostics never change acceptance or authorize an automatic retry.
+
+## Record a visual observation
+
+Before capture, declare `reviews` in `ui-eval/wechat.json`, each with `id`,
+`scenarioId`, `checkpointId` and a concrete visual `criterion`. After inspecting
+the original PNG, run:
+
+```sh
+bun run ui-eval wechat-pilot review --project-root /path/to/candidate \
+  --report .ui-eval/wechat-runs/EXECUTION/report.json --review spacing \
+  --decision pass --reviewer operator --note 'Inspected the original checkpoint image'
+```
+
+The private JSON/HTML pair under `.ui-eval/wechat-reviews/` binds source, original
+report, checkpoint PNG and declared criterion. Recording revalidates original
+evidence and unchanged source. Failed/inconclusive runs cannot receive a review.
+The automated result is unchanged. Aliases are self-reported, not authenticated
+identity or approval. Review exits are pass 0, fail 1 and inconclusive 2.
+
+## Reconcile a declared scope
+
+Track a `VerificationPlan` under `ui-eval/` before capture. A visual requirement
+names its criterion with `visualReview: true` and `visualReviewId`. Write a private
+scope containing `apiVersion: uieval.io/wechat-assessment-v1`,
+`kind: WechatAssessmentScope`, `verificationPlan`, `reports` and `reviews` paths.
+Run `wechat-pilot assess --scope .ui-eval/scope.json --project-root <root>`.
+It revalidates original reports, PNGs and review pairs, then writes a verification
+record and human report under `.ui-eval/wechat-assessments/`.
+
+Code, UI and release conclusions remain separate. This supplies L4 DevTools
+evidence only. Real GPS, system permission prompts, mobile networks, overseas
+tile coverage and experience-version selection need separate evidence. Missing
+L5 requirements remain pending even when simulator UI passes. Conflicting
+observations require an explicit scope choice; no newest-win rule is used.
+Assessment uses verification exit codes 0/1/2/3. Captured runtime digests remain
+provenance; later review validates original artifacts, not a subsequent build.

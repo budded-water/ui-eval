@@ -18,6 +18,7 @@ export const WechatPilotProjectSchema = Type.Object({
   driver: Type.Object({ clientName: Type.String({ pattern: "^[A-Za-z][A-Za-z0-9-]{0,39}$" }), skillVersion: Type.String({ pattern: "^\\d+\\.\\d+\\.\\d+$" }) }, strict),
   timeoutMs: Type.Integer({ minimum: 1000, maximum: 300000 }),
   scenarios: Type.Record(id, path),
+  reviews: Type.Optional(Type.Array(Type.Object({ id, scenarioId: id, checkpointId: id, criterion: text }, strict), { maxItems: 100 })),
 }, strict)
 export const WechatPilotStepSchema = Type.Union([
   Type.Object({ action: Type.Literal("navigate"), url: Type.String({ pattern: "^/pages/", maxLength: 512 }) }, strict),
@@ -64,6 +65,8 @@ async function json(root: string, name: string): Promise<unknown> {
 export async function loadWechatProject(root: string): Promise<WechatPilotProject> {
   const input = await json(root, "ui-eval/wechat.json")
   if (!Value.Check(WechatPilotProjectSchema, input) || !Object.keys(input.scenarios).length) throw new Error("Invalid WeChat pilot project")
+  if (input.reviews && (new Set(input.reviews.map((review) => review.id)).size !== input.reviews.length ||
+    input.reviews.some((review) => !Object.hasOwn(input.scenarios, review.scenarioId)))) throw new Error("Invalid WeChat review declarations")
   const runtime = await containedPath(root, input.runtimeProject)
   try {
     await lstat(resolve(runtime, "project.private.config.json"))

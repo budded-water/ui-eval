@@ -28,6 +28,7 @@ export const VerificationPlanSchema = Type.Object({
     environment: VerificationEnvironmentSchema,
     selector,
     visualReview: Type.Boolean(),
+    visualReviewId: Type.Optional(id),
   }, strict), { minItems: 1, maxItems: 200 }),
   omissions: Type.Array(Type.Object({ scope: text, reason: text }, strict), { maxItems: 100 }),
 }, strict)
@@ -41,6 +42,7 @@ export const VerificationEvidenceSchema = Type.Object({
   status: choice(["pass", "fail", "needs-review", "inconclusive", "not-run"]),
   references: Type.Array(text, { minItems: 1, maxItems: 100 }),
   origin: choice(["validated-adapter", "declared-command"]),
+  visualReviews: Type.Optional(Type.Array(Type.Object({ id, decision: choice(["pass", "fail", "inconclusive"]), receiptDigest: DigestSchema }, strict), { maxItems: 100 })),
 }, strict)
 export type VerificationEvidence = Static<typeof VerificationEvidenceSchema>
 const disposition = choice(["pass", "fail", "needs-review", "inconclusive", "not-run", "invalid-evidence", "not-assessed"])
@@ -66,6 +68,7 @@ export function assertVerificationPlan(input: unknown): asserts input is Verific
   if (!isSchema(VerificationPlanSchema, input)) throw new Error("Invalid verification plan")
   if (new Set(input.requirements.map((item) => item.id)).size !== input.requirements.length) throw new Error("Duplicate verification requirement")
   for (const item of input.requirements) {
+    if (item.visualReviewId !== undefined && !item.visualReview) throw new Error("A visual-review identity requires a visual requirement")
     if (item.category === "ui" && !["L4", "L5"].includes(item.level)) throw new Error("UI requirements need runtime evidence")
     if (item.level === "L5" && item.environment.platform !== "physical-device") throw new Error("L5 needs a physical-device environment")
     if (item.level === "L4" && !["web", "ios-simulator", "wechat-devtools"].includes(item.environment.platform)) throw new Error("L4 needs a supported UI environment")

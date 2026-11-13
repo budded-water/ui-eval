@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "verificationPlan",
+    "reports",
+    "reviews"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "uieval.io/wechat-assessment-v1",
+      "type": "string"
+    },
+    "kind": {
+      "const": "WechatAssessmentScope",
+      "type": "string"
+    },
+    "verificationPlan": {
+      "pattern": "^ui-eval/",
+      "maxLength": 512,
+      "type": "string"
+    },
+    "reports": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "pattern": "^\\.ui-eval/wechat-runs/",
+        "maxLength": 1024,
+        "type": "string"
+      }
+    },
+    "reviews": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "pattern": "^\\.ui-eval/wechat-reviews/",
+        "maxLength": 1024,
+        "type": "string"
+      }
+    }
+  }
+}

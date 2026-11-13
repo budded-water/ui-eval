@@ -35,7 +35,7 @@ Usage:
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
   ui-eval native-pilot review --report <path> --review <id> --decision pass|fail|inconclusive --reviewer <alias> --note <observation>
   ui-eval native-pilot progress --scope <project-relative-json> [--format text|json]
-  ui-eval wechat-pilot doctor|evaluate [scenario] [--driver /path/to/wechatide]
+  ui-eval wechat-pilot doctor|probe|evaluate|review|assess [scenario] [--driver /path/to/wechatide]
                               [--project-root path] [--format text|json]
 
 Exit codes:

@@ -187,6 +187,107 @@
     "pendingTaskId": {
       "type": "string"
     },
+    "diagnostics": {
+      "maxItems": 300,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "phase",
+          "tool",
+          "code",
+          "elapsedMs",
+          "budgetMs",
+          "exitCode"
+        ],
+        "properties": {
+          "phase": {
+            "anyOf": [
+              {
+                "const": "readiness",
+                "type": "string"
+              },
+              {
+                "const": "open",
+                "type": "string"
+              },
+              {
+                "const": "state",
+                "type": "string"
+              },
+              {
+                "const": "action",
+                "type": "string"
+              },
+              {
+                "const": "evidence",
+                "type": "string"
+              },
+              {
+                "const": "cleanup",
+                "type": "string"
+              }
+            ]
+          },
+          "tool": {
+            "pattern": "^[a-z_]{1,80}$",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "const": "command-failed",
+                "type": "string"
+              },
+              {
+                "const": "automator-timeout",
+                "type": "string"
+              },
+              {
+                "const": "invalid-envelope",
+                "type": "string"
+              },
+              {
+                "const": "response-binding",
+                "type": "string"
+              },
+              {
+                "const": "authorization-pending",
+                "type": "string"
+              },
+              {
+                "const": "action-unconfirmed",
+                "type": "string"
+              },
+              {
+                "const": "deadline",
+                "type": "string"
+              }
+            ]
+          },
+          "elapsedMs": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "budgetMs": {
+            "minimum": 0,
+            "maximum": 30000,
+            "type": "number"
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
     "cleanup": {
       "anyOf": [
         {

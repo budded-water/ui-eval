@@ -1,3 +1,6 @@
 export { WechatPilotProjectSchema, WechatPilotScenarioSchema, WechatPilotStepSchema, type WechatPilotProject, type WechatPilotScenario, type WechatPilotStep } from "./config"
 export { WechatPilotResultSchema, type WechatPilotResult } from "./report"
 export { doctorWechatPilot, evaluateWechatPilot, type WechatOptions, type WechatDependencies } from "./run"
+export { probeWechatPilot, WechatProbeResultSchema, type WechatProbeResult } from "./probe"
+export { recordWechatReview, verifyWechatReview, WechatReviewResultSchema, type WechatReviewResult, type WechatReviewOptions } from "./review"
+export { assessWechatScope, WechatAssessmentScopeSchema, type WechatAssessmentScope } from "./assess"

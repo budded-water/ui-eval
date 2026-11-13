@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="c32696aa32d568b61eecd2ab4512e88199ef7fdb2f2433437ff9f6cfc60a127c">
+  <meta name="source-sha256" content="a545727e5c67296025eb5cca2b168735ba70a76b3bab78a8bfc654bbcef25d67">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: c32696aa32d568b61eecd2ab4512e88199ef7fdb2f2433437ff9f6cfc60a127c</footer>
+        <footer>Source set SHA-256: a545727e5c67296025eb5cca2b168735ba70a76b3bab78a8bfc654bbcef25d67</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -979,6 +979,12 @@ progress projections, separately from integration acceptance. See
 <section id="verification-plans" class="document">
         <div class="source"><span>Risk-based verification</span><code>docs/verification-plans.md</code></div>
         <h1>Risk-based verification plans</h1>
+<p>Visual requirements may declare <code>visualReviewId</code>. Matching validated adapter
+evidence must provide that criterion&#39;s <code>visualReviews</code> receipt digest and decision
+for every applicable run. Missing receipts remain <code>needs-review</code>; human passes
+cannot waive failed/inconclusive execution. Existing visual requirements without
+IDs keep their review-needed behavior. The generic reconciler validates shape
+and matching, not reviewer identity. See <a href="wechat-pilot.md#record-a-visual-observation">WeChat observations</a>.</p>
 <h2>Ownership and evidence levels</h2>
 <p>Failure: passing smoke can be mistaken for verification of a changed feature when
 its affected states or real environment were never exercised. Shared rules and
@@ -1081,6 +1087,12 @@ Keep actual run outcomes in PR records rather than timeless contract prose.</p>
 <section id="security" class="document">
         <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
         <h1>Security Model</h1>
+<p>WeChat human observations bind declared criteria, unchanged source, original
+reports and PNG digests; their JSON/HTML pair is checked on consumption. Aliases
+are self-reported, do not grant release authority and cannot waive failed raw
+execution. WeChat diagnostics exclude raw output, identities, storage contents
+and arguments. The explicit probe reads only an already-open synthetic runtime
+under its existing isolation/lock contract.</p>
 <p>Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks
@@ -2323,6 +2335,7 @@ runtime before removing its lock and retrying. Signal cleanup has a bounded
 25-second CLI budget, including the 15-second state-restoration budget.</p>
 <p>Run from an authorized, pinned engine checkout:</p>
 <pre><code class="language-sh">bun run ui-eval wechat-pilot doctor --project-root /path/to/candidate
+bun run ui-eval wechat-pilot probe --project-root /path/to/candidate
 bun run ui-eval wechat-pilot evaluate login-controls --project-root /path/to/candidate
 </code></pre>
 <p>Use <code>--driver /absolute/path/to/wechatide</code> when the bundled CLI is not on PATH.
@@ -2341,6 +2354,44 @@ Scenario JSON is canonical for acceptance scope; the report records actual
 coverage, including missing steps. Runtime project configuration and candidate
 build output are a second source of state: the integration must regenerate
 them from the reviewed candidate inputs before running evaluation.</p>
+<h2>Diagnose before accepting</h2>
+<p><code>doctor</code> checks CLI readiness only. <code>probe</code> reads the current page and storage-key
+count from an already-open synthetic runtime. It uses the runtime lock and
+integrity checks, writes no application storage, and never opens or restarts a
+window. Its JSON/text response is transport evidence, not an acceptance report.</p>
+<p>Failed calls record bounded diagnostics: phase, tool, failure code, elapsed and
+budget milliseconds, exit code. Phases separate readiness, open, state, action,
+evidence and cleanup. Raw output, identities, arguments, storage contents and
+pending task IDs are excluded. The known automator timeout has its own code.
+Diagnostics never change acceptance or authorize an automatic retry.</p>
+<h2>Record a visual observation</h2>
+<p>Before capture, declare <code>reviews</code> in <code>ui-eval/wechat.json</code>, each with <code>id</code>,
+<code>scenarioId</code>, <code>checkpointId</code> and a concrete visual <code>criterion</code>. After inspecting
+the original PNG, run:</p>
+<pre><code class="language-sh">bun run ui-eval wechat-pilot review --project-root /path/to/candidate \
+  --report .ui-eval/wechat-runs/EXECUTION/report.json --review spacing \
+  --decision pass --reviewer operator --note &#39;Inspected the original checkpoint image&#39;
+</code></pre>
+<p>The private JSON/HTML pair under <code>.ui-eval/wechat-reviews/</code> binds source, original
+report, checkpoint PNG and declared criterion. Recording revalidates original
+evidence and unchanged source. Failed/inconclusive runs cannot receive a review.
+The automated result is unchanged. Aliases are self-reported, not authenticated
+identity or approval. Review exits are pass 0, fail 1 and inconclusive 2.</p>
+<h2>Reconcile a declared scope</h2>
+<p>Track a <code>VerificationPlan</code> under <code>ui-eval/</code> before capture. A visual requirement
+names its criterion with <code>visualReview: true</code> and <code>visualReviewId</code>. Write a private
+scope containing <code>apiVersion: uieval.io/wechat-assessment-v1</code>,
+<code>kind: WechatAssessmentScope</code>, <code>verificationPlan</code>, <code>reports</code> and <code>reviews</code> paths.
+Run <code>wechat-pilot assess --scope .ui-eval/scope.json --project-root &lt;root&gt;</code>.
+It revalidates original reports, PNGs and review pairs, then writes a verification
+record and human report under <code>.ui-eval/wechat-assessments/</code>.</p>
+<p>Code, UI and release conclusions remain separate. This supplies L4 DevTools
+evidence only. Real GPS, system permission prompts, mobile networks, overseas
+tile coverage and experience-version selection need separate evidence. Missing
+L5 requirements remain pending even when simulator UI passes. Conflicting
+observations require an explicit scope choice; no newest-win rule is used.
+Assessment uses verification exit codes 0/1/2/3. Captured runtime digests remain
+provenance; later review validates original artifacts, not a subsequent build.</p>
 
       </section>
 <section id="execution-profiles" class="document">
@@ -2734,6 +2785,11 @@ schemas and <code>summarizeNativeProgress</code>.</p>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
+<p>WeChat <code>doctor</code> is readiness-only; <code>probe</code> demonstrates a bounded read from an
+existing synthetic runtime. Neither proves UI acceptance. Human observations
+are source/report/image-bound with self-reported aliases. WeChat assessment
+provides L4 evidence only; physical GPS, OS permissions, overseas map tiles and
+publication remain separate requirements.</p>
 <p>Integration interruption exposes diagnostic <code>partialIntegration</code> only after
 both interrupted summaries publish. Unlike a standalone native partial run, an
 integration summary can record failed or unsettled cleanup; consumers must

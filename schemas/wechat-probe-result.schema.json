@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "kind",
+    "projectId",
+    "status",
+    "runtimeDigest",
+    "phase",
+    "diagnostics",
+    "cleanup"
+  ],
+  "properties": {
+    "kind": {
+      "const": "WechatRuntimeProbe",
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "ready",
+          "type": "string"
+        },
+        {
+          "const": "inconclusive",
+          "type": "string"
+        }
+      ]
+    },
+    "runtimeDigest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "phase": {
+      "anyOf": [
+        {
+          "const": "readiness",
+          "type": "string"
+        },
+        {
+          "const": "action",
+          "type": "string"
+        },
+        {
+          "const": "state",
+          "type": "string"
+        },
+        {
+          "const": "evidence",
+          "type": "string"
+        }
+      ]
+    },
+    "pagePath": {
+      "pattern": "^pages/[a-zA-Z0-9/_-]{1,500}$",
+      "type": "string"
+    },
+    "storageKeyCount": {
+      "minimum": 0,
+      "maximum": 10000,
+      "type": "integer"
+    },
+    "diagnostics": {
+      "maxItems": 300,
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "phase",
+          "tool",
+          "code",
+          "elapsedMs",
+          "budgetMs",
+          "exitCode"
+        ],
+        "properties": {
+          "phase": {
+            "anyOf": [
+              {
+                "const": "readiness",
+                "type": "string"
+              },
+              {
+                "const": "open",
+                "type": "string"
+              },
+              {
+                "const": "state",
+                "type": "string"
+              },
+              {
+                "const": "action",
+                "type": "string"
+              },
+              {
+                "const": "evidence",
+                "type": "string"
+              },
+              {
+                "const": "cleanup",
+                "type": "string"
+              }
+            ]
+          },
+          "tool": {
+            "pattern": "^[a-z_]{1,80}$",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "const": "command-failed",
+                "type": "string"
+              },
+              {
+                "const": "automator-timeout",
+                "type": "string"
+              },
+              {
+                "const": "invalid-envelope",
+                "type": "string"
+              },
+              {
+                "const": "response-binding",
+                "type": "string"
+              },
+              {
+                "const": "authorization-pending",
+                "type": "string"
+              },
+              {
+                "const": "action-unconfirmed",
+                "type": "string"
+              },
+              {
+                "const": "deadline",
+                "type": "string"
+              }
+            ]
+          },
+          "elapsedMs": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "budgetMs": {
+            "minimum": 0,
+            "maximum": 30000,
+            "type": "number"
+          },
+          "exitCode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "cleanup": {
+      "anyOf": [
+        {
+          "const": "completed",
+          "type": "string"
+        },
+        {
+          "const": "incomplete",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

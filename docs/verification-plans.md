@@ -1,5 +1,12 @@
 # Risk-based verification plans
 
+Visual requirements may declare `visualReviewId`. Matching validated adapter
+evidence must provide that criterion's `visualReviews` receipt digest and decision
+for every applicable run. Missing receipts remain `needs-review`; human passes
+cannot waive failed/inconclusive execution. Existing visual requirements without
+IDs keep their review-needed behavior. The generic reconciler validates shape
+and matching, not reviewer identity. See [WeChat observations](wechat-pilot.md#record-a-visual-observation).
+
 ## Ownership and evidence levels
 
 Failure: passing smoke can be mistaken for verification of a changed feature when

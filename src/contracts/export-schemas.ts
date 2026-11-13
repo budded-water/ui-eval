@@ -11,6 +11,9 @@ import { NativeReviewResultSchema } from "../native-pilot/review"
 import { NativeProgressScopeSchema, NativeProgressResultSchema } from "../native-pilot/progress"
 import { WechatPilotProjectSchema, WechatPilotScenarioSchema } from "../wechat-pilot/config"
 import { WechatPilotResultSchema } from "../wechat-pilot/report"
+import { WechatProbeResultSchema } from "../wechat-pilot/probe"
+import { WechatReviewResultSchema } from "../wechat-pilot/review"
+import { WechatAssessmentScopeSchema } from "../wechat-pilot/assess"
 import { EnginePinSchema, IntegrationSuiteSchema } from "../integration/config"
 import { IntegrationResultSchema } from "../integration/model"
 import { VerificationPlanSchema, VerificationEvidenceSchema, VerificationAssessmentSchema, VerificationRecordSchema } from "./verification"
@@ -63,6 +66,9 @@ const schemaFiles: ReadonlyArray<readonly [string, TSchema]> = [
   ["wechat-pilot-project.schema.json", WechatPilotProjectSchema],
   ["wechat-pilot-scenario.schema.json", WechatPilotScenarioSchema],
   ["wechat-pilot-result.schema.json", WechatPilotResultSchema],
+  ["wechat-probe-result.schema.json", WechatProbeResultSchema],
+  ["wechat-review-result.schema.json", WechatReviewResultSchema],
+  ["wechat-assessment-scope.schema.json", WechatAssessmentScopeSchema],
   ["deployment-identity.schema.json", DeploymentIdentitySchema],
   ["agent-suite.schema.json", AgentSuiteSchema],
   ["agent-summary.schema.json", AgentRunResultSchema],

@@ -147,6 +147,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
       result.reason = "WeChat process, mock or storage cleanup did not complete; inspect and reset the dedicated runtime before retrying."
     }
     if (result.cleanup === "completed") await rm(lockPath)
+    if (driver.diagnostics.length) result.diagnostics = [...driver.diagnostics]
   }
   try {
     if (canonicalDigest(await source(root)) !== sourceDigest || await fingerprintRuntime(root, project) !== runtimeDigest) {

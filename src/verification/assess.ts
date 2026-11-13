@@ -22,6 +22,7 @@ export function assessVerification(plan: VerificationPlan, sourceDigest: string,
   assertVerificationPlan(plan)
   if (!Value.Check(DigestSchema, sourceDigest) || evidence.length > 2000 || evidence.some((item) => !Value.Check(VerificationEvidenceSchema, item))) throw new Error("Invalid verification evidence")
   if (new Set(evidence.map((item) => item.id)).size !== evidence.length) throw new Error("Duplicate verification evidence")
+  if (evidence.some((item) => item.visualReviews && new Set(item.visualReviews.map((review) => review.id)).size !== item.visualReviews.length)) throw new Error("Duplicate visual-review evidence")
   const requirements = plan.requirements.map((requirement) => {
     const selected = evidence.filter((item) => item.selector.kind === requirement.selector.kind && item.selector.id === requirement.selector.id)
     const applicable = selected.filter((item) => item.projectId === plan.projectId && item.sourceDigest === sourceDigest &&
@@ -39,7 +40,13 @@ export function assessVerification(plan: VerificationPlan, sourceDigest: string,
         status = "invalid-evidence"; reasons.push("Command evidence cannot establish runtime UI acceptance")
       }
       if (status === "pass" && requirement.visualReview) {
-        status = "needs-review"; reasons.push("Visual inspection is required; driver success alone does not establish it")
+        const reviews = applicable.map((item) => item.visualReviews?.find((review) => review.id === requirement.visualReviewId))
+        if (!requirement.visualReviewId || reviews.some((review) => !review)) {
+          status = "needs-review"; reasons.push("Visual inspection is required; driver success alone does not establish it")
+        } else {
+          status = combine(reviews.map((review) => review!.decision))
+          if (status !== "pass") reasons.push("Bound visual observations did not pass")
+        }
       }
       if (status !== "pass" && !reasons.length) reasons.push("Required evidence has not passed")
     }
