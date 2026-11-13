@@ -69,7 +69,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     await writeFile(resolve(directory, "plan.json"), JSON.stringify({ project, scenario }, null, 2) + "\n", { flag: "wx", mode: 0o600 })
     await writeFile(resolve(directory, "source.json"), JSON.stringify(before, null, 2) + "\n", { flag: "wx", mode: 0o600 })
     await driver.ready()
-    await driver.call("open_project_window", [...projectArgs, "--window-mode", "liteMode"])
+    await driver.call("open_project_window", [...projectArgs, "--window-mode", "fullMode"])
     if (scenario.storage.length) {
       const info = record(await wx("getStorageInfoSync", []))
       if (!Array.isArray(info.keys) || info.keys.some((key) => typeof key !== "string")) throw new WechatDriverError("Missing WeChat storage-key evidence")
