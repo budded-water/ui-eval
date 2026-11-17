@@ -119,6 +119,25 @@
             "type": "object",
             "required": [
               "action",
+              "timeoutMs"
+            ],
+            "properties": {
+              "action": {
+                "const": "wait-for-animation",
+                "type": "string"
+              },
+              "timeoutMs": {
+                "minimum": 1,
+                "maximum": 15000,
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
               "direction"
             ],
             "properties": {

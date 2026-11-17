@@ -17,6 +17,7 @@ export const NativePilotScenarioSchema = Type.Object({
     Type.Object({ action: Type.Literal("tap"), selector }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("input-text"), text: Type.String({ minLength: 1, maxLength: 512, pattern: "^(?![\\s\\S]*\\$\\{)[^\\r\\n]+$" }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("erase-text"), characters: Type.Integer({ minimum: 1, maximum: 512 }) }, { additionalProperties: false }),
+    Type.Object({ action: Type.Literal("wait-for-animation"), timeoutMs: Type.Integer({ minimum: 1, maximum: 15000 }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("swipe"), direction: Type.Union([Type.Literal("UP"), Type.Literal("DOWN"), Type.Literal("LEFT"), Type.Literal("RIGHT")]), selector: Type.Optional(selector) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("drag"), start: point, end: point, durationMs: Type.Integer({ minimum: 400, maximum: 2000 }) }, { additionalProperties: false }),
     Type.Object({ action: Type.Literal("assert-visible"), selector }, { additionalProperties: false }),

@@ -8,6 +8,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- Native scenarios can declare a bounded `wait-for-animation` step using the
+  existing Maestro driver. Exact required-command evidence is bound to its
+  timeout; completion remains separate from assertions and UI acceptance.
+
 - WeChat runtime probes separate transport readiness from UI acceptance.
   Sanitized phase diagnostics identify bounded failures without raw output.
   Optional declared visual criteria support original-image-bound observations

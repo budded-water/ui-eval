@@ -30,6 +30,34 @@ function records() {
   return commands.map((command, index) => ({ command, metadata: { evaluatedCommand: command, sequenceNumber: index, depth: 0, status: "COMPLETED" } }))
 }
 describe("native form and navigation commands", () => {
+  it("binds a bounded animation wait without treating completion as an assertion", () => {
+    const waiting: NativePilotScenario = { ...scenario, steps: [
+      { action: "wait-for-animation", timeoutMs: 2000 },
+      ...scenario.steps.slice(4),
+    ] }
+    // Maestro cli-2.9.0 WaitForAnimationToEndCommand serializes timeout as a string.
+    const command = { waitForAnimationToEndCommand: { timeout: "2000", optional: false } }
+    const data = [...records().slice(0, 3),
+      { command, metadata: { evaluatedCommand: command, sequenceNumber: 3, depth: 0, status: "COMPLETED" } },
+      ...records().slice(-2).map((row, index) => ({ ...row, metadata: { ...row.metadata, sequenceNumber: index + 4 } }))]
+    expect(Value.Check(NativePilotScenarioSchema, waiting)).toBe(true)
+    expect(compileNativePilotFlow(project, waiting)).toContain('"waitForAnimationToEnd":{"timeout":"2000"}')
+    expect(inspectNativeCommands(data, project, waiting, device)).toEqual({ passed: 1, failed: 0, complete: true })
+    expect(inspectNativeCommands(data.slice(0, 4), project, waiting, device)).toEqual({ passed: 0, failed: 0, complete: false })
+    for (const change of [{ timeout: "2001" }, { optional: true }, { timeout: "${VALUE}" }]) {
+      const corrupt = structuredClone(data)
+      Object.assign((corrupt[3].command as Record<string, unknown>).waitForAnimationToEndCommand as object, change)
+      expect(() => inspectNativeCommands(corrupt, project, waiting, device)).toThrow(/binding|optional/)
+    }
+    const stopped = structuredClone(data.slice(0, 4))
+    stopped[3].metadata.status = "FAILED"
+    expect(inspectNativeCommands(stopped, project, waiting, device)).toEqual({ passed: 0, failed: 0, complete: false })
+  })
+  it.each([0, -1, 0.5, 15001, Infinity, NaN, "2000", undefined])("rejects invalid animation wait bound %s", (timeoutMs) => {
+    expect(Value.Check(NativePilotScenarioSchema, { ...scenario, steps: [
+      { action: "wait-for-animation", timeoutMs }, ...scenario.steps.slice(4),
+    ] })).toBe(false)
+  })
   it("binds bounded point-to-point drags without treating driver completion as a geometry assertion", () => {
     const drag: NativePilotScenario = { ...scenario, steps: [
       { action: "drag", start: { x: 60, y: 70 }, end: { x: 40, y: 40 }, durationMs: 800 },
