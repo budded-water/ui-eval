@@ -71,6 +71,10 @@ underlying byte digests after external checks. The first trusted native evaluato
 invocation supplies the driver-exit observation; persisted files alone are not
 an independent replay of that exit. Corrupt or changed evidence remains
 inconclusive. Source observations do not attest the installed binary or Metro.
+Native animation waits admit only a required bounded timeout through the fixed
+driver command. Exact serialized timeout and command ordering remain verified;
+wait completion or expiry supplies no assertion evidence and cannot waive later
+state checks or the overall scenario deadline.
 
 Optional native session argv is reviewed executable configuration. One owned
 long-lived process exchanges bounded JSON lines with an opaque session ID over

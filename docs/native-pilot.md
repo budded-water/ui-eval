@@ -119,6 +119,16 @@ redaction. Do not place real credentials or personal data in scenario files.
 Keyboard dismissal remains candidate-owned: use the App's explicit dismissal
 control or supported outside tap. Generic driver keyboard dismissal can fail on
 iOS numeric inputs and is not an authored action. Inspect keyboard screenshots.
+An explicit `wait-for-animation` step with integer `timeoutMs` from 1 to 15000
+invokes Maestro 2.9.0 `waitForAnimationToEnd` before the next action. Use it when
+an observed transition, such as text erasure changing scroll insets, can move a
+target after its visibility observation. The command can complete at its bound
+while motion continues: it is not an assertion, proof of settled geometry or a
+replacement for resulting-state checks. The existing scenario deadline and
+cleanup still bound the complete run. Its exact timeout and required command
+metadata are verified offline; missing, optional or changed waits cannot satisfy
+command coverage. Existing scenarios are unchanged; new steps require an engine
+pin that supports the additive authoring action.
 Every screenshot must
 immediately follow an assertion. Generated flows stop/relaunch the app without
 clearing its state by default. An explicit project `restartApp: false` reuses an

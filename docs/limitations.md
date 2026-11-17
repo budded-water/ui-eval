@@ -78,6 +78,10 @@ Native literal text entry/erasure and directional swipes
 require explicit follow-up assertions; command completion alone does not prove
 field validity, keyboard geometry or scroll reachability. Input is unredacted
 and must be synthetic. The pilot still has no native runtime/network/design gate.
+Bounded native animation waits are best-effort driver synchronization. Completion
+can mean the wait expired, so it neither increments assertions nor establishes
+stable geometry, keyboard dismissal or UI acceptance. Retain explicit state and
+screenshot checks after the subsequent interaction.
 
 ## Support matrix
 
