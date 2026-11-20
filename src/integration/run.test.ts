@@ -471,6 +471,37 @@ describe("integration runner", () => {
     expect(() => assertIntegrationResult(result)).toThrow("contradicts")
   })
 
+  it("leads with the candidate and groups evidence under the scenario", async () => {
+    const root = await project()
+    await writeFile(join(root, "ui-eval/engine.json"), JSON.stringify({ repository: "https://example.invalid/ui-eval.git", revision: "b".repeat(40) }))
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
+    const stage = result.stages.find(item => item.kind === "scenario")!
+    const persisted: unknown = JSON.parse(await readFile(result.summaryPath, "utf8"))
+    assertIntegrationResult(persisted)
+    const html = await readFile(result.summaryHtmlPath, "utf8")
+    const overview = html.split("<h2>Scenarios</h2>")[0]
+    expect(persisted.source?.commitSha).toBe("a".repeat(40))
+    expect(overview).toContain(`Revision <code>${persisted.source?.commitSha.slice(0, 12)}</code>`)
+    expect(overview).not.toContain(persisted.engine.revision.slice(0, 12))
+    expect(html).toContain("1/1 scenarios passed")
+    expect(html).not.toContain("dirty worktree")
+    expect(html).toContain(`<details><summary>${stage.id} · pass</summary>`)
+    expect(html.indexOf("<h2>Scenarios</h2>")).toBeLessThan(html.indexOf("<summary>Execution details</summary>"))
+    expect(html.split("<summary>Execution details</summary>")[0]).toContain("View evidence")
+    stage.status = "fail"
+    expect(renderIntegrationHtml(result, root)).toContain(`<details open><summary>${stage.id} · fail</summary>`)
+    stage.status = "not-run"
+    const check = result.stages.find(item => item.kind !== "scenario")!
+    check.status = "fail"
+    check.reason = "Could not prepare the environment"
+    result.source = { ...result.source!, dirtyTree: true, diffDigest: `sha256:${"a".repeat(64)}` }
+    const blocked = renderIntegrationHtml(result, root)
+    expect(blocked.split("<h2>Scenarios</h2>")[0]).toContain(check.reason)
+    expect(blocked).toContain(`<details><summary>${stage.id} · not-run</summary>`)
+    expect(blocked).toContain("dirty worktree")
+    expect(blocked).toContain(`Worktree diff: <code>${result.source.diffDigest}</code>`)
+  })
+
   it("refuses symlinked authoring and unsupported adapters or options", async () => {
     const root = await project()
     const suitePath = join(root, "ui-eval/integrations/smoke.json")
