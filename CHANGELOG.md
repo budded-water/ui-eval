@@ -9,7 +9,8 @@ The source repository is public, but the project has no package release or confi
 ### Changed
 
 - Integration HTML leads with the run outcome and candidate revision and groups
-  evidence under each scenario. Non-passing scenarios open by default.
+  evidence under each scenario. Executed non-passing scenarios open by default.
+  Execution issues and dirty worktrees are flagged in the summary.
 
 ### Added
 

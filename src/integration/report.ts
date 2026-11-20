@@ -14,6 +14,8 @@ function renderBaseHtml(result: IntegrationResult, projectRoot: string): string 
   const scenarios = result.stages.filter(stage => stage.kind === "scenario")
   const stages = result.stages.filter(stage => stage.kind !== "scenario")
   const source = result.source?.commitSha
+  const dirtyTree = result.source?.dirtyTree
+  const executionIssues = stages.filter(stage => stage.status !== "pass" && stage.status !== "not-run")
   const evidence = (stage: IntegrationResult["stages"][number]) => stage.reports.map(report =>
     `<li>${escape(report.variantKey)} · ${escape(report.status)} · ${link(report.htmlPath, "View evidence")} · ${link(report.reportPath, "JSON")}<ul>${report.capabilities.map(capability => `<li>${escape(capability.dimension)}: ${escape(capability.status)} — ${escape(capability.detail)}</li>`).join("")}</ul></li>`,
   ).join("")
@@ -22,12 +24,14 @@ function renderBaseHtml(result: IntegrationResult, projectRoot: string): string 
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>UI Eval integration</title>
 <style>body{font:16px/1.5 system-ui;max-width:900px;margin:32px auto;padding:0 20px}details{padding:12px 0;border-bottom:1px solid #ccc}summary{cursor:pointer}code{overflow-wrap:anywhere}li{margin:8px 0}.table{overflow:auto}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ccc;text-align:left;vertical-align:top}</style>
 <h1>${escape(result.suiteId)}: ${escape(result.status)}</h1>
-<p>${escape(result.projectId)} · ${escape(result.adapter)} · ${scenarios.filter(stage => stage.status === "pass").length}/${scenarios.length} scenarios passed${source ? ` · Revision <code>${escape(source.slice(0, 12))}</code>` : ""}</p>
-${scenarios.length ? `<h2>Scenarios</h2>${scenarios.map(stage => `<details${stage.status === "pass" ? "" : " open"}><summary>${escape(stage.id)} · ${escape(stage.status)}</summary><p>${escape(stage.reason)} · ${Math.round(stage.durationMs)} ms</p>${stage.reports.length ? `<ul>${evidence(stage)}</ul>` : ""}</details>`).join("")}` : ""}
+<p>${escape(result.projectId)} · ${escape(result.adapter)} · ${scenarios.filter(stage => stage.status === "pass").length}/${scenarios.length} scenarios passed${source ? ` · Revision <code>${escape(source.slice(0, 12))}</code>${dirtyTree ? " (dirty worktree)" : ""}` : ""}</p>
+${executionIssues.length ? `<h2>Execution issues</h2><ul>${executionIssues.map(stage => `<li><strong>${escape(stage.id)} · ${escape(stage.status)}</strong> — ${escape(stage.reason)}</li>`).join("")}</ul>` : ""}
+${scenarios.length ? `<h2>Scenarios</h2>${scenarios.map(stage => `<details${stage.status === "pass" || stage.status === "not-run" ? "" : " open"}><summary>${escape(stage.id)} · ${escape(stage.status)}</summary><p>${escape(stage.reason)} · ${Math.round(stage.durationMs)} ms</p>${stage.reports.length ? `<ul>${evidence(stage)}</ul>` : ""}</details>`).join("")}` : ""}
 <h2>Acceptance limits</h2><ul>${result.limitations.map(item => `<li>${escape(item)}</li>`).join("")}</ul>
-<details${stages.some(stage => stage.status !== "pass" && stage.status !== "not-run") ? " open" : ""}><summary>Execution details</summary>
+<details><summary>Execution details</summary>
 <p>Engine: <code>${escape(result.engine.revision)}</code> · Profile: ${escape(result.executionProfile ?? "default")} · Browser: ${escape(result.browserChannel ?? "adapter default")}</p>
 <p>Exit: ${escape(result.exitCode)} · Duration: ${Math.round(result.durationMs)} ms${source ? ` · Revision <code>${escape(source)}</code>` : ""}</p>
+${dirtyTree && result.source?.diffDigest ? `<p>Worktree diff: <code>${escape(result.source.diffDigest)}</code></p>` : ""}
 <ul>${stages.map(stage => `<li>${escape(stage.kind)} · ${escape(stage.id)}${stage.dimension ? ` · ${escape(stage.dimension)}` : ""} · ${escape(stage.status)} · ${Math.round(stage.durationMs)} ms<p>${escape(stage.reason)}</p>${stage.reports.length ? `<ul>${evidence(stage)}</ul>` : ""}</li>`).join("")}</ul></details>
 <p>${link(relative(projectRoot, result.summaryPath), "Canonical integration JSON")}</p></html>\n`
 }

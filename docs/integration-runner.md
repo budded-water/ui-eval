@@ -177,7 +177,9 @@ command. Original adapter reports remain unchanged.
 
 The summary opens with the run outcome, candidate revision when recorded, and
 scenario pass count. Each scenario groups its outcome with links to its
-original evidence. Non-passing scenarios are expanded by default.
+original evidence. Executed non-passing scenarios are expanded by default.
+Execution issues appear above the scenario list, and dirty candidates show
+their worktree state and diff fingerprint.
 
 Web aggregation requires all
 compiled variants, matching source/scenario identity, canonical JSON and regular

@@ -477,11 +477,22 @@ describe("integration runner", () => {
     const stage = result.stages.find(item => item.kind === "scenario")!
     const html = renderIntegrationHtml(result, root)
     expect(html).toContain("1/1 scenarios passed")
+    expect(html).not.toContain("dirty worktree")
     expect(html).toContain(`<details><summary>${stage.id} · pass</summary>`)
     expect(html.indexOf("<h2>Scenarios</h2>")).toBeLessThan(html.indexOf("<summary>Execution details</summary>"))
     expect(html.split("<summary>Execution details</summary>")[0]).toContain("View evidence")
     stage.status = "fail"
     expect(renderIntegrationHtml(result, root)).toContain(`<details open><summary>${stage.id} · fail</summary>`)
+    stage.status = "not-run"
+    const check = result.stages.find(item => item.kind !== "scenario")!
+    check.status = "fail"
+    check.reason = "Could not prepare the environment"
+    result.source = { ...result.source!, dirtyTree: true, diffDigest: `sha256:${"a".repeat(64)}` }
+    const blocked = renderIntegrationHtml(result, root)
+    expect(blocked.split("<h2>Scenarios</h2>")[0]).toContain(check.reason)
+    expect(blocked).toContain(`<details><summary>${stage.id} · not-run</summary>`)
+    expect(blocked).toContain("dirty worktree")
+    expect(blocked).toContain(`Worktree diff: <code>${result.source.diffDigest}</code>`)
   })
 
   it("refuses symlinked authoring and unsupported adapters or options", async () => {

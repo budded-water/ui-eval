@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="15416628430e939708e5b9bbf5f52198ed906ad8fce0727802b4b1f81a3665ee">
+  <meta name="source-sha256" content="7ea9ce300060da53196ba6dcce25a9cd928211f21e4b7a20d406bbf10c7af484">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 15416628430e939708e5b9bbf5f52198ed906ad8fce0727802b4b1f81a3665ee</footer>
+        <footer>Source set SHA-256: 7ea9ce300060da53196ba6dcce25a9cd928211f21e4b7a20d406bbf10c7af484</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2253,7 +2253,9 @@ record and publishes before terminal JSON; failure to write either fails the
 command. Original adapter reports remain unchanged.</p>
 <p>The summary opens with the run outcome, candidate revision when recorded, and
 scenario pass count. Each scenario groups its outcome with links to its
-original evidence. Non-passing scenarios are expanded by default.</p>
+original evidence. Executed non-passing scenarios are expanded by default.
+Execution issues appear above the scenario list, and dirty candidates show
+their worktree state and diff fingerprint.</p>
 <p>Web aggregation requires all
 compiled variants, matching source/scenario identity, canonical JSON and regular
 HTML, plus matching capture, manifest, evaluation plan, policy and verified CAS
