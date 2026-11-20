@@ -22,7 +22,7 @@ function renderBaseHtml(result: IntegrationResult, projectRoot: string): string 
   return `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>UI Eval integration</title>
-<style>body{font:16px/1.5 system-ui;max-width:900px;margin:32px auto;padding:0 20px}details{padding:12px 0;border-bottom:1px solid #ccc}summary{cursor:pointer}code{overflow-wrap:anywhere}li{margin:8px 0}.table{overflow:auto}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ccc;text-align:left;vertical-align:top}</style>
+<style>body{font:16px/1.5 system-ui;max-width:900px;margin:32px auto;padding:0 20px;overflow-wrap:anywhere}details{padding:12px 0;border-bottom:1px solid #ccc}summary{cursor:pointer}li{margin:8px 0}.table{overflow:auto}table{border-collapse:collapse;width:100%}td,th{padding:12px;border:1px solid #ccc;text-align:left;vertical-align:top}</style>
 <h1>${escape(result.suiteId)}: ${escape(result.status)}</h1>
 <p>${escape(result.projectId)} · ${escape(result.adapter)} · ${scenarios.filter(stage => stage.status === "pass").length}/${scenarios.length} scenarios passed${source ? ` · Revision <code>${escape(source.slice(0, 12))}</code>${dirtyTree ? " (dirty worktree)" : ""}` : ""}</p>
 ${executionIssues.length ? `<h2>Execution issues</h2><ul>${executionIssues.map(stage => `<li><strong>${escape(stage.id)} · ${escape(stage.status)}</strong> — ${escape(stage.reason)}</li>`).join("")}</ul>` : ""}
