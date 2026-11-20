@@ -6,6 +6,11 @@ The source repository is public, but the project has no package release or confi
 
 ## Unreleased
 
+### Changed
+
+- Integration HTML leads with the run outcome and candidate revision and groups
+  evidence under each scenario. Non-passing scenarios open by default.
+
 ### Added
 
 - Native scenarios can declare a bounded `wait-for-animation` step using the

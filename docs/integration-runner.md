@@ -173,7 +173,13 @@ launch are separate outcomes. An integration pass closes only its declared scope
 `.ui-eval/integration/<execution-id>/` contains sealed `suite.json`, canonical
 `summary.json` and default human `summary.html`. HTML derives from the validated
 record and publishes before terminal JSON; failure to write either fails the
-command. Original adapter reports remain unchanged. Web aggregation requires all
+command. Original adapter reports remain unchanged.
+
+The summary opens with the run outcome, candidate revision when recorded, and
+scenario pass count. Each scenario groups its outcome with links to its
+original evidence. Non-passing scenarios are expanded by default.
+
+Web aggregation requires all
 compiled variants, matching source/scenario identity, canonical JSON and regular
 HTML, plus matching capture, manifest, evaluation plan, policy and verified CAS
 objects. Verification references existing sealed inputs without recreating missing

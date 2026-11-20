@@ -471,6 +471,19 @@ describe("integration runner", () => {
     expect(() => assertIntegrationResult(result)).toThrow("contradicts")
   })
 
+  it("leads with the candidate and groups evidence under the scenario", async () => {
+    const root = await project()
+    const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
+    const stage = result.stages.find(item => item.kind === "scenario")!
+    const html = renderIntegrationHtml(result, root)
+    expect(html).toContain("1/1 scenarios passed")
+    expect(html).toContain(`<details><summary>${stage.id} · pass</summary>`)
+    expect(html.indexOf("<h2>Scenarios</h2>")).toBeLessThan(html.indexOf("<summary>Execution details</summary>"))
+    expect(html.split("<summary>Execution details</summary>")[0]).toContain("View evidence")
+    stage.status = "fail"
+    expect(renderIntegrationHtml(result, root)).toContain(`<details open><summary>${stage.id} · fail</summary>`)
+  })
+
   it("refuses symlinked authoring and unsupported adapters or options", async () => {
     const root = await project()
     const suitePath = join(root, "ui-eval/integrations/smoke.json")
