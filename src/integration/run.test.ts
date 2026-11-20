@@ -473,9 +473,16 @@ describe("integration runner", () => {
 
   it("leads with the candidate and groups evidence under the scenario", async () => {
     const root = await project()
+    await writeFile(join(root, "ui-eval/engine.json"), JSON.stringify({ repository: "https://example.invalid/ui-eval.git", revision: "b".repeat(40) }))
     const result = await runIntegrationSuite({ projectRoot: root, suite: "smoke" }, dependencies)
     const stage = result.stages.find(item => item.kind === "scenario")!
-    const html = renderIntegrationHtml(result, root)
+    const persisted: unknown = JSON.parse(await readFile(result.summaryPath, "utf8"))
+    assertIntegrationResult(persisted)
+    const html = await readFile(result.summaryHtmlPath, "utf8")
+    const overview = html.split("<h2>Scenarios</h2>")[0]
+    expect(persisted.source?.commitSha).toBe("a".repeat(40))
+    expect(overview).toContain(`Revision <code>${persisted.source?.commitSha.slice(0, 12)}</code>`)
+    expect(overview).not.toContain(persisted.engine.revision.slice(0, 12))
     expect(html).toContain("1/1 scenarios passed")
     expect(html).not.toContain("dirty worktree")
     expect(html).toContain(`<details><summary>${stage.id} · pass</summary>`)
