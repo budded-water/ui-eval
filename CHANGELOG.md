@@ -14,6 +14,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- A WeChat batch integration can request reuse of a connected dedicated
+  window at the previous scenario's compiled-runtime fingerprint. The adapter
+  keeps per-scenario setup, evidence and cleanup.
+
 - WeChat scenarios can opt in to native synchronous storage batching when the
   selected DevTools base library provides it. Backups are complete before any
   mutation and restore failures still quarantine the dedicated runtime.

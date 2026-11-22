@@ -47,12 +47,12 @@ export class WechatDriver {
     private readonly command: CommandRunner = runCommand,
     private readonly signal?: AbortSignal,
   ) { this.deadline = Date.now() + project.timeoutMs }
-  async call(tool: string, args: readonly string[] = [], cleanup = false): Promise<unknown> {
+  async call(tool: string, args: readonly string[] = [], cleanup = false, maxWaitMs = 30000): Promise<unknown> {
     if (cleanup) this.cleanupDeadline ??= Date.now() + 15000
     const remaining = (cleanup ? this.cleanupDeadline! : this.deadline) - Date.now()
     if (!/^[a-z_]{1,80}$/.test(tool)) throw new WechatDriverError("Invalid WeChat tool name")
     const phase = cleanup ? "cleanup" : tool === "check_wechatide_status" ? "readiness" : tool === "open_project_window" ? "open" : tool === "automation_wx_api" ? "state" : tool === "simulator_screenshot" ? "evidence" : "action"
-    const start = performance.now(), budgetMs = Math.max(0, Math.min(remaining, 30000))
+    const start = performance.now(), budgetMs = Math.max(0, Math.min(remaining, 30000, maxWaitMs))
     let exitCode: number | null = null
     let failureCode: WechatFailureCode | undefined
     try {

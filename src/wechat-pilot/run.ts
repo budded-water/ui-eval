@@ -19,6 +19,18 @@ export async function doctorWechatPilot(options: WechatOptions, deps: WechatDepe
 }
 class AssertionMismatch extends Error {}
 
+async function hasReusablePage(driver: WechatDriver, projectArgs: string[]): Promise<boolean> {
+  try {
+    const { currentPage } = record(await driver.call("automation_runtime_info", [...projectArgs, "--action", "currentPage"], false, 5000))
+    if (currentPage == null) return false
+    const { path } = record(currentPage)
+    return typeof path === "string" && /^pages\/[a-zA-Z0-9/_-]{1,500}$/.test(path)
+  } catch (error) {
+    if (!(error instanceof WechatDriverError) || !["command-failed", "automator-timeout", "action-unconfirmed"].includes(error.failureCode)) throw error
+    return false
+  }
+}
+
 function storageOperations(entries: WechatPilotScenario["storage"], batch: boolean): Array<[string, unknown[]]> {
   const operation = (entry: WechatPilotScenario["storage"][number]): [string, unknown[]] => Object.hasOwn(entry, "value")
     ? ["setStorageSync", [entry.key, entry.value]]
@@ -32,7 +44,7 @@ function storageOperations(entries: WechatPilotScenario["storage"], batch: boole
   return [...removals.map(operation), ...sets]
 }
 
-export async function evaluateWechatPilot(options: WechatOptions & { scenario: string }, deps: WechatDependencies = {}): Promise<{ result: WechatPilotResult; reportPath: string; htmlPath: string }> {
+export async function evaluateWechatPilot(options: WechatOptions & { scenario: string; reuseRuntimeDigest?: string }, deps: WechatDependencies = {}): Promise<{ result: WechatPilotResult; reportPath: string; htmlPath: string }> {
   const started = performance.now()
   const root = options.projectRoot
   const project = await loadWechatProject(root)
@@ -41,6 +53,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
   const beforeIdentityStarted = performance.now()
   const before = await source(root)
   const runtimeDigest = await fingerprintRuntime(root, project)
+  if (options.reuseRuntimeDigest !== undefined && options.reuseRuntimeDigest !== runtimeDigest) throw new Error("Runtime fingerprint changed since the previous scenario")
   const identityBeforeMs = Math.round(performance.now() - beforeIdentityStarted)
   const executionId = randomUUID()
   const directory = await containedPath(root, `.ui-eval/wechat-runs/${executionId}`, true)
@@ -85,7 +98,9 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     await writeFile(resolve(directory, "plan.json"), JSON.stringify({ project, scenario }, null, 2) + "\n", { flag: "wx", mode: 0o600 })
     await writeFile(resolve(directory, "source.json"), JSON.stringify(before, null, 2) + "\n", { flag: "wx", mode: 0o600 })
     await driver.ready()
-    await driver.call("open_project_window", [...projectArgs, "--window-mode", "fullMode"])
+    const reuse = options.reuseRuntimeDigest !== undefined && await hasReusablePage(driver, projectArgs)
+    options.signal?.throwIfAborted()
+    if (!reuse) await driver.call("open_project_window", [...projectArgs, "--window-mode", "fullMode"])
     if (scenario.storage.length) {
       const info = record(await wx("getStorageInfoSync", []))
       if (!Array.isArray(info.keys) || info.keys.some((key) => typeof key !== "string")) throw new WechatDriverError("Missing WeChat storage-key evidence")

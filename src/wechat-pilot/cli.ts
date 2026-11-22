@@ -7,6 +7,7 @@ import { assessWechatScope } from "./assess"
 export async function runWechatPilotCli(args: string[], io: { cwd: string; stdout: (value: string) => void }, signal?: AbortSignal, deps: WechatDependencies = {}): Promise<number> {
   const parsed = parseArgs({ args, allowPositionals: true, strict: true, options: {
     "project-root": { type: "string" }, driver: { type: "string" }, format: { type: "string", default: "text" },
+    "reuse-runtime": { type: "string" },
     report: { type: "string" }, review: { type: "string" }, decision: { type: "string" }, reviewer: { type: "string" }, note: { type: "string" }, scope: { type: "string" },
   } })
   const [operation, scenario, ...extra] = parsed.positionals
@@ -14,6 +15,8 @@ export async function runWechatPilotCli(args: string[], io: { cwd: string; stdou
   const reviewKeys = ["report", "review", "decision", "reviewer", "note"] as const
   if (operation !== "review" && reviewKeys.some((key) => parsed.values[key] !== undefined) || operation !== "assess" && parsed.values.scope !== undefined || ["review", "assess"].includes(operation) && parsed.values.driver !== undefined) throw new Error("Options do not belong to the selected WeChat operation")
   const options = { projectRoot: parsed.values["project-root"] ?? io.cwd, driver: parsed.values.driver, signal }
+  const reuseRuntimeDigest = parsed.values["reuse-runtime"]
+  if (reuseRuntimeDigest !== undefined && (operation !== "evaluate" || !/^sha256:[a-f0-9]{64}$/.test(reuseRuntimeDigest))) throw new Error("--reuse-runtime requires evaluate and a prior runtime digest")
   if (operation === "review") {
     if (reviewKeys.some((key) => !parsed.values[key]) || !["pass", "fail", "inconclusive"].includes(parsed.values.decision!)) throw new Error("review requires --report, --review, --decision pass|fail|inconclusive, --reviewer and --note")
     const output = await recordWechatReview({ projectRoot: options.projectRoot, report: parsed.values.report!, review: parsed.values.review!, decision: parsed.values.decision as "pass" | "fail" | "inconclusive", reviewer: parsed.values.reviewer!, note: parsed.values.note! }, deps.source)
@@ -36,7 +39,7 @@ export async function runWechatPilotCli(args: string[], io: { cwd: string; stdou
     io.stdout(parsed.values.format === "json" ? `${JSON.stringify(result, null, 2)}\n` : `WeChat DevTools pilot ready: ${result.projectId}\n`)
     return 0
   }
-  const output = await evaluateWechatPilot({ ...options, scenario: scenario! }, deps)
+  const output = await evaluateWechatPilot({ ...options, scenario: scenario!, reuseRuntimeDigest }, deps)
   io.stdout(parsed.values.format === "json" ? `${JSON.stringify(output, null, 2)}\n` : `${output.result.status}: ${output.htmlPath}\nMachine record: ${output.reportPath}\n`)
   return { passed: 0, failed: 1, inconclusive: 2 }[output.result.status]
 }

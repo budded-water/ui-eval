@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { PNG } from "pngjs"
 import { loadWechatProject, loadWechatScenario } from "./config"
 import { decodeWechatResponse, type CommandRunner } from "./driver"
-import { inspectWechatPng } from "./evidence"
+import { fingerprintRuntime, inspectWechatPng } from "./evidence"
 import { doctorWechatPilot, evaluateWechatPilot } from "./run"
 import { runWechatPilotCli } from "./cli"
 import { collectSourceRevision } from "../orchestrator/identity"
@@ -79,6 +79,61 @@ function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: b
 }
 
 describe("WeChat pilot acceptance", () => {
+  it("reuses a matching open runtime and still restores scenario storage", async () => {
+    const root = await fixture(), driver = fakeDriver()
+    const digest = await fingerprintRuntime(root, await loadWechatProject(root))
+    const command: CommandRunner = (binary, args, options) => {
+      if (args[2] !== "automation_runtime_info") return driver.command(binary, args, options)
+      expect(args.slice(3)).toEqual(["--project", resolve(root, project.runtimeProject), "--action", "currentPage"])
+      expect(options.timeoutMs).toBeLessThanOrEqual(5000)
+      return Promise.resolve({ exitCode: 0, stderr: "", stdout: JSON.stringify({ ok: true, tool: args[2], clientName: args[1], result: { success: true, currentPage: { path: "pages/login/index" } } }) })
+    }
+    const stdout: string[] = []
+    expect(await runWechatPilotCli(["evaluate", "login", "--reuse-runtime", digest, "--format", "json"], { cwd: root, stdout: (line) => stdout.push(line) }, undefined, { source, command })).toBe(0)
+    expect(JSON.parse(stdout[0]).result.cleanup).toBe("completed")
+    expect(driver.calls).not.toContain("open_project_window")
+    expect(driver.storage.get("pilot-market")).toBe("FRA")
+  })
+  it("opens normally when the matching runtime has no active page", async () => {
+    const root = await fixture(), driver = fakeDriver()
+    const digest = await fingerprintRuntime(root, await loadWechatProject(root))
+    const command: CommandRunner = (binary, args, options) => args[2] === "automation_runtime_info"
+      ? Promise.resolve({ exitCode: 0, stderr: "", stdout: JSON.stringify({ ok: true, tool: args[2], clientName: args[1], result: { success: true, currentPage: null } }) })
+      : driver.command(binary, args, options)
+    const { result } = await evaluateWechatPilot({ projectRoot: root, scenario: "login", reuseRuntimeDigest: digest }, { source, command })
+    expect(result.status).toBe("passed")
+    expect(driver.calls.filter((tool) => tool === "open_project_window")).toHaveLength(1)
+  })
+  it("refuses reuse of a different compiled runtime before contacting DevTools", async () => {
+    const driver = fakeDriver()
+    await expect(evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login", reuseRuntimeDigest: "sha256:" + "0".repeat(64) }, { source, command: driver.command })).rejects.toThrow("Runtime fingerprint changed")
+    expect(driver.calls).toEqual([])
+  })
+  it("does not reopen when the reuse probe leaves an unsettled process", async () => {
+    const root = await fixture(), driver = fakeDriver()
+    const digest = await fingerprintRuntime(root, await loadWechatProject(root))
+    const command: CommandRunner = (binary, args, options) => {
+      if (args[2] === "automation_runtime_info") throw new IncompleteCleanupError("unsettled probe")
+      return driver.command(binary, args, options)
+    }
+    const { result } = await evaluateWechatPilot({ projectRoot: root, scenario: "login", reuseRuntimeDigest: digest }, { source, command })
+    expect(result).toMatchObject({ status: "inconclusive", cleanup: "incomplete" })
+    expect(driver.calls).not.toContain("open_project_window")
+    expect(driver.storage.get("pilot-market")).toBe("FRA")
+    expect(await readFile(resolve(root, project.runtimeProject, ".ui-eval-pilot.lock"), "utf8")).toBe(result.executionId)
+  })
+  it("does not reopen on a probe response bound to a different client", async () => {
+    const root = await fixture(), driver = fakeDriver()
+    const digest = await fingerprintRuntime(root, await loadWechatProject(root))
+    const command: CommandRunner = (binary, args, options) => args[2] === "automation_runtime_info"
+      ? Promise.resolve({ exitCode: 0, stderr: "", stdout: JSON.stringify({ ok: true, tool: args[2], clientName: "other", result: { success: true, currentPage: { path: "pages/login/index" } } }) })
+      : driver.command(binary, args, options)
+    const { result } = await evaluateWechatPilot({ projectRoot: root, scenario: "login", reuseRuntimeDigest: digest }, { source, command })
+    expect(result.status).toBe("inconclusive")
+    expect(result.diagnostics?.[0].code).toBe("response-binding")
+    expect(driver.calls).not.toContain("open_project_window")
+    expect(driver.calls).not.toContain("automation_wx_api")
+  })
   async function batchedStorageFixture() {
     const root = await fixture()
     const driver = fakeDriver()

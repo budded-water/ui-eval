@@ -1,5 +1,10 @@
 # Current Limitations
 
+WeChat batch window reuse relies on a current-page response scoped by the
+official driver to a previously verified synthetic project. It does not
+preserve scenario storage, remove the candidate identity checks, or keep
+windows open between separate batches.
+
 WeChat `doctor` is readiness-only; `probe` demonstrates a bounded read from an
 existing synthetic runtime. Neither proves UI acceptance. Human observations
 are source/report/image-bound with self-reported aliases. WeChat assessment
