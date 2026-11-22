@@ -99,6 +99,13 @@ describe command round trips and cannot split internal driver wait time from
 other driver work. Timings contain no command arguments, output or storage data.
 They are diagnostic only. Older reports without timings remain readable.
 
+Attempted steps also record elapsed milliseconds by step index and action in
+the original JSON and HTML report. Step time includes the operation, waiting
+inside the driver, and any assertion polling in the adapter. An infrastructure
+failure can leave a step without a usable result even when a duration exists.
+Later steps that were never attempted have no duration. Timing cannot separate
+the driver's internal selector wait from its transport or execution time.
+
 ## Record a visual observation
 
 Before capture, declare `reviews` in `ui-eval/wechat.json`, each with `id`,

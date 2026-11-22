@@ -298,6 +298,7 @@ describe("WeChat pilot acceptance", () => {
     expect(output.result.assertions).toEqual({ passed: 1, failed: 0 })
     expect(output.result.screenshots).toHaveLength(1)
     expect(output.result.steps.every((step) => step.status === "passed")).toBe(true)
+    expect(output.result.steps.every((step) => Number.isInteger(step.elapsedMs) && step.elapsedMs! >= 0)).toBe(true)
     expect(driver.storage.get("pilot-market")).toBe("FRA")
     const timings = output.result.timings!
     expect(timings.driver.reduce((sum, row) => sum + row.calls, 0)).toBe(driver.calls.length)
@@ -306,17 +307,31 @@ describe("WeChat pilot acceptance", () => {
     expect(timings.totalMs).toBeGreaterThanOrEqual(timings.identityBeforeMs + timings.identityAfterMs - 1)
     expect(JSON.parse(await readFile(output.reportPath, "utf8"))).toEqual(output.result)
     expect(await readFile(output.htmlPath, "utf8")).toContain("Driver timing by phase and tool")
-    const legacy = { ...output.result }
+    expect(await readFile(output.htmlPath, "utf8")).toContain("<th>Step elapsed (ms)</th>")
+    const legacy = { ...output.result, steps: output.result.steps.map((step) => {
+      const copy = { ...step }
+      delete copy.elapsedMs
+      return copy
+    }) }
     delete legacy.timings
     expect(renderWechatReport(legacy)).toContain("login: passed")
     expect(renderWechatReport(legacy)).not.toContain("Driver timing by phase and tool")
+    expect(renderWechatReport(legacy)).not.toContain("Step elapsed")
   })
   it("classifies an observed assertion mismatch as a product failure with missing later evidence", async () => {
     const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command: fakeDriver({ text: "Wrong page" }).command, source })
     expect(output.result.status).toBe("failed")
     expect(output.result.assertions.failed).toBe(1)
     expect(output.result.steps.map((step) => step.status)).toEqual(["passed", "failed", "not-run"])
+    expect(output.result.steps[1].elapsedMs).toEqual(expect.any(Number))
+    expect(output.result.steps[2]).not.toHaveProperty("elapsedMs")
     expect(output.result.screenshots).toEqual([])
+  })
+  it("times an attempted driver step without reporting an accepted result", async () => {
+    const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command: fakeDriver({ failedTool: "automation_element_action" }).command, source })
+    expect(output.result.status).toBe("inconclusive")
+    expect(output.result.steps[1]).toMatchObject({ status: "not-run", elapsedMs: expect.any(Number) })
+    expect(output.result.steps[2]).not.toHaveProperty("elapsedMs")
   })
   it.each([{ text: null }, { corrupt: true }, { dimensions: true }, { failedTool: "simulator_screenshot" }, { restoreFails: true }])("fails closed for invalid or unavailable evidence: %j", async (failure) => {
     const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command: fakeDriver(failure).command, source })

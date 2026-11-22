@@ -14,6 +14,10 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- WeChat reports include elapsed milliseconds for attempted steps alongside
+  the phase/tool totals, retaining the existing status and evidence checks.
+  Older reports with no step timing retain their rendering.
+
 - A WeChat batch integration can request reuse of a connected dedicated
   window at the previous scenario's compiled-runtime fingerprint. The adapter
   keeps per-scenario setup, evidence and cleanup.

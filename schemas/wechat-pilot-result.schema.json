@@ -127,6 +127,10 @@
                 "type": "string"
               }
             ]
+          },
+          "elapsedMs": {
+            "minimum": 0,
+            "type": "integer"
           }
         }
       }

@@ -93,6 +93,12 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     return response.result
   }
   let currentStep = -1
+  let stepStartedAt: number | undefined
+  const finishStepTiming = () => {
+    if (stepStartedAt === undefined) return
+    result.steps[currentStep].elapsedMs = Math.round(performance.now() - stepStartedAt)
+    stepStartedAt = undefined
+  }
   let unresolvedProcess = false
   try {
     await writeFile(resolve(directory, "plan.json"), JSON.stringify({ project, scenario }, null, 2) + "\n", { flag: "wx", mode: 0o600 })
@@ -132,6 +138,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     for (const [index, step] of scenario.steps.entries()) {
       currentStep = index
       options.signal?.throwIfAborted()
+      stepStartedAt = performance.now()
       if (step.action === "navigate") await driver.call("automation_navigate", [...projectArgs, "--action", "reLaunch", "--url", step.url])
       else if (step.action === "tap" || step.action === "input") {
         await driver.call("automation_element_action", [...projectArgs, "--action", step.action, "--selector", step.selector, "--wait-for-selector", step.selector, ...(step.action === "input" ? ["--value", step.value] : [])])
@@ -160,6 +167,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
         result.screenshots.push({ checkpointId: step.checkpointId, path, digest: image.digest, widthPx: image.width, heightPx: image.height })
       }
       result.steps[index].status = "passed"
+      finishStepTiming()
     }
     result.status = "passed"
     result.reason = "Every declared interaction assertion and required PNG checkpoint completed."
@@ -175,6 +183,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
       if (error instanceof WechatDriverError && error.pendingTaskId) result.pendingTaskId = error.pendingTaskId
     }
   } finally {
+    finishStepTiming()
     let cleanupFailed = false
     for (const method of mocked.reverse()) {
       try { await driver.call("automation_wx_api", [...projectArgs, "--action", "restore", "--method", method], true) }
