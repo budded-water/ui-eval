@@ -4,7 +4,7 @@ import { resolve } from "node:path"
 import { canonicalDigest } from "../contracts/canonical-json"
 import { hasIncompleteCleanup } from "../runtime/cleanup"
 import { collectSourceRevision } from "../orchestrator/identity"
-import { containedPath, loadWechatProject, loadWechatScenario } from "./config"
+import { containedPath, loadWechatProject, loadWechatScenario, type WechatPilotScenario } from "./config"
 import { record, WechatDriver, WechatDriverError, type CommandRunner } from "./driver"
 import { boundedFile, fingerprintRuntime, inspectWechatPng } from "./evidence"
 import { writeWechatReport, type WechatPilotResult } from "./report"
@@ -18,6 +18,17 @@ export async function doctorWechatPilot(options: WechatOptions, deps: WechatDepe
   return { ready: true, projectId: project.projectId, runtimeDigest }
 }
 class AssertionMismatch extends Error {}
+
+function storageOperations(entries: WechatPilotScenario["storage"], batch: boolean): Array<[string, unknown[]]> {
+  const writes = batch ? entries.filter((entry) => Object.hasOwn(entry, "value")) : []
+  if (writes.length > 1) return [
+    ["batchSetStorageSync", [writes]],
+    ...entries.filter((entry) => !Object.hasOwn(entry, "value")).map<[string, unknown[]]>(({ key }) => ["removeStorageSync", [key]]),
+  ]
+  return entries.map((entry) => Object.hasOwn(entry, "value")
+    ? ["setStorageSync", [entry.key, entry.value]]
+    : ["removeStorageSync", [entry.key]])
+}
 
 export async function evaluateWechatPilot(options: WechatOptions & { scenario: string }, deps: WechatDependencies = {}): Promise<{ result: WechatPilotResult; reportPath: string; htmlPath: string }> {
   const started = performance.now()
@@ -76,12 +87,25 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     if (scenario.storage.length) {
       const info = record(await wx("getStorageInfoSync", []))
       if (!Array.isArray(info.keys) || info.keys.some((key) => typeof key !== "string")) throw new WechatDriverError("Missing WeChat storage-key evidence")
-      for (const entry of scenario.storage) {
-        const present = info.keys.includes(entry.key)
-        const original = present ? await wx("getStorageSync", [entry.key]) : undefined
-        backups.push({ key: entry.key, present, value: original })
-        if (Object.hasOwn(entry, "value")) await wx("setStorageSync", [entry.key, entry.value])
-        else await wx("removeStorageSync", [entry.key])
+      const keys = new Set(info.keys)
+      if (scenario.batchStorage) {
+        const present = scenario.storage.map(({ key }) => key).filter((key) => keys.has(key))
+        const values = present.length > 1 ? await wx("batchGetStorageSync", [present])
+          : present.length === 1 ? [await wx("getStorageSync", present)] : []
+        if (!Array.isArray(values) || values.length !== present.length || values.some((value) => value === undefined)) {
+          throw new WechatDriverError("Incomplete original batch storage evidence")
+        }
+        const originals = new Map(present.map((key, index) => [key, values[index]]))
+        backups.push(...scenario.storage.map(({ key }) => ({ key, present: originals.has(key), value: originals.get(key) })))
+        for (const [method, args] of storageOperations(scenario.storage, true)) await wx(method, args)
+      } else {
+        for (const entry of scenario.storage) {
+          const present = keys.has(entry.key)
+          const original = present ? await wx("getStorageSync", [entry.key]) : undefined
+          backups.push({ key: entry.key, present, value: original })
+          if (Object.hasOwn(entry, "value")) await wx("setStorageSync", [entry.key, entry.value])
+          else await wx("removeStorageSync", [entry.key])
+        }
       }
     }
     for (const mock of scenario.mocks) {
@@ -139,10 +163,10 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
       try { await driver.call("automation_wx_api", [...projectArgs, "--action", "restore", "--method", method], true) }
       catch (error) { cleanupFailed = true; unresolvedProcess ||= hasIncompleteCleanup(error) }
     }
-    for (const backup of backups.reverse()) {
-      try {
-        await wx(backup.present ? "setStorageSync" : "removeStorageSync", backup.present ? [backup.key, backup.value] : [backup.key], true)
-      } catch (error) { cleanupFailed = true; unresolvedProcess ||= hasIncompleteCleanup(error) }
+    const restoration = backups.reverse().map(({ key, present, value }) => present ? { key, value } : { key })
+    for (const [method, args] of storageOperations(restoration, scenario.batchStorage === true)) {
+      try { await wx(method, args, true) }
+      catch (error) { cleanupFailed = true; unresolvedProcess ||= hasIncompleteCleanup(error) }
     }
     if (cleanupFailed || unresolvedProcess) {
       result.cleanup = "incomplete"
