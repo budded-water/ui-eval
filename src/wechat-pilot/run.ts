@@ -20,12 +20,15 @@ export async function doctorWechatPilot(options: WechatOptions, deps: WechatDepe
 class AssertionMismatch extends Error {}
 
 export async function evaluateWechatPilot(options: WechatOptions & { scenario: string }, deps: WechatDependencies = {}): Promise<{ result: WechatPilotResult; reportPath: string; htmlPath: string }> {
+  const started = performance.now()
   const root = options.projectRoot
   const project = await loadWechatProject(root)
   const scenario = await loadWechatScenario(root, project, options.scenario)
   const source = deps.source ?? collectSourceRevision
+  const beforeIdentityStarted = performance.now()
   const before = await source(root)
   const runtimeDigest = await fingerprintRuntime(root, project)
+  const identityBeforeMs = Math.round(performance.now() - beforeIdentityStarted)
   const executionId = randomUUID()
   const directory = await containedPath(root, `.ui-eval/wechat-runs/${executionId}`, true)
   const runtime = await containedPath(root, project.runtimeProject)
@@ -149,6 +152,7 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
     if (result.cleanup === "completed") await rm(lockPath)
     if (driver.diagnostics.length) result.diagnostics = [...driver.diagnostics]
   }
+  const afterIdentityStarted = performance.now()
   try {
     if (canonicalDigest(await source(root)) !== sourceDigest || await fingerprintRuntime(root, project) !== runtimeDigest) {
       result.status = "inconclusive"
@@ -157,6 +161,10 @@ export async function evaluateWechatPilot(options: WechatOptions & { scenario: s
   } catch {
     result.status = "inconclusive"
     result.reason = "Post-capture source/runtime identity could not be established."
+  }
+  result.timings = {
+    driver: [...driver.timings.values()], identityBeforeMs,
+    identityAfterMs: Math.round(performance.now() - afterIdentityStarted), totalMs: Math.round(performance.now() - started),
   }
   await writeWechatReport(directory, result)
   options.signal?.throwIfAborted()

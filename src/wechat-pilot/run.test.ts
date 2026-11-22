@@ -14,6 +14,7 @@ import { probeWechatPilot } from "./probe"
 import { recordWechatReview, verifyWechatReport, verifyWechatReview } from "./review"
 import { assessWechatScope } from "./assess"
 import { canonicalDigest } from "../contracts/canonical-json"
+import { renderWechatReport } from "./report"
 
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))) })
@@ -120,6 +121,7 @@ describe("WeChat pilot acceptance", () => {
     const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command, source })
     expect(output.result.status).toBe("inconclusive")
     expect(output.result.diagnostics?.[0]).toMatchObject({ phase: "state", tool: "automation_wx_api", code: "automator-timeout", exitCode: 1 })
+    expect(output.result.timings?.driver).toContainEqual({ phase: "state", tool: "automation_wx_api", calls: 1, failedCalls: 1, elapsedMs: expect.any(Number) })
     expect(JSON.stringify(output.result)).not.toContain("PRIVATE_")
     expect(await readFile(output.htmlPath, "utf8")).toContain("automator-timeout")
   })
@@ -157,8 +159,17 @@ describe("WeChat pilot acceptance", () => {
     expect(output.result.screenshots).toHaveLength(1)
     expect(output.result.steps.every((step) => step.status === "passed")).toBe(true)
     expect(driver.storage.get("pilot-market")).toBe("FRA")
+    const timings = output.result.timings!
+    expect(timings.driver.reduce((sum, row) => sum + row.calls, 0)).toBe(driver.calls.length)
+    expect(timings.driver).toContainEqual({ phase: "cleanup", tool: "automation_wx_api", calls: 2, failedCalls: 0, elapsedMs: expect.any(Number) })
+    expect(timings.driver).toContainEqual({ phase: "open", tool: "open_project_window", calls: 1, failedCalls: 0, elapsedMs: expect.any(Number) })
+    expect(timings.totalMs).toBeGreaterThanOrEqual(timings.identityBeforeMs + timings.identityAfterMs - 1)
     expect(JSON.parse(await readFile(output.reportPath, "utf8"))).toEqual(output.result)
-    expect(await readFile(output.htmlPath, "utf8")).toContain("login: passed")
+    expect(await readFile(output.htmlPath, "utf8")).toContain("Driver timing by phase and tool")
+    const legacy = { ...output.result }
+    delete legacy.timings
+    expect(renderWechatReport(legacy)).toContain("login: passed")
+    expect(renderWechatReport(legacy)).not.toContain("Driver timing by phase and tool")
   })
   it("classifies an observed assertion mismatch as a product failure with missing later evidence", async () => {
     const output = await evaluateWechatPilot({ projectRoot: await fixture(), scenario: "login" }, { command: fakeDriver({ text: "Wrong page" }).command, source })

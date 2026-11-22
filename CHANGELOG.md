@@ -14,6 +14,11 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- WeChat evaluation reports preserve aggregate counts and elapsed time for
+  successful and failed driver calls, grouped by phase and tool, alongside
+  source/runtime identity timing. Older reports remain readable. Strict readers
+  of new reports should use the updated result schema.
+
 - Native scenarios can declare a bounded `wait-for-animation` step using the
   existing Maestro driver. Exact required-command evidence is bound to its
   timeout; completion remains separate from assertions and UI acceptance.
