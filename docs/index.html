@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="b769c42c8948f1480ff6b4ddbd911807a25b398f6cc51bb90cd910c2bf8db5fb">
+  <meta name="source-sha256" content="147af5f004512feb90f6365ce58a545138a6097a0e622f2aa4b78d15fdcf9119">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: b769c42c8948f1480ff6b4ddbd911807a25b398f6cc51bb90cd910c2bf8db5fb</footer>
+        <footer>Source set SHA-256: 147af5f004512feb90f6365ce58a545138a6097a0e622f2aa4b78d15fdcf9119</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -2408,6 +2408,12 @@ includes work between commands, such as assertion polling delays. Driver timings
 describe command round trips and cannot split internal driver wait time from
 other driver work. Timings contain no command arguments, output or storage data.
 They are diagnostic only. Older reports without timings remain readable.</p>
+<p>Attempted steps also record elapsed milliseconds by step index and action in
+the original JSON and HTML report. Step time includes the operation, waiting
+inside the driver, and any assertion polling in the adapter. An infrastructure
+failure can leave a step without a usable result even when a duration exists.
+Later steps that were never attempted have no duration. Timing cannot separate
+the driver&#39;s internal selector wait from its transport or execution time.</p>
 <h2>Record a visual observation</h2>
 <p>Before capture, declare <code>reviews</code> in <code>ui-eval/wechat.json</code>, each with <code>id</code>,
 <code>scenarioId</code>, <code>checkpointId</code> and a concrete visual <code>criterion</code>. After inspecting
