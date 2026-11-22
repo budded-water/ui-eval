@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="5875429987327ac0bd6b79338483c448ce467be14f2d910071c2596831da64d8">
+  <meta name="source-sha256" content="b769c42c8948f1480ff6b4ddbd911807a25b398f6cc51bb90cd910c2bf8db5fb">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 5875429987327ac0bd6b79338483c448ce467be14f2d910071c2596831da64d8</footer>
+        <footer>Source set SHA-256: b769c42c8948f1480ff6b4ddbd911807a25b398f6cc51bb90cd910c2bf8db5fb</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1097,6 +1097,10 @@ under its existing isolation/lock contract.</p>
 methods on the same locked synthetic runtime. It validates the positional
 backup before writes and limits mutation and restore to the declared keys.
 Failure to establish restoration retains the runtime lock.</p>
+<p>WeChat window reuse requires an identical compiled-runtime fingerprint and a
+current-page response from the official tool scoped to the selected synthetic
+project. The probe does not mutate runtime state. Failed binding or unsettled
+process cleanup prevents reuse and automatic reopening.</p>
 <p>Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks
@@ -2357,6 +2361,16 @@ bun run ui-eval wechat-pilot evaluate login-controls --project-root /path/to/can
 <code>report.json</code> and <code>report.html</code> with declared assertions and PNG screenshots in
 <code>.ui-eval/wechat-runs/</code>. Generated output is private local evidence, ignored by
 Git. The candidate integration owns backend and account isolation.</p>
+<p>An integration that owns a dedicated window for a batch can pass
+<code>evaluate &lt;scenario&gt; --reuse-runtime &lt;prior-runtime-digest&gt;</code> after a successful
+scenario with completed cleanup. The compiled runtime must still have the same
+fingerprint. A bounded current-page call scoped to the dedicated project
+confirms the window before the adapter skips opening it. If a settled probe
+cannot find the connection or page, the adapter opens the dedicated window
+normally. Response-binding errors, pending authorization and unsettled
+processes stop evaluation. The integration still owns opening the first
+window and closing it at batch end. Every scenario keeps its storage, mock,
+assertion, screenshot and fingerprint checks.</p>
 <p>The first pilot supports navigation, tap, input, explicit text/page assertions
 and screenshots. It does not certify Web DOM/CSSOM geometry, crash/network
 coverage, accessibility, design conformance, backend compatibility, payment,
@@ -2828,6 +2842,10 @@ schemas and <code>summarizeNativeProgress</code>.</p>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
+<p>WeChat batch window reuse relies on a current-page response scoped by the
+official driver to a previously verified synthetic project. It does not
+preserve scenario storage, remove the candidate identity checks, or keep
+windows open between separate batches.</p>
 <p>WeChat <code>doctor</code> is readiness-only; <code>probe</code> demonstrates a bounded read from an
 existing synthetic runtime. Neither proves UI acceptance. Human observations
 are source/report/image-bound with self-reported aliases. WeChat assessment

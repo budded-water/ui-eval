@@ -44,6 +44,17 @@ Use `--driver /absolute/path/to/wechatide` when the bundled CLI is not on PATH.
 `.ui-eval/wechat-runs/`. Generated output is private local evidence, ignored by
 Git. The candidate integration owns backend and account isolation.
 
+An integration that owns a dedicated window for a batch can pass
+`evaluate <scenario> --reuse-runtime <prior-runtime-digest>` after a successful
+scenario with completed cleanup. The compiled runtime must still have the same
+fingerprint. A bounded current-page call scoped to the dedicated project
+confirms the window before the adapter skips opening it. If a settled probe
+cannot find the connection or page, the adapter opens the dedicated window
+normally. Response-binding errors, pending authorization and unsettled
+processes stop evaluation. The integration still owns opening the first
+window and closing it at batch end. Every scenario keeps its storage, mock,
+assertion, screenshot and fingerprint checks.
+
 The first pilot supports navigation, tap, input, explicit text/page assertions
 and screenshots. It does not certify Web DOM/CSSOM geometry, crash/network
 coverage, accessibility, design conformance, backend compatibility, payment,

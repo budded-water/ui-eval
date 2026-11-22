@@ -36,6 +36,7 @@ Usage:
   ui-eval native-pilot review --report <path> --review <id> --decision pass|fail|inconclusive --reviewer <alias> --note <observation>
   ui-eval native-pilot progress --scope <project-relative-json> [--format text|json]
   ui-eval wechat-pilot doctor|probe|evaluate|review|assess [scenario] [--driver /path/to/wechatide]
+    evaluate can accept --reuse-runtime <prior-runtime-digest>
                               [--project-root path] [--format text|json]
 
 Exit codes:

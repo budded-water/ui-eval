@@ -12,6 +12,11 @@ methods on the same locked synthetic runtime. It validates the positional
 backup before writes and limits mutation and restore to the declared keys.
 Failure to establish restoration retains the runtime lock.
 
+WeChat window reuse requires an identical compiled-runtime fingerprint and a
+current-page response from the official tool scoped to the selected synthetic
+project. The probe does not mutate runtime state. Failed binding or unsettled
+process cleanup prevents reuse and automatic reopening.
+
 Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks
