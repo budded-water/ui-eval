@@ -20,14 +20,16 @@ export async function doctorWechatPilot(options: WechatOptions, deps: WechatDepe
 class AssertionMismatch extends Error {}
 
 function storageOperations(entries: WechatPilotScenario["storage"], batch: boolean): Array<[string, unknown[]]> {
-  const writes = batch ? entries.filter((entry) => Object.hasOwn(entry, "value")) : []
-  if (writes.length > 1) return [
-    ["batchSetStorageSync", [writes]],
-    ...entries.filter((entry) => !Object.hasOwn(entry, "value")).map<[string, unknown[]]>(({ key }) => ["removeStorageSync", [key]]),
-  ]
-  return entries.map((entry) => Object.hasOwn(entry, "value")
+  const operation = (entry: WechatPilotScenario["storage"][number]): [string, unknown[]] => Object.hasOwn(entry, "value")
     ? ["setStorageSync", [entry.key, entry.value]]
-    : ["removeStorageSync", [entry.key]])
+    : ["removeStorageSync", [entry.key]]
+  if (!batch) return entries.map(operation)
+  const writes = entries.filter((entry) => Object.hasOwn(entry, "value"))
+  const removals = entries.filter((entry) => !Object.hasOwn(entry, "value"))
+  const sets: Array<[string, unknown[]]> = writes.length > 1
+    ? [["batchSetStorageSync", [writes]]] : writes.map(operation)
+  // Free space before setting values, particularly when restoring the original state.
+  return [...removals.map(operation), ...sets]
 }
 
 export async function evaluateWechatPilot(options: WechatOptions & { scenario: string }, deps: WechatDependencies = {}): Promise<{ result: WechatPilotResult; reportPath: string; htmlPath: string }> {

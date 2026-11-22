@@ -60,10 +60,11 @@ them from the reviewed candidate inputs before running evaluation.
 For a DevTools base library that provides synchronous batch storage APIs, a
 scenario can set `batchStorage: true`. The adapter first validates backups of
 all declared keys, uses native batch reads and writes when there are multiple
-values, and removes keys individually. Cleanup restores previously present
-values and removes keys that were initially absent, including after a partially
-applied write. An unacknowledged restore invalidates the run and retains the
-runtime lock. The scenario continues to declare storage keys and values as JSON.
+values, and removes keys individually before writes to free storage capacity.
+Cleanup removes initially absent keys and restores previous values, including
+after a partially applied write. An unacknowledged restore invalidates the run
+and retains the runtime lock. The scenario continues to declare storage keys
+and values as JSON.
 
 ## Diagnose before accepting
 

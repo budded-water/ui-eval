@@ -103,7 +103,21 @@ describe("WeChat pilot acceptance", () => {
     const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
     expect(output.result).toMatchObject({ status: "passed", cleanup: "completed" })
     expect(driver.storage).toEqual(new Map(original))
-    expect(driver.storageCalls).toEqual(["getStorageInfoSync", "batchGetStorageSync", "batchSetStorageSync", "removeStorageSync", "batchSetStorageSync", "removeStorageSync"])
+    expect(driver.storageCalls).toEqual(["getStorageInfoSync", "batchGetStorageSync", "removeStorageSync", "batchSetStorageSync", "removeStorageSync", "batchSetStorageSync"])
+  })
+  it("removes replaced keys before batch writes when capacity is limited", async () => {
+    const { root, driver, original } = await batchedStorageFixture()
+    const command: CommandRunner = async (binary, args, options) => {
+      if (args.includes("batchSetStorageSync")) {
+        const [writes] = JSON.parse(await readFile(args[args.indexOf("--args-file") + 1], "utf8"))
+        const count = new Set([...driver.storage.keys(), ...writes.map(({ key }: { key: string }) => key)]).size
+        if (count > original.length) return { exitCode: 1, stderr: "", stdout: "" }
+      }
+      return driver.command(binary, args, options)
+    }
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result).toMatchObject({ status: "passed", cleanup: "completed" })
+    expect(driver.storage).toEqual(new Map(original))
   })
   it("rejects an incomplete batch backup before changing storage", async () => {
     const { root, driver, original } = await batchedStorageFixture()
@@ -120,17 +134,23 @@ describe("WeChat pilot acceptance", () => {
     const { root, driver, original } = await batchedStorageFixture()
     let writes = 0
     const command: CommandRunner = (binary, args, options) => {
-      if (args.includes("batchSetStorageSync") && (++writes === 1 || failRestore)) {
-        driver.storage.set("pilot-market", "PARTIAL")
-        driver.storage.set("new", false)
-        return Promise.resolve({ exitCode: 1, stderr: "", stdout: "" })
+      if (args.includes("batchSetStorageSync")) {
+        if (++writes === 1) {
+          driver.storage.set("pilot-market", "PARTIAL")
+          driver.storage.set("new", false)
+          return Promise.resolve({ exitCode: 1, stderr: "", stdout: "" })
+        }
+        if (failRestore) return Promise.resolve({ exitCode: 1, stderr: "", stdout: "" })
       }
       return driver.command(binary, args, options)
     }
     const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
     expect(output.result).toMatchObject({ status: "inconclusive", cleanup: failRestore ? "incomplete" : "completed" })
     const expected = new Map(original)
-    if (failRestore) expected.set("pilot-market", "PARTIAL")
+    if (failRestore) {
+      expected.set("pilot-market", "PARTIAL")
+      expected.delete("old")
+    }
     expect(driver.storage).toEqual(expected)
     expect(writes).toBe(2)
     expect(driver.calls).not.toContain("automation_navigate")
