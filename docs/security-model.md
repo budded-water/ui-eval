@@ -7,6 +7,11 @@ execution. WeChat failure diagnostics and timing summaries exclude raw output,
 identities, storage contents and arguments. The explicit probe reads only an already-open synthetic runtime
 under its existing isolation/lock contract.
 
+Opt-in WeChat storage batching calls only the native synchronous storage
+methods on the same locked synthetic runtime. It validates the positional
+backup before writes and limits mutation and restore to the declared keys.
+Failure to establish restoration retains the runtime lock.
+
 Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks

@@ -23,6 +23,10 @@
       "pattern": "^[a-z][a-z0-9-]{0,79}$",
       "type": "string"
     },
+    "batchStorage": {
+      "const": true,
+      "type": "boolean"
+    },
     "storage": {
       "maxItems": 20,
       "type": "array",

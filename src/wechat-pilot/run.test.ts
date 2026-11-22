@@ -44,6 +44,7 @@ async function fixture() {
 }
 function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: boolean; restoreFails?: boolean; failedTool?: string; mutate?: string; pending?: boolean } = {}) {
   const calls: string[] = []
+  const storageCalls: string[] = []
   const storage = new Map<string, unknown>([["pilot-market", "FRA"]])
   const command: CommandRunner = async (_binary, args) => {
     const tool = args[2]; calls.push(tool)
@@ -54,8 +55,13 @@ function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: b
     if (tool === "automation_wx_api" && args.includes("--args-file")) {
       const values = JSON.parse(await readFile(args[args.indexOf("--args-file") + 1], "utf8"))
       const method = args[args.indexOf("--method") + 1]
+      storageCalls.push(method)
       if (method === "getStorageInfoSync") result = { success: true, result: { keys: [...storage.keys()] } }
       else if (method === "getStorageSync") result = { success: true, result: storage.get(values[0]) }
+      else if (method === "batchGetStorageSync") result = { success: true, result: values[0].map((key: string) => storage.get(key)) }
+      else if (method === "batchSetStorageSync") {
+        for (const { key, value } of values[0]) storage.set(key, value)
+      }
       else if (method === "setStorageSync") {
         if (options.restoreFails && values[1] === "FRA") return { exitCode: 1, stdout: "", stderr: "failed restoration" }
         storage.set(values[0], values[1])
@@ -69,10 +75,89 @@ function fakeDriver(options: { text?: unknown; corrupt?: boolean; dimensions?: b
     }
     return { exitCode: 0, stdout: JSON.stringify({ ok: true, tool, clientName: args[1], result }), stderr: "" }
   }
-  return { command, calls, storage }
+  return { command, calls, storage, storageCalls }
 }
 
 describe("WeChat pilot acceptance", () => {
+  async function batchedStorageFixture() {
+    const root = await fixture()
+    const driver = fakeDriver()
+    driver.storage.set("old", null)
+    driver.storage.set("unrelated", "kept")
+    await writeFile(resolve(root, "ui-eval/login.json"), JSON.stringify({
+      ...scenario, batchStorage: true, mocks: [],
+      storage: [{ key: "pilot-market", value: "GIN" }, { key: "old" }, { key: "new", value: false }],
+    }))
+    return { root, driver, original: [...driver.storage] }
+  }
+  it("batches storage reads and writes while restoring present and absent keys", async () => {
+    const { root, driver, original } = await batchedStorageFixture()
+    const command: CommandRunner = (binary, args, options) => {
+      if (args[2] === "automation_navigate") {
+        expect(driver.storage.get("pilot-market")).toBe("GIN")
+        expect(driver.storage.has("old")).toBe(false)
+        expect(driver.storage.get("new")).toBe(false)
+      }
+      return driver.command(binary, args, options)
+    }
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result).toMatchObject({ status: "passed", cleanup: "completed" })
+    expect(driver.storage).toEqual(new Map(original))
+    expect(driver.storageCalls).toEqual(["getStorageInfoSync", "batchGetStorageSync", "removeStorageSync", "batchSetStorageSync", "removeStorageSync", "batchSetStorageSync"])
+  })
+  it("removes replaced keys before batch writes when capacity is limited", async () => {
+    const { root, driver, original } = await batchedStorageFixture()
+    const command: CommandRunner = async (binary, args, options) => {
+      if (args.includes("batchSetStorageSync")) {
+        const [writes] = JSON.parse(await readFile(args[args.indexOf("--args-file") + 1], "utf8"))
+        const count = new Set([...driver.storage.keys(), ...writes.map(({ key }: { key: string }) => key)]).size
+        if (count > original.length) return { exitCode: 1, stderr: "", stdout: "" }
+      }
+      return driver.command(binary, args, options)
+    }
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result).toMatchObject({ status: "passed", cleanup: "completed" })
+    expect(driver.storage).toEqual(new Map(original))
+  })
+  it("rejects an incomplete batch backup before changing storage", async () => {
+    const { root, driver, original } = await batchedStorageFixture()
+    const command: CommandRunner = (binary, args, options) => args.includes("batchGetStorageSync")
+      ? Promise.resolve({ exitCode: 0, stderr: "", stdout: JSON.stringify({ ok: true, tool: args[2], clientName: args[1], result: { success: true, result: ["FRA"] } }) })
+      : driver.command(binary, args, options)
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result).toMatchObject({ status: "inconclusive", cleanup: "completed" })
+    expect(driver.storage).toEqual(new Map(original))
+    expect(driver.storageCalls).toEqual(["getStorageInfoSync"])
+    expect(driver.calls).not.toContain("automation_navigate")
+  })
+  it.each([false, true])("restores a partial batch write, with restore failure=%s", async (failRestore) => {
+    const { root, driver, original } = await batchedStorageFixture()
+    let writes = 0
+    const command: CommandRunner = (binary, args, options) => {
+      if (args.includes("batchSetStorageSync")) {
+        if (++writes === 1) {
+          driver.storage.set("pilot-market", "PARTIAL")
+          driver.storage.set("new", false)
+          return Promise.resolve({ exitCode: 1, stderr: "", stdout: "" })
+        }
+        if (failRestore) return Promise.resolve({ exitCode: 1, stderr: "", stdout: "" })
+      }
+      return driver.command(binary, args, options)
+    }
+    const output = await evaluateWechatPilot({ projectRoot: root, scenario: "login" }, { command, source })
+    expect(output.result).toMatchObject({ status: "inconclusive", cleanup: failRestore ? "incomplete" : "completed" })
+    const expected = new Map(original)
+    if (failRestore) {
+      expected.set("pilot-market", "PARTIAL")
+      expected.delete("old")
+    }
+    expect(driver.storage).toEqual(expected)
+    expect(writes).toBe(2)
+    expect(driver.calls).not.toContain("automation_navigate")
+    const lock = readFile(resolve(root, project.runtimeProject, ".ui-eval-pilot.lock"), "utf8")
+    if (failRestore) await expect(lock).resolves.toBe(output.result.executionId)
+    else await expect(lock).rejects.toThrow()
+  })
   async function visualFixture() {
     const root = await fixture()
     await writeFile(resolve(root, "ui-eval/wechat.json"), JSON.stringify({ ...project, reviews: [{ id: "spacing", scenarioId: "login", checkpointId: "login", criterion: "Controls remain visibly separated" }] }))

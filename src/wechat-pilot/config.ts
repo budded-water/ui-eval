@@ -32,6 +32,7 @@ export const WechatPilotScenarioSchema = Type.Object({
   apiVersion: Type.Literal("uieval.io/wechat-pilot-v1"),
   kind: Type.Literal("WechatPilotScenario"),
   id,
+  batchStorage: Type.Optional(Type.Literal(true)),
   storage: Type.Array(Type.Object({ key: Type.String({ minLength: 1, maxLength: 128 }), value: Type.Optional(value) }, strict), { maxItems: 20 }),
   mocks: Type.Array(Type.Object({ method: Type.Literal("getLocation"), result: Type.Object({ latitude: Type.Number(), longitude: Type.Number() }, strict) }, strict), { maxItems: 1 }),
   steps: Type.Array(WechatPilotStepSchema, { minItems: 3, maxItems: 100 }),

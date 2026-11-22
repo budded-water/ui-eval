@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="c4b8e3b7f1ec6a548820229f0f398fe06d284ca213cfda3944ac05003a569974">
+  <meta name="source-sha256" content="5875429987327ac0bd6b79338483c448ce467be14f2d910071c2596831da64d8">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: c4b8e3b7f1ec6a548820229f0f398fe06d284ca213cfda3944ac05003a569974</footer>
+        <footer>Source set SHA-256: 5875429987327ac0bd6b79338483c448ce467be14f2d910071c2596831da64d8</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1093,6 +1093,10 @@ are self-reported, do not grant release authority and cannot waive failed raw
 execution. WeChat failure diagnostics and timing summaries exclude raw output,
 identities, storage contents and arguments. The explicit probe reads only an already-open synthetic runtime
 under its existing isolation/lock contract.</p>
+<p>Opt-in WeChat storage batching calls only the native synchronous storage
+methods on the same locked synthetic runtime. It validates the positional
+backup before writes and limits mutation and restore to the declared keys.
+Failure to establish restoration retains the runtime lock.</p>
 <p>Native recovery context commands are reviewed candidate executable input, not
 an independent security authority. A context must account for relevant App,
 account/backend and fixture changes before replay is enabled. Reuse rechecks
@@ -2364,6 +2368,14 @@ Scenario JSON is canonical for acceptance scope; the report records actual
 coverage, including missing steps. Runtime project configuration and candidate
 build output are a second source of state: the integration must regenerate
 them from the reviewed candidate inputs before running evaluation.</p>
+<p>For a DevTools base library that provides synchronous batch storage APIs, a
+scenario can set <code>batchStorage: true</code>. The adapter first validates backups of
+all declared keys, uses native batch reads and writes when there are multiple
+values, and removes keys individually before writes to free storage capacity.
+Cleanup removes initially absent keys and restores previous values, including
+after a partially applied write. An unacknowledged restore invalidates the run
+and retains the runtime lock. The scenario continues to declare storage keys
+and values as JSON.</p>
 <h2>Diagnose before accepting</h2>
 <p><code>doctor</code> checks CLI readiness only. <code>probe</code> reads the current page and storage-key
 count from an already-open synthetic runtime. It uses the runtime lock and
