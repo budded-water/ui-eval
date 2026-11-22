@@ -288,6 +288,91 @@
         }
       }
     },
+    "timings": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "driver",
+        "identityBeforeMs",
+        "identityAfterMs",
+        "totalMs"
+      ],
+      "properties": {
+        "driver": {
+          "maxItems": 300,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "phase",
+              "tool",
+              "calls",
+              "failedCalls",
+              "elapsedMs"
+            ],
+            "properties": {
+              "phase": {
+                "anyOf": [
+                  {
+                    "const": "readiness",
+                    "type": "string"
+                  },
+                  {
+                    "const": "open",
+                    "type": "string"
+                  },
+                  {
+                    "const": "state",
+                    "type": "string"
+                  },
+                  {
+                    "const": "action",
+                    "type": "string"
+                  },
+                  {
+                    "const": "evidence",
+                    "type": "string"
+                  },
+                  {
+                    "const": "cleanup",
+                    "type": "string"
+                  }
+                ]
+              },
+              "tool": {
+                "pattern": "^[a-z_]{1,80}$",
+                "type": "string"
+              },
+              "calls": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "failedCalls": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "elapsedMs": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "identityBeforeMs": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "identityAfterMs": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "totalMs": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      }
+    },
     "cleanup": {
       "anyOf": [
         {

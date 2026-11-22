@@ -70,6 +70,15 @@ evidence and cleanup. Raw output, identities, arguments, storage contents and
 pending task IDs are excluded. The known automator timeout has its own code.
 Diagnostics never change acceptance or authorize an automatic retry.
 
+Each evaluation report also includes cumulative driver timings grouped by
+phase and tool, with call counts, failed-call counts and elapsed milliseconds.
+The report times source and compiled-runtime identity checks before and after
+capture separately. Total evaluation time stops before report publication and
+includes work between commands, such as assertion polling delays. Driver timings
+describe command round trips and cannot split internal driver wait time from
+other driver work. Timings contain no command arguments, output or storage data.
+They are diagnostic only. Older reports without timings remain readable.
+
 ## Record a visual observation
 
 Before capture, declare `reviews` in `ui-eval/wechat.json`, each with `id`,

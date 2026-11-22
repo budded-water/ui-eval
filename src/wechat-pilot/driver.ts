@@ -1,6 +1,7 @@
 import { runCommand, type CommandOptions, type CommandResult } from "../runtime/command"
 import type { WechatPilotProject } from "./config"
 import { hasIncompleteCleanup } from "../runtime/cleanup"
+import type { WechatDriverTiming } from "./report"
 
 export type WechatFailureCode = "command-failed" | "automator-timeout" | "invalid-envelope" | "response-binding" | "authorization-pending" | "action-unconfirmed" | "deadline"
 export interface WechatFailure {
@@ -36,6 +37,7 @@ export function decodeWechatResponse(stdout: string, exitCode: number | null, to
 }
 export class WechatDriver {
   readonly diagnostics: WechatFailure[] = []
+  readonly timings = new Map<string, WechatDriverTiming>()
   private readonly deadline: number
   private cleanupDeadline?: number
   constructor(
@@ -52,6 +54,7 @@ export class WechatDriver {
     const phase = cleanup ? "cleanup" : tool === "check_wechatide_status" ? "readiness" : tool === "open_project_window" ? "open" : tool === "automation_wx_api" ? "state" : tool === "simulator_screenshot" ? "evidence" : "action"
     const start = performance.now(), budgetMs = Math.max(0, Math.min(remaining, 30000))
     let exitCode: number | null = null
+    let failureCode: WechatFailureCode | undefined
     try {
       if (remaining <= 0) throw new WechatDriverError("WeChat pilot deadline exceeded", undefined, "deadline")
       const output = await this.command(this.binary, ["-c", this.project.driver.clientName, tool, ...args], {
@@ -65,9 +68,20 @@ export class WechatDriver {
       }
       return result
     } catch (error) {
-      this.diagnostics.push({ phase, tool, code: error instanceof WechatDriverError ? error.failureCode : "command-failed", elapsedMs: Math.max(0, Math.round(performance.now() - start)), budgetMs, exitCode })
+      failureCode = error instanceof WechatDriverError ? error.failureCode : "command-failed"
       if (error instanceof WechatDriverError || hasIncompleteCleanup(error) || this.signal?.aborted) throw error
       throw new WechatDriverError("WeChat command unavailable", undefined, "command-failed")
+    } finally {
+      const elapsedMs = Math.round(performance.now() - start)
+      const key = `${phase}:${tool}`
+      const timing = this.timings.get(key) ?? { phase, tool, calls: 0, failedCalls: 0, elapsedMs: 0 }
+      timing.calls++
+      timing.elapsedMs += elapsedMs
+      if (failureCode) {
+        timing.failedCalls++
+        this.diagnostics.push({ phase, tool, code: failureCode, elapsedMs, budgetMs, exitCode })
+      }
+      this.timings.set(key, timing)
     }
   }
   async ready(): Promise<void> {
