@@ -11,6 +11,7 @@ import { NativePilotInterruptedError, type NativePilotRun } from "../native-pilo
 import { runWechatPilotCli } from "../wechat-pilot/cli"
 import { IntegrationInterruptedError, runIntegrationSuite } from "../integration/run"
 import type { IntegrationResult } from "../integration/model"
+import { writeSupplementalReport } from "../report-html/supplemental"
 
 const VERSION = packageJson.version
 const SIGNAL_CLEANUP_TIMEOUT_MS = 10_000
@@ -32,6 +33,7 @@ Usage:
                         [--execution-profile name] [--additional-scenario id] [--full-scope] [--format text|json]
   ui-eval doctor [--execution-profile name] [--browser-channel chrome] [--format text|json]
   ui-eval integrate <suite> [--project-root path] [--device uuid] [--resume execution-id] [--format text|json]
+  ui-eval supplemental-report <record.json>
   ui-eval native-pilot doctor | evaluate <scenario> --device <uuid> [--format text|json]
   ui-eval native-pilot review --report <path> --review <id> --decision pass|fail|inconclusive --reviewer <alias> --note <observation>
   ui-eval native-pilot progress --scope <project-relative-json> [--format text|json]
@@ -419,6 +421,11 @@ export async function runCli(
       if (format === "json") emitJson(io, result)
       else io.stdout(`${result.status.toUpperCase()} ${result.suiteId}\n  HTML: ${result.summaryHtmlPath}\n  JSON: ${result.summaryPath}\n`)
       return result.exitCode
+    }
+    if (command === "supplemental-report") {
+      if (args.length !== 1 || args[0]?.startsWith("-")) throw new Error("supplemental-report requires one JSON record path")
+      io.stdout(`HTML: ${await writeSupplementalReport(io.cwd, args[0]!)}\n`)
+      return 0
     }
     if (command === "native-pilot") return await nativePilotCommand(args, io, runOptions.signal)
     if (command === "wechat-pilot") return await runWechatPilotCli(args, io, runOptions.signal)

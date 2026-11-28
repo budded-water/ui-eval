@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="147af5f004512feb90f6365ce58a545138a6097a0e622f2aa4b78d15fdcf9119">
+  <meta name="source-sha256" content="e944f303a27f65aa1842bab43acb4c56f32dbb8206c6a84c67c7465f2aa0f53b">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: 147af5f004512feb90f6365ce58a545138a6097a0e622f2aa4b78d15fdcf9119</footer>
+        <footer>Source set SHA-256: e944f303a27f65aa1842bab43acb4c56f32dbb8206c6a84c67c7465f2aa0f53b</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -1087,6 +1087,11 @@ Keep actual run outcomes in PR records rather than timeless contract prose.</p>
 <section id="security" class="document">
         <div class="source"><span>Security model</span><code>docs/security-model.md</code></div>
         <h1>Security Model</h1>
+<p>The supplemental report renderer reads an explicitly selected local record and
+escapes its text. The HTML references only regular PNG-named siblings of the
+record and uses a restrictive content security policy. Keep the record and
+images in the evidence owner&#39;s private directory. The renderer does not publish
+or certify their contents.</p>
 <p>WeChat human observations bind declared criteria, unchanged source, original
 reports and PNG digests; their JSON/HTML pair is checked on consumption. Aliases
 are self-reported, do not grant release authority and cannot waive failed raw
@@ -2321,6 +2326,39 @@ dependencies. <code>bun run verify:integration</code> checks its built CLI in an
 temporary Git candidate with two variants and injected after-check failure. It
 requires clean engine source, a current build and Chromium, and is additional to
 the non-browser <code>check</code> command.</p>
+<h2>Supplemental evidence rendering</h2>
+<p>Use <code>bun run ui-eval supplemental-report &lt;record.json&gt;</code> to create a standalone
+HTML reading page next to a caller-authored JSON record. Use this for captures
+collected outside the integration runner, such as a scoped SDK or simulator
+fallback. The record supplies the following fields.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>title</code>, <code>method</code>, <code>scope</code>, <code>source</code></td>
+<td>Nonempty strings describing the capture, actual coverage and candidate</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>passed</code>, <code>failed</code> or <code>inconclusive</code> as reported by the caller</td>
+</tr>
+<tr>
+<td><code>observations</code></td>
+<td>Array of nonempty strings</td>
+</tr>
+<tr>
+<td><code>screenshots</code></td>
+<td>Array of PNG basenames beside the JSON record. Use an empty array when no screenshot was captured</td>
+</tr>
+</tbody></table>
+<p>The command reads a regular JSON file up to 1 MiB and creates a new sibling
+<code>.html</code> file. Exit zero means the HTML was written. The reported outcome
+remains visible in the page and the source JSON stays intact. Supplemental
+records stay outside suite acceptance, review and release evidence validation.</p>
 
       </section>
 <section id="wechat-pilot" class="document">

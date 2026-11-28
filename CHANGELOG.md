@@ -14,6 +14,9 @@ The source repository is public, but the project has no package release or confi
 
 ### Added
 
+- `supplemental-report` renders externally collected UI records as local HTML
+  while preserving their reported outcome and scope.
+
 - WeChat reports include elapsed milliseconds for attempted steps alongside
   the phase/tool totals, retaining the existing status and evidence checks.
   Older reports with no step timing retain their rendering.
