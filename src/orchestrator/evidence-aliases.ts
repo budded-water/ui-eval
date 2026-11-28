@@ -212,11 +212,16 @@ export async function materializeEvidenceAliases(
     ArtifactRef["digest"],
     ArtifactSensitivity
   >()
+  const remainingUses = new Map<string, number>()
   for (const record of capture.checkpoints.flatMap(
     (checkpoint) => checkpoint.evidence,
   )) {
     const sensitivity = effectiveSensitivity(record)
     if (!record.artifact || !sensitivity) continue
+    if (record.status === "captured") {
+      const key = resolutionKey(record.artifact)
+      remainingUses.set(key, (remainingUses.get(key) ?? 0) + 1)
+    }
     const existing = sensitivityByDigest.get(record.artifact.digest)
     sensitivityByDigest.set(
       record.artifact.digest,
@@ -230,8 +235,8 @@ export async function materializeEvidenceAliases(
   const resolveArtifact = (artifact: ArtifactRef): Promise<ResolveResult> => {
     const key = resolutionKey(artifact)
     const existing = resolutions.get(key)
-    if (existing) return existing
-    const pending = artifactStore
+    const remaining = remainingUses.get(key)! - 1
+    const pending = existing ?? artifactStore
       .resolveWithMetadata(localArtifactRef(artifact))
       .then(({ bytes, sensitivity }) => ({
         ok: true as const,
@@ -239,7 +244,13 @@ export async function materializeEvidenceAliases(
         sensitivity,
       }))
       .catch(() => ({ ok: false as const }))
-    resolutions.set(key, pending)
+    if (remaining === 0) {
+      resolutions.delete(key)
+      remainingUses.delete(key)
+    } else {
+      resolutions.set(key, pending)
+      remainingUses.set(key, remaining)
+    }
     return pending
   }
 

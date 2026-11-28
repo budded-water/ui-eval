@@ -192,7 +192,6 @@ function scenarioTemplate(route: string, scenarioId: string): unknown {
       themes: ["light"],
     },
     steps: [
-      { id: "open-page", action: "goto", path: route },
       {
         id: "wait-for-main",
         action: "waitFor",
