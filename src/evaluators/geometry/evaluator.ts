@@ -9,6 +9,7 @@
  * an absent or unreadable property produces unknown rather than a pass.
  */
 
+import { WEB_EVIDENCE_NODE_LIMIT } from "../../contracts/model"
 import type {
   CoverageCounts,
   GeometryEvaluatorConfig,
@@ -93,6 +94,10 @@ export function evaluateGeometryEvidence(
     checkpoint.checkpointId,
     normalizeWebEvidence(checkpoint.layout, checkpoint.styles),
   ]))
+  // Earlier captures omitted the flag even when they stopped at the node limit.
+  const truncated = new Set(checkpoints.filter(({ layout, styles }) =>
+    [layout, styles].some((payload) => payload && (payload.truncated ?? payload.nodes.length >= WEB_EVIDENCE_NODE_LIMIT)),
+  ).map(({ checkpointId }) => checkpointId))
   const nodeCheckpoints = new Map<string, string>()
   const pooledNodes = checkpointIds.flatMap((checkpointId) =>
     (nodesByCheckpoint.get(checkpointId) ?? []).map((node) => {
@@ -112,12 +117,16 @@ export function evaluateGeometryEvidence(
     invalidReason: "missing-evidence",
   })
 
+  const partial = (result: ConstraintResult): ConstraintResult =>
+    result.status === "passed" ? { ...result, status: "invalid", invalidReason: "truncated-evidence" } : result
+
   for (const constraint of config.constraints) {
     if (constraint.kind === "cross-node-equal") {
       const complete = checkpointIds.every((id) => nodesByCheckpoint.has(id))
       const compared = evaluateConstraint(constraint, pooledNodes, config.tokenSet)
       // Preserve observed defects, but never accept a partial comparison.
-      const result = !complete && compared.status !== "failed" ? missing(constraint) : compared
+      const result = !complete && compared.status !== "failed" ? missing(constraint)
+        : checkpointIds.some((id) => truncated.has(id)) ? partial(compared) : compared
       results.push({ ...result, checkpointId: checkpointIds[0] })
     } else {
       for (const checkpointId of checkpointIds) {
@@ -125,7 +134,7 @@ export function evaluateGeometryEvidence(
         const result = nodes === undefined
           ? missing(constraint)
           : evaluateConstraint(constraint, nodes, config.tokenSet)
-        results.push({ ...result, checkpointId })
+        results.push({ ...(truncated.has(checkpointId) ? partial(result) : result), checkpointId })
       }
     }
   }

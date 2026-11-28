@@ -189,6 +189,7 @@ export type EvaluationReport = Static<typeof EvaluationReportSchema>
 
 export type ComputedStyleEvidence = Static<typeof ComputedStyleEvidenceSchema>
 export type RuntimeNodeEvidence = Static<typeof RuntimeNodeEvidenceSchema>
+export const WEB_EVIDENCE_NODE_LIMIT = 5_000
 export type DomEvidencePayload = Static<typeof DomEvidencePayloadSchema>
 export type LayoutEvidencePayload = Static<typeof LayoutEvidencePayloadSchema>
 export type StylesEvidencePayload = Static<typeof StylesEvidencePayloadSchema>

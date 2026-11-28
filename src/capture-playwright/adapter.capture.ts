@@ -19,6 +19,7 @@ import { CaptureBundleSpecSchema } from "../contracts/schemas"
 import { assertSchema } from "../contracts/validation"
 import { LocalArtifactStore } from "../storage-local/artifact-store"
 import { captureWebScenario, closePlaywrightResources } from "./adapter"
+import { captureDomEvidence } from "./evidence"
 import { runAgentSuite } from "../agent/run"
 
 const browserInstalled = existsSync(chromium.executablePath())
@@ -597,6 +598,40 @@ describe.skipIf(!browserInstalled)("Playwright Chromium capture", () => {
       ]),
     )
   }, 30_000)
+
+  it("captures explicit false expectations for visible, hidden and enabled predicates", async () => {
+    const target = { platform: "web", by: "css", value: "button" } as const
+    const plan = minimalPlan({ baseUrl, path: "/", steps: [
+      ...(["visible", "hidden", "enabled"] as const).map((kind) => ({
+        id: kind, action: "assert" as const, assertion: { id: kind, kind, expected: false, target },
+      })),
+      { id: "capture", action: "checkpoint", checkpointId: "page" },
+    ] })
+    const bundle = await captureGuardPlan(plan)
+    expect(bundle.assertionResults.map(({ assertionId, status, expected }) => [assertionId, status, expected?.value])).toEqual([
+      ["visible", "failed", false], ["hidden", "passed", false], ["enabled", "failed", false],
+    ])
+  })
+
+  it("distinguishes a complete 5000-node document from a truncated one", async () => {
+    const browser = await chromium.launch()
+    try {
+      const page = await browser.newPage()
+      const space = minimalPlan({ baseUrl, path: "/" }).device.renderSpace
+      await page.setContent("<div></div>".repeat(4_997))
+      const complete = await captureDomEvidence(page, space)
+      expect(complete.layout.nodes).toHaveLength(5_000)
+      expect(complete.layout.truncated).toBe(false)
+      await page.evaluate(() => document.body.append(document.createElement("div")))
+      const partial = await captureDomEvidence(page, space)
+      for (const channel of [partial.dom, partial.layout, partial.styles]) {
+        expect(channel.nodes).toHaveLength(5_000)
+        expect(channel.truncated).toBe(true)
+      }
+    } finally {
+      await browser.close()
+    }
+  })
 
   it("seals only redacted and bounded assertion values into the capture bundle", async () => {
     const candidate = new URL(baseUrl)

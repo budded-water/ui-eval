@@ -15,6 +15,13 @@ The source repository is public, but the project has no package release or confi
   evidence under each scenario. Executed non-passing scenarios open by default.
   Execution issues and dirty worktrees are flagged in the summary.
 
+- Web evaluation honors false predicate expectations and rejects incompatible assertion inputs.
+  It checks local source identity after capture cleanup. Truncated DOM, layout and style
+  snapshots carry an explicit flag and partial geometry cannot produce a passing comparison.
+- The Agent blocks source-changing checks and missing or altered accepted evidence.
+  Dimensions require every declared input and programmatic repair requires explicit opt-in.
+- WeChat assessment recognizes tracked verification plans with non-ASCII and literal path characters.
+
 ### Added
 
 - `supplemental-report` renders externally collected UI records as local HTML

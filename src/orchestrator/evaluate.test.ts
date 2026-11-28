@@ -607,6 +607,21 @@ describe("evaluateScenario", () => {
     ])
   })
 
+  it("invalidates the persisted capture and both reports when local cleanup changes the source", async () => {
+    const projectRoot = await project()
+    let commitSha = "before"
+    const result = await evaluateScenario({ projectRoot, scenario: "privacy-desktop" }, {
+      ...deps, sourceRevision: async () => ({ ...await deps.sourceRevision(), commitSha }),
+      ensureServer: async () => ({ ...await deps.ensureServer(), stop: async () => { commitSha = "after" } }),
+    })
+    const [run] = result.runs
+    expect(run).toMatchObject({ rawStatus: "inconclusive", executionOutcome: "infra-error" })
+    const capture = JSON.parse(await readFile(join(projectRoot, ".ui-eval/runs/run-test/capture.json"), "utf8"))
+    expect(capture.spec.executionErrors[0].code).toBe("source-revision-unverified")
+    expect(JSON.parse(await readFile(run.reportPath, "utf8")).spec.inputs.candidateCaptureDigest).toBe(capture.metadata.specDigest)
+    expect(await readFile(run.htmlPath, "utf8")).toContain("inconclusive")
+  })
+
   it("stops fixtures even when candidate-server cleanup fails", async () => {
     const projectRoot = await projectWithMockFixture()
     const fixtureStop = vi.fn(async () => {})

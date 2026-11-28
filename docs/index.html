@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="source-sha256" content="e944f303a27f65aa1842bab43acb4c56f32dbb8206c6a84c67c7465f2aa0f53b">
+  <meta name="source-sha256" content="6bbf51663dee5208f6878bfe9441553d311b1da144dd69a2ad4568434411bb5f">
   <title>UI Eval technical documentation</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6fb; color: #172033; }
@@ -60,7 +60,7 @@
       <header class="hero">
         <h1>UI Eval technical documentation</h1>
         <p>Generated reading view for the standalone evidence-first UI conformance engine. The linked Markdown files are canonical; this HTML is rebuilt and checked in CI.</p>
-        <footer>Source set SHA-256: e944f303a27f65aa1842bab43acb4c56f32dbb8206c6a84c67c7465f2aa0f53b</footer>
+        <footer>Source set SHA-256: 6bbf51663dee5208f6878bfe9441553d311b1da144dd69a2ad4568434411bb5f</footer>
       </header>
       <section id="design-overview" class="document">
         <div class="source"><span>System design and flows</span><code>docs/design-overview.md</code></div>
@@ -914,6 +914,7 @@ Evaluation identity
 <li><code>uieval.crash/v1alpha1</code>.</li>
 </ul>
 <p>Console, network, and crash payloads include collection counts for captured, dropped, and truncated entries. Consumers must not interpret an empty retained array as proof that no observation was dropped.</p>
+<p>Web <code>visible</code>, <code>hidden</code> and <code>enabled</code> assertions accept a Boolean expectation and default to true. Web <code>text</code> and <code>url</code> require a string. A <code>no-crash</code> assertion accepts an omitted or true expectation. Existing declarations with incompatible expectations must be corrected before compilation.</p>
 <p>Step and assertion results retain status and error origin. Interaction correctness comes from explicit results, not from guessing behavior from pixels.</p>
 <h2>Evaluation report semantics</h2>
 <p>An <code>EvaluationReport</code> separates:</p>
@@ -1837,7 +1838,7 @@ version.</p>
 <pre><code class="language-bash">bun run ui-eval evaluate account-desktop \
   --project-root /absolute/path/to/candidate
 </code></pre>
-<p>The command performs validation, compilation, source sealing, server startup/reuse, capture, evaluation, policy gates, cleanup, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. <code>report.json</code> and <code>report.html</code> are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant.</p>
+<p>The command performs validation, compilation, source sealing, server startup/reuse, capture, owned infrastructure cleanup, evaluation, policy gates, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. <code>report.json</code> and <code>report.html</code> are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant. Local runs recheck the sealed source revision after cleanup. Changed or unreadable source yields an inconclusive infrastructure report.</p>
 <p>Programmatic cancellation and browser shutdown retain a distinct
 <code>IncompleteCleanupError</code> (<code>OWNED_RESOURCE_CLEANUP_INCOMPLETE</code>) when owned
 resources cannot be confirmed closed. Treat that error as a blocked job rather
@@ -2886,6 +2887,7 @@ schemas and <code>summarizeNativeProgress</code>.</p>
 <section id="limitations" class="document">
         <div class="source"><span>Limitations</span><code>docs/limitations.md</code></div>
         <h1>Current Limitations</h1>
+<p>Web DOM, layout and style snapshots retain up to 5,000 elements in document order. New payloads carry a <code>truncated</code> flag. Geometry retains observed violations and marks an otherwise passing comparison invalid when its checkpoint is truncated. Legacy snapshots at the limit have unknown completeness.</p>
 <p>WeChat batch window reuse relies on a current-page response scoped by the
 official driver to a previously verified synthetic project. It does not
 preserve scenario storage, remove the candidate identity checks, or keep
@@ -3119,8 +3121,8 @@ boundaries across comments; it does not implement the full CSS tokenizer.</p>
 <p>Policy <code>agentMutation</code> fields remain forward contract data. The executable agent uses the stricter mutation scope declared by its <code>AgentSuite</code>, hashes tracked and untracked source files before and after each repair, and blocks protected, out-of-scope, or over-budget mutations. This validation is a repository audit control, not an operating-system security boundary or separate patch workspace.</p>
 <p>Agent acceptance score remains the fraction of required dimensions that pass.
 Plateau uses a separate continuous check/scenario progress measurement, and
-source snapshots are compared after checks before cached evidence can be reused.
-Source drift during scenarios blocks the invocation without product repair and
+source snapshots are compared after each check and after scenarios.
+Source drift during either phase blocks the invocation without product repair and
 invalidates that iteration&#39;s acceptance. Snapshots are observations, not a source
 lock; edits reverted between observations and ignored build outputs are not
 attested. Visual thresholds waive only advisory pixel review when all policy

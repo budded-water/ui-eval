@@ -97,13 +97,12 @@ export function assessDimensions(
   scenarios: AgentScenarioResult[],
 ): AgentDimensionResult[] {
   return suite.requiredDimensions.map((id) => {
-    const checkEvidence = suite.checks
-      .map((check, index) => ({ config: check, result: checks[index] }))
-      .filter(({ config }) => config.dimension === id && config !== undefined)
-      .map(({ result }) => result)
+    const requiredChecks = suite.checks.filter((check) => check.dimension === id)
+    const requiredScenarios = suite.scenarios.filter((scenario) => scenario.dimensions.includes(id))
+    const checkEvidence = requiredChecks
+      .map((check) => checks.find((result) => result.id === check.id))
       .filter((result): result is AgentCheckResult => result !== undefined)
-    const scenarioEvidence = suite.scenarios
-      .filter((scenario) => scenario.dimensions.includes(id))
+    const scenarioEvidence = requiredScenarios
       .map((scenario) => scenarios.find((result) => result.id === scenario.id))
       .filter((result): result is AgentScenarioResult => result !== undefined)
     const evidence = [
@@ -116,6 +115,9 @@ export function assessDimensions(
     const passed =
       checkEvidence.every((check) => check.passed) &&
       scenarioEvidence.every((scenario) => scenario.accepted)
+    if (passed && evidence.length < requiredChecks.length + requiredScenarios.length) {
+      return { id, status: "not-evaluated", score: 0, evidence }
+    }
     return {
       id,
       status: passed ? "pass" : "fail",

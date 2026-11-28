@@ -61,7 +61,7 @@ export interface ConstraintResult {
   /** Nodes carrying the property in a form this engine cannot compare. */
   readonly unnormalizableNodes: number
   readonly violations: readonly Violation[]
-  readonly invalidReason?: "no-match" | "unnormalizable-values" | "missing-evidence" | "insufficient-peers"
+  readonly invalidReason?: "no-match" | "unnormalizable-values" | "missing-evidence" | "truncated-evidence" | "insufficient-peers"
 }
 
 function inScope(node: NormalizedNode, scope: ConstraintScope | undefined): boolean {

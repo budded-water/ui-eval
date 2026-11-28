@@ -1,4 +1,5 @@
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
+import { execFileSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { relative, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -226,9 +227,20 @@ describe("WeChat pilot acceptance", () => {
     await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify(scope))
     return { root, output, review, plan, scope }
   }
+  it("recognizes the exact tracked Chinese verification-plan path through Git", async () => {
+    const { root, scope, plan } = await visualFixture()
+    scope.verificationPlan = "ui-eval/验收 [本地].json"
+    await writeFile(resolve(root, scope.verificationPlan), JSON.stringify(plan))
+    await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify(scope))
+    execFileSync("git", ["init", "-q"], { cwd: root })
+    execFileSync("git", ["--literal-pathspecs", "add", "--", scope.verificationPlan], { cwd: root })
+    const result = await assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source)
+    expect(result.record.assessment.conclusions.ui).toBe("pass")
+  })
+
   it("records a screenshot-bound observation and reconciles only the declared simulator scope", async () => {
     const { root, scope, plan } = await visualFixture()
-    const run = () => assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json\n")
+    const run = () => assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json\0")
     expect((await run()).record.assessment.conclusions).toEqual({ code: "not-assessed", ui: "pass", release: "not-assessed" })
     await writeFile(resolve(root, "ui-eval/verification.json"), JSON.stringify({ ...plan, requirements: [...plan.requirements, { id: "phone", category: "release", rationale: "Actual permissions", expectedOutcome: "Real GPS works", level: "L5", environment: { platform: "physical-device" }, selector: { kind: "external", id: "gps" }, visualReview: false }] }))
     expect((await run()).record.assessment).toMatchObject({ exitCode: 2, conclusions: { ui: "pass", release: "not-run" } })
@@ -242,11 +254,11 @@ describe("WeChat pilot acceptance", () => {
     await expect(recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "spacing", decision: "pass", reviewer: "operator", note: "Observed" }, async () => ({ repository: "local:test", commitSha: "b".repeat(40), dirtyTree: false }))).rejects.toThrow()
     const other = await recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "spacing", decision: "fail", reviewer: "operator", note: "Conflicting later observation" }, source)
     await writeFile(resolve(root, ".ui-eval/scope.json"), JSON.stringify({ ...scope, reviews: [...scope.reviews, relative(root, other.reportPath)] }))
-    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json")).rejects.toThrow("Conflicting")
+    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json\0")).rejects.toThrow("Conflicting")
     const html = await readFile(output.htmlPath, "utf8")
     await writeFile(output.htmlPath, '<html><img src="different.png"></html>')
     await expect(recordWechatReview({ projectRoot: root, report: scope.reports[0], review: "spacing", decision: "pass", reviewer: "operator", note: "Observed" }, source)).rejects.toThrow("Original WeChat JSON/HTML pair")
-    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json")).rejects.toThrow("Original WeChat JSON/HTML pair")
+    await expect(assessWechatScope({ projectRoot: root, scope: ".ui-eval/scope.json" }, source, async () => "ui-eval/verification.json\0")).rejects.toThrow("Original WeChat JSON/HTML pair")
     await writeFile(output.htmlPath, html)
     await writeFile(review.htmlPath, "altered derived report")
     await expect(verifyWechatReview(root, scope.reviews[0], output.result)).rejects.toThrow("pair")

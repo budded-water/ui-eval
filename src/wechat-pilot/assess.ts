@@ -25,7 +25,7 @@ export async function assessWechatScope(options: { projectRoot: string; scope: s
   // The verification plan must participate in the captured source identity.
   const { execFile } = await import("node:child_process")
   const tracked = git ?? ((args: readonly string[], cwd: string) => new Promise<string>((done, reject) => execFile("git", [...args], { cwd, encoding: "utf8", maxBuffer: 1024 * 1024 }, (error, stdout) => error ? reject(error) : done(stdout))))
-  if ((await tracked(["ls-files", "--error-unmatch", "--", scope.verificationPlan], root)).trim() !== scope.verificationPlan) throw new Error("Verification plan must be tracked in captured source")
+  if (await tracked(["--literal-pathspecs", "ls-files", "--error-unmatch", "-z", "--", scope.verificationPlan], root) !== `${scope.verificationPlan}\0`) throw new Error("Verification plan must be tracked in captured source")
   const plan = await readIntegrationJson(root, scope.verificationPlan)
   assertVerificationPlan(plan)
   if (new Set(scope.reports).size !== scope.reports.length || new Set(scope.reviews).size !== scope.reviews.length) throw new Error("Duplicate assessment inputs")

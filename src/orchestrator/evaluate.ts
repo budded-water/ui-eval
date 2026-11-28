@@ -898,6 +898,7 @@ async function evaluatePlan(options: {
   artifactStore: LocalArtifactStore
   runStore: RunStore
   serverError?: unknown
+  stopInfrastructure: () => Promise<void>
   fixtureSession?: MockServerSession
   executionTarget?: ExecutionTarget
   verifyDeployment?: () => Promise<DeploymentVerification>
@@ -1002,6 +1003,21 @@ async function evaluatePlan(options: {
       throwIfEvaluationAborted(options.rootOptions.signal)
       if (options.verifyDeployment) options.deploymentVerification = { status: "unverified" }
       captureSpec = failedCapture(options.plan, captureContext, error)
+    }
+  }
+
+  await options.stopInfrastructure()
+  throwIfEvaluationAborted(options.rootOptions.signal)
+  if (!options.verifyDeployment) {
+    try {
+      const current = await (options.deps.sourceRevision ?? collectSourceRevision)(options.project.projectRoot)
+      if (canonicalDigest(current) !== canonicalDigest(options.sourceRevision)) {
+        throw new Error("Candidate source changed during local evaluation")
+      }
+    } catch (error) {
+      captureSpec = failedCapture(options.plan, captureContext, Object.assign(
+        new Error(error instanceof Error ? error.message : String(error)), { code: "source-revision-unverified" },
+      ))
     }
   }
 
@@ -1445,6 +1461,21 @@ export async function evaluateScenario(
     let deploymentVerification: DeploymentVerification | undefined
     let run: EvaluationRunDraft | undefined
     let operationError: unknown
+    async function stopInfrastructure() {
+      const handles = [server, fixtureSession]
+      server = undefined
+      fixtureSession = undefined
+      const errors: unknown[] = []
+      for (const handle of handles) {
+        try {
+          await handle?.stop()
+        } catch (error) {
+          errors.push(error)
+        }
+      }
+      if (errors.length === 1) throw errors[0]
+      if (errors.length > 1) throw new AggregateError(errors, "Owned infrastructure cleanup failed.")
+    }
     try {
       try {
         if (plan.fixtures.length > 0) {
@@ -1494,6 +1525,7 @@ export async function evaluateScenario(
         project,
         policy,
         evaluatorRegistry,
+        stopInfrastructure,
         sourceRevision,
         ...(target ? { executionTarget: target } : {}),
         ...(deploymentVerification ? { deploymentVerification } : {}),
@@ -1513,14 +1545,9 @@ export async function evaluateScenario(
 
     let cleanupError: unknown
     try {
-      await server?.stop()
+      await stopInfrastructure()
     } catch (error) {
       cleanupError = error
-    }
-    try {
-      await fixtureSession?.stop()
-    } catch (error) {
-      cleanupError ??= error
     }
     if (operationError && cleanupError) {
       throw new AggregateError(

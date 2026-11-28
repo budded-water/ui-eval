@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest"
+import { Value } from "@sinclair/typebox/value"
+import { WebAssertionSpecSchema } from "./schemas"
 
 import {
   canonicalDigest,
@@ -29,6 +31,19 @@ import {
 } from "./validation"
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`
+
+describe("web assertion expectations", () => {
+  const target = { platform: "web", by: "css", value: "button" }
+  it.each(["visible", "hidden", "enabled"])("requires a Boolean expectation for %s", (kind) => {
+    expect(Value.Check(WebAssertionSpecSchema, { id: "button", kind, target, expected: false })).toBe(true)
+    expect(Value.Check(WebAssertionSpecSchema, { id: "button", kind, target, expected: "false" })).toBe(false)
+  })
+  it("requires string text and URL expectations and preserves one-way no-crash", () => {
+    for (const kind of ["text", "url", "no-crash"]) {
+      expect(Value.Check(WebAssertionSpecSchema, { id: "assert", kind, target, expected: false })).toBe(false)
+    }
+  })
+})
 
 describe("numeric geometry constraints", () => {
   it.each(["value-in-range", "value-on-scale", "ratio"])("rejects a nonnumeric property in %s", (kind) => {

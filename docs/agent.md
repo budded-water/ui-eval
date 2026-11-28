@@ -38,12 +38,13 @@ A deadline or evaluator exception with no report and settled cleanup is
 retried as infrastructure failure and is never sent to the product repair
 worker. Infrastructure-only iterations consume the finite run budget but do
 not contribute to product score plateau detection.
-For local execution, after project checks UI Eval compares the current source-file snapshot with
-the snapshot that authorized reuse. When source state is unchanged, the next infrastructure-only retry reuses
+UI Eval compares the candidate snapshot after each check with the snapshot at the start of the iteration. A change blocks the run.
+For local execution on unchanged source, the next infrastructure-only retry reuses
 already accepted immutable scenario reports from the same Agent run and
 reruns only failed or not-yet-executed scenarios. The result records the source
 iteration for every reused scenario. Any product repair invalidates this reuse
 set so the modified candidate is evaluated across the full suite again.
+The Agent verifies persisted reports, HTML digests, capture inputs and referenced CAS artifacts for accepted scenarios. It rechecks receipts before recording the iteration. A missing or altered receipt blocks acceptance and repair.
 After scenarios, UI Eval compares source contents with the post-check snapshot
 again. Any change blocks the run without repair or reuse: the current iteration's
 scenario decisions become unaccepted, dimensions become `not-evaluated`, and
@@ -54,8 +55,8 @@ working tree or detect a change that is reverted between observations.
 Snapshot identity includes file contents, executable mode, and symlink targets;
 links are not followed and Git paths are NUL-delimited so quoting cannot hide a
 Unicode or whitespace filename. Source-file hashing streams file bytes.
-Missing evidence is `not-evaluated`, not a
-pass, and the diagnostic score is the fraction of required dimensions that pass.
+A dimension passes only when every declared check and scenario for that dimension passed. An observed failure yields `fail`. Otherwise incomplete coverage yields `not-evaluated`. The diagnostic score is the fraction of required dimensions that pass.
+Product repair requires an explicit CLI `--repair` or programmatic `repair: true`.
 Each iteration also records `progressScore`, the mean of every declared check's
 binary result and every declared scenario's continuous diagnostic score. Missing
 results contribute zero. Plateau uses this separate progress measurement, so

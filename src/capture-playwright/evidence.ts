@@ -1,5 +1,6 @@
 import type { ConsoleMessage, Page, Request, Response } from "playwright"
 
+import { WEB_EVIDENCE_NODE_LIMIT } from "../contracts/model"
 import type {
   AssertionSpec,
   ConsoleEvidencePayload,
@@ -448,10 +449,14 @@ export async function captureDomEvidence(
   renderSpace: RenderSpace,
 ): Promise<DomEvidenceSet> {
   const snapshot = await page.evaluate((limits) => {
-    const root = document.documentElement
-    const elements = root
-      ? [root, ...Array.from(root.querySelectorAll("*"))].slice(0, 5_000)
-      : []
+    const elements: Element[] = []
+    const walker = document.createTreeWalker(document, NodeFilter.SHOW_ELEMENT)
+    let current = walker.nextNode() as Element | null
+    while (current && elements.length < limits.nodes) {
+      elements.push(current)
+      current = walker.nextNode() as Element | null
+    }
+    const truncated = current !== null
     const ids = new Map<Element, string>()
     elements.forEach((element, index) => ids.set(element, `node-${index}`))
 
@@ -564,9 +569,11 @@ export async function captureDomEvidence(
           ? href
           : `${window.location.origin}/__ui_eval_truncated_url__`,
       title: document.title.slice(0, limits.textCharacters),
+      truncated,
       nodes,
     }
   }, {
+    nodes: WEB_EVIDENCE_NODE_LIMIT,
     attributeCharacters: MAX_DOM_IDENTIFIER_BYTES * 2,
     styleCharacters: 1_024,
     textCharacters: MAX_DOM_TEXT_BYTES * 2,
@@ -640,12 +647,14 @@ export async function captureDomEvidence(
   return {
     dom: {
       schemaVersion: "uieval.dom/v1alpha1",
+      truncated: snapshot.truncated,
       url: sanitizeUrl(snapshot.url),
       title: redactText(snapshot.title),
       nodes,
     },
     layout: {
       schemaVersion: "uieval.layout/v1alpha1",
+      truncated: snapshot.truncated,
       renderSpace,
       nodes: nodes.map(
         ({
@@ -671,6 +680,7 @@ export async function captureDomEvidence(
     },
     styles: {
       schemaVersion: "uieval.styles/v1alpha1",
+      truncated: snapshot.truncated,
       nodes: nodes.map(
         ({ nodeId, uiId, testId, role, accessibleName, computedStyle }) => ({
           nodeId,
