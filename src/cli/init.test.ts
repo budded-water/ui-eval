@@ -45,6 +45,7 @@ describe("initUiEvalProject", () => {
       "scenarios/privacy-desktop.json",
     )
     expect(scenario.value.target.entrypoint.path).toBe("/privacy")
+    expect(scenario.value.steps.map((step) => step.action)).toEqual(["waitFor", "checkpoint"])
     expect(scenario.value.auth).toBeUndefined()
     expect(scenario.value.checkpoints[0].requiredChannels).toEqual(["screenshot", "console", "network", "crash"])
     expect(scenario.value.checkpoints[0].designTargetRef).toBeUndefined()

@@ -8,6 +8,9 @@ The source repository is public, but the project has no package release or confi
 
 ### Changed
 
+- Generated Web scenarios and the basic example navigate to their entrypoint once.
+  Evidence alias materialization releases cached artifact bytes after their last use.
+
 - Integration HTML leads with the run outcome and candidate revision and groups
   evidence under each scenario. Executed non-passing scenarios open by default.
   Execution issues and dirty worktrees are flagged in the summary.
