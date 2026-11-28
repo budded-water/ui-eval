@@ -385,6 +385,18 @@ describe("runAgentSuite", () => {
     expect(result.iterations[0].dimensions).toContainEqual({ id: "maintainability", status: "not-evaluated", score: 0, evidence: ["check:quality"] })
   })
 
+  it("binds repeated check IDs to separate executions for dimension and progress scores", async () => {
+    const projectRoot = await project()
+    await updateSuite(projectRoot, (suite) => { suite.checks.push({ ...suite.checks[0], onFailure: "block" }) })
+    const result = await runAgentSuite({ projectRoot, suite: "rentals" }, {
+      ...scopeDeps, runCommand: vi.fn().mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce({ exitCode: 1, stdout: "", stderr: "" }),
+    })
+    expect(result.status).toBe("blocked")
+    expect(result.iterations[0].dimensions.find(({ id }) => id === "maintainability")?.status).toBe("fail")
+    expect(result.iterations[0].progressScore).toBe(0.333333)
+  })
+
   it.each(["altered", "missing"])("blocks when a later scenario leaves earlier evidence %s", async (defect) => {
     const projectRoot = await project({ repair: true })
     await updateSuite(projectRoot, (suite) => { suite.scenarios.push({ ...suite.scenarios[0], id: "later" }) })

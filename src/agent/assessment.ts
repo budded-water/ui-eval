@@ -97,11 +97,10 @@ export function assessDimensions(
   scenarios: AgentScenarioResult[],
 ): AgentDimensionResult[] {
   return suite.requiredDimensions.map((id) => {
-    const requiredChecks = suite.checks.filter((check) => check.dimension === id)
+    // Checks execute in declaration order and existing suites may repeat an ID.
+    const requiredChecks = suite.checks.flatMap((check, index) => check.dimension === id ? [checks[index]] : [])
     const requiredScenarios = suite.scenarios.filter((scenario) => scenario.dimensions.includes(id))
-    const checkEvidence = requiredChecks
-      .map((check) => checks.find((result) => result.id === check.id))
-      .filter((result): result is AgentCheckResult => result !== undefined)
+    const checkEvidence = requiredChecks.filter((result): result is AgentCheckResult => result !== undefined)
     const scenarioEvidence = requiredScenarios
       .map((scenario) => scenarios.find((result) => result.id === scenario.id))
       .filter((result): result is AgentScenarioResult => result !== undefined)
@@ -132,9 +131,7 @@ export function repairProgress(
   checks: readonly AgentCheckResult[],
   scenarios: readonly AgentScenarioResult[],
 ): number {
-  const checkScores = suite.checks.map((check) =>
-    checks.find((result) => result.id === check.id)?.passed ? 1 : 0,
-  )
+  const checkScores = suite.checks.map((_, index) => checks[index]?.passed ? 1 : 0)
   const scenarioScores = suite.scenarios.map((scenario) =>
     scenarios.find((result) => result.id === scenario.id)?.score ?? 0,
   )
