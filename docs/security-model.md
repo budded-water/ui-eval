@@ -1,5 +1,11 @@
 # Security Model
 
+The supplemental report renderer reads an explicitly selected local record and
+escapes its text. The HTML references only regular PNG-named siblings of the
+record and uses a restrictive content security policy. Keep the record and
+images in the evidence owner's private directory. The renderer does not publish
+or certify their contents.
+
 WeChat human observations bind declared criteria, unchanged source, original
 reports and PNG digests; their JSON/HTML pair is checked on consumption. Aliases
 are self-reported, do not grant release authority and cannot waive failed raw

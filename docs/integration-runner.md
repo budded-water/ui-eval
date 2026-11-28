@@ -246,3 +246,21 @@ dependencies. `bun run verify:integration` checks its built CLI in an independen
 temporary Git candidate with two variants and injected after-check failure. It
 requires clean engine source, a current build and Chromium, and is additional to
 the non-browser `check` command.
+## Supplemental evidence rendering
+
+Use `bun run ui-eval supplemental-report <record.json>` to create a standalone
+HTML reading page next to a caller-authored JSON record. Use this for captures
+collected outside the integration runner, such as a scoped SDK or simulator
+fallback. The record supplies the following fields.
+
+| Field | Value |
+| --- | --- |
+| `title`, `method`, `scope`, `source` | Nonempty strings describing the capture, actual coverage and candidate |
+| `status` | `passed`, `failed` or `inconclusive` as reported by the caller |
+| `observations` | Array of nonempty strings |
+| `screenshots` | Array of PNG basenames beside the JSON record. Use an empty array when no screenshot was captured |
+
+The command reads a regular JSON file up to 1 MiB and creates a new sibling
+`.html` file. Exit zero means the HTML was written. The reported outcome
+remains visible in the page and the source JSON stays intact. Supplemental
+records stay outside suite acceptance, review and release evidence validation.
