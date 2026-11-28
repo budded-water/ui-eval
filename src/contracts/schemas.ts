@@ -730,7 +730,14 @@ function assertionSchema(locator: TSchema) {
   )
 }
 
-export const WebAssertionSpecSchema = assertionSchema(WebRuntimeLocatorSchema)
+const webAssertionFields = { id: Type.String(nonEmpty), target: Type.Optional(WebRuntimeLocatorSchema) }
+export const WebAssertionSpecSchema = Type.Union([
+  Type.Object({ ...webAssertionFields, kind: Type.Union([Type.Literal("visible"), Type.Literal("hidden"), Type.Literal("enabled")]),
+    target: WebRuntimeLocatorSchema, expected: Type.Optional(Type.Boolean()) }, strict),
+  Type.Object({ ...webAssertionFields, kind: Type.Literal("text"), target: WebRuntimeLocatorSchema, expected: Type.String() }, strict),
+  Type.Object({ ...webAssertionFields, kind: Type.Literal("url"), expected: Type.String() }, strict),
+  Type.Object({ ...webAssertionFields, kind: Type.Literal("no-crash"), expected: Type.Optional(Type.Literal(true)) }, strict),
+])
 export const IosAssertionSpecSchema = assertionSchema(IosRuntimeLocatorSchema)
 export const AndroidAssertionSpecSchema = assertionSchema(AndroidRuntimeLocatorSchema)
 export const AssertionSpecSchema = assertionSchema(RuntimeLocatorSchema)
@@ -1910,6 +1917,7 @@ export const RuntimeNodeEvidenceSchema = Type.Object(
 export const DomEvidencePayloadSchema = Type.Object(
   {
     schemaVersion: Type.Literal("uieval.dom/v1alpha1"),
+    truncated: Type.Optional(Type.Boolean()),
     url: Type.String({ format: "uri" }),
     title: Type.String(),
     nodes: Type.Array(RuntimeNodeEvidenceSchema),
@@ -1920,6 +1928,7 @@ export const DomEvidencePayloadSchema = Type.Object(
 export const LayoutEvidencePayloadSchema = Type.Object(
   {
     schemaVersion: Type.Literal("uieval.layout/v1alpha1"),
+    truncated: Type.Optional(Type.Boolean()),
     renderSpace: RenderSpaceSchema,
     nodes: Type.Array(
       Type.Object(
@@ -1939,6 +1948,7 @@ export const LayoutEvidencePayloadSchema = Type.Object(
 export const StylesEvidencePayloadSchema = Type.Object(
   {
     schemaVersion: Type.Literal("uieval.styles/v1alpha1"),
+    truncated: Type.Optional(Type.Boolean()),
     nodes: Type.Array(
       Type.Object(
         {

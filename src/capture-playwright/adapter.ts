@@ -799,15 +799,15 @@ async function evaluateAssertion(
 
     switch (assertion.kind) {
       case "visible":
-        expected = true
+        expected = assertion.expected ?? true
         actual = await webLocator(page, assertion.target!).isVisible()
         break
       case "hidden":
-        expected = true
+        expected = assertion.expected ?? true
         actual = !(await webLocator(page, assertion.target!).isVisible())
         break
       case "enabled":
-        expected = true
+        expected = assertion.expected ?? true
         actual = await webLocator(page, assertion.target!).isEnabled()
         break
       case "text": {

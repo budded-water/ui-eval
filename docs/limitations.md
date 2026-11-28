@@ -1,5 +1,7 @@
 # Current Limitations
 
+Web DOM, layout and style snapshots retain up to 5,000 elements in document order. New payloads carry a `truncated` flag. Geometry retains observed violations and marks an otherwise passing comparison invalid when its checkpoint is truncated. Legacy snapshots at the limit have unknown completeness.
+
 WeChat batch window reuse relies on a current-page response scoped by the
 official driver to a previously verified synthetic project. It does not
 preserve scenario storage, remove the candidate identity checks, or keep
@@ -186,8 +188,8 @@ Policy `agentMutation` fields remain forward contract data. The executable agent
 
 Agent acceptance score remains the fraction of required dimensions that pass.
 Plateau uses a separate continuous check/scenario progress measurement, and
-source snapshots are compared after checks before cached evidence can be reused.
-Source drift during scenarios blocks the invocation without product repair and
+source snapshots are compared after each check and after scenarios.
+Source drift during either phase blocks the invocation without product repair and
 invalidates that iteration's acceptance. Snapshots are observations, not a source
 lock; edits reverted between observations and ignored build outputs are not
 attested. Visual thresholds waive only advisory pixel review when all policy

@@ -386,7 +386,7 @@ bun run ui-eval evaluate account-desktop \
   --project-root /absolute/path/to/candidate
 ```
 
-The command performs validation, compilation, source sealing, server startup/reuse, capture, evaluation, policy gates, cleanup, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. `report.json` and `report.html` are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant.
+The command performs validation, compilation, source sealing, server startup/reuse, capture, owned infrastructure cleanup, evaluation, policy gates, and final report publication. A matrix scenario may produce multiple run results. Each variant acquires its own server handle: an owned server is stopped before the next variant starts, while a reused server is identity-checked again and is never stopped by UI Eval. `report.json` and `report.html` are published only after owned candidate and fixture servers stop successfully; cleanup failure leaves no finalized report for that variant. Local runs recheck the sealed source revision after cleanup. Changed or unreadable source yields an inconclusive infrastructure report.
 
 Programmatic cancellation and browser shutdown retain a distinct
 `IncompleteCleanupError` (`OWNED_RESOURCE_CLEANUP_INCOMPLETE`) when owned

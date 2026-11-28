@@ -126,6 +126,32 @@ describe("geometry evaluator", () => {
     expect(result.coverage.invalid).toBe(1)
   })
 
+  it.each([["#ffffff", "invalid"], ["#000000", "failed"]])("retains %s observations from a truncated snapshot as %s", (color, status) => {
+    const partial = checkpoint("ready", color)
+    partial.layout.truncated = true
+    expect(evaluateGeometryEvidence(config, [partial]).results[0].status).toBe(status)
+  })
+
+  it("requires an explicit completeness flag on legacy layout evidence at the cap", () => {
+    const evidence = checkpoint("ready", "#ffffff")
+    evidence.layout.nodes = Array.from({ length: 5_000 }, (_, i) => ({ ...evidence.layout.nodes[0], nodeId: String(i) }))
+    evidence.styles.nodes = evidence.layout.nodes.map(({ nodeId }) => ({ ...evidence.styles.nodes[0], nodeId }))
+    const [result] = evaluateGeometryEvidence(config, [evidence]).results
+    expect(result).toMatchObject({ status: "invalid", invalidReason: "truncated-evidence", matchedNodes: 5_000 })
+    evidence.layout.truncated = evidence.styles.truncated = false
+    expect(evaluateGeometryEvidence(config, [evidence]).coverage.passed).toBe(1)
+  })
+
+  it("marks a partial cross-checkpoint comparison invalid", () => {
+    const items = [checkpoint("early", "#ffffff"), checkpoint("late", "#ffffff")]
+    for (const item of items) item.layout.nodes[0].testId = "button"
+    items[1].styles.truncated = true
+    const result = evaluateGeometryEvidence({ tokenSet: {}, constraints: [
+      { id: "width", kind: "cross-node-equal", property: "box.width", tolerance: 0 },
+    ] }, items)
+    expect(result.coverage).toMatchObject({ passed: 0, invalid: 1 })
+  })
+
   it("retains missing planned checkpoints as invalid coverage", () => {
     const result = evaluateGeometryEvidence(config, [], ["ready", "after-scroll"])
     expect(result.coverage.expected).toBe(2)

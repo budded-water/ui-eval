@@ -14,6 +14,9 @@ import { loadProjectConfig } from "../project/config"
 import { resolveExecutionProfile } from "../project/execution-profile"
 import { writeAgentSummaryArtifacts } from "./report"
 
+import { canonicalDigest } from "../contracts/canonical-json"
+import { collectSourceRevision } from "../orchestrator/identity"
+import { webIntegrationEvidence } from "../integration/evidence"
 import { assertSchema } from "../contracts/validation"
 import { AgentRunResultSchema } from "./model"
 import type { AgentCheckResult, AgentScenarioResult, AgentIteration, AgentRunResult, AgentStatus } from "./model"
@@ -34,6 +37,7 @@ export interface RunAgentOptions {
 export type AgentCommandResult = import("../runtime/command").CommandResult
 
 export interface RunAgentDependencies {
+  evidenceDigest?: typeof evidenceDigest
   evaluate?: typeof evaluateScenario
   runCommand?: (
     command: string,
@@ -102,6 +106,18 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8")
 }
 
+type EvidenceScope = Pick<EvaluateScenarioOptions, "projectRoot" | "scenario" | "executionProfile" | "browserChannel" | "referencePath">
+
+async function evidenceDigest(options: EvidenceScope, output: Awaited<ReturnType<typeof evaluateScenario>>) {
+  const reports = await webIntegrationEvidence(options.projectRoot, {
+    projectId: output.projectId,
+    executionProfile: options.executionProfile,
+    browserChannel: options.browserChannel,
+    scenarios: [{ id: options.scenario, reference: options.referencePath }],
+  }, options.scenario, output, canonicalDigest(await collectSourceRevision(options.projectRoot)))
+  return canonicalDigest(reports)
+}
+
 export async function runAgentSuite(
   options: RunAgentOptions,
   dependencies: RunAgentDependencies = {},
@@ -136,11 +152,14 @@ export async function runAgentSuite(
   let bestProgress = -1
   let status: AgentStatus = "exhausted"
   let reason = `maximum iterations (${suite.maxIterations}) reached`
+  const verifyEvidence = dependencies.evidenceDigest ?? evidenceDigest
+  const receipts = new Map<string, { digest: string; read: () => Promise<string> }>()
   let reusableScenarios = new Map<string, AgentScenarioResult>()
 
   for (let number = 1; number <= suite.maxIterations; number += 1) {
     options.onProgress?.(`Agent iteration ${number}/${suite.maxIterations}: checks`)
     const checks: AgentCheckResult[] = []
+    let checkChanges: string[] = []
     for (const check of suite.checks) {
       const started = Date.now()
       const command = await runCommand(check.command, check.args, {
@@ -156,14 +175,20 @@ export async function runAgentSuite(
         durationMs: Date.now() - started,
         output: boundedOutput(`${command.stdout}\n${command.stderr}`.trim()),
       })
+      checkChanges = changedBetween(sourceSnapshot, await snapshotFiles(loaded.projectRoot))
+      if (checkChanges.length) break
     }
 
-    const checksPassed = checks.every((check) => check.passed)
-    const checkedSnapshot = await snapshotFiles(loaded.projectRoot)
-    if (changedBetween(sourceSnapshot, checkedSnapshot).length > 0) reusableScenarios.clear()
-    sourceSnapshot = checkedSnapshot
+    const checksPassed = checks.length === suite.checks.length && checks.every((check) => check.passed)
     const scenarios: AgentScenarioResult[] = []
-    if (checksPassed) {
+    let evidenceError: string | undefined
+    const invalidateEvidence = (scenario: AgentScenarioResult, error: unknown) => {
+      evidenceError = `Cannot verify ${scenario.id} evidence: ${error instanceof Error ? error.message : String(error)}`
+      scenario.accepted = false
+      scenario.score = 0
+      scenario.reasons.push(evidenceError)
+    }
+    if (checksPassed && !checkChanges.length) {
       options.onProgress?.(`Agent iteration ${number}/${suite.maxIterations}: scenarios`)
       for (const scenario of suite.scenarios) {
         const reusable = reusableScenarios.get(scenario.id)
@@ -200,10 +225,20 @@ export async function runAgentSuite(
             { once: true },
           )
         })
-        const evaluation = evaluate(evaluateOptions)
+        const evaluation = evaluate(evaluateOptions).then(async (result) => {
+          const assessment = assessScenario(scenario, result.runs)
+          if (assessment.accepted) {
+            const read = () => verifyEvidence(evaluateOptions, result)
+            try {
+              receipts.set(scenario.id, { read, digest: await read() })
+            } catch (error) {
+              invalidateEvidence(assessment, error)
+            }
+          }
+          return assessment
+        })
         try {
-          const result = await Promise.race([evaluation, deadlineFailure])
-          scenarios.push(assessScenario(scenario, result.runs))
+          scenarios.push(await Promise.race([evaluation, deadlineFailure]))
         } catch (error) {
           if (options.signal?.aborted) throw error
           let cleanupFailed = hasIncompleteCleanup(error)
@@ -242,21 +277,31 @@ export async function runAgentSuite(
         } finally {
           deadline.removeEventListener("abort", onDeadline)
         }
-        if (timedOut || scenarios.at(-1)?.cleanupSettled === false) break
+        if (evidenceError || timedOut || scenarios.at(-1)?.cleanupSettled === false) break
       }
     } else {
       options.onProgress?.(
-        `Agent iteration ${number}/${suite.maxIterations}: scenarios skipped because checks failed`,
+        `Agent iteration ${number}/${suite.maxIterations}: scenarios skipped because checks failed or changed source`,
       )
     }
 
+    // A later scenario or retry can move or alter an earlier report.
+    for (const scenario of scenarios.filter((entry) => entry.accepted)) {
+      const receipt = receipts.get(scenario.id)!
+      try {
+        if (await receipt.read() !== receipt.digest) throw new Error("persisted evidence changed")
+      } catch (error) {
+        invalidateEvidence(scenario, error)
+      }
+    }
+    options.signal?.throwIfAborted()
     const unsettledCleanup = scenarios.filter((scenario) => scenario.cleanupSettled === false)
     // Checks and captures must describe the same source. A concurrent edit or
     // candidate-owned generator is not a product failure and cannot authorize
     // repair, acceptance, or reuse of any scenario from this iteration.
-    const sourceChanges = unsettledCleanup.length > 0
+    const sourceChanges = checkChanges.length ? checkChanges : unsettledCleanup.length > 0
       ? [] : changedBetween(sourceSnapshot, await snapshotFiles(loaded.projectRoot))
-    const sourceChangeReason = `Candidate source changed during scenario evaluation: ${sourceChanges.join(", ")}`
+    const sourceChangeReason = `Candidate source changed during ${checkChanges.length ? "checks" : "scenario evaluation"}: ${sourceChanges.join(", ")}`
     if (sourceChanges.length > 0) {
       for (const scenario of scenarios) {
         scenario.accepted = false
@@ -314,6 +359,12 @@ export async function runAgentSuite(
       break
     }
 
+    if (evidenceError) {
+      status = "blocked"
+      reason = evidenceError
+      break
+    }
+
     const infrastructureFailure = scenarios.some(
       (scenario) =>
         !scenario.accepted &&
@@ -350,6 +401,7 @@ export async function runAgentSuite(
     }
 
     reusableScenarios = new Map()
+    receipts.clear()
 
     const improvement = progressScore - bestProgress
     if (bestProgress >= 0 && (improvement <= 0 || improvement < suite.plateau.minScoreImprovement)) {
@@ -364,7 +416,7 @@ export async function runAgentSuite(
       break
     }
     if (number === suite.maxIterations) break
-    if (options.repair === false || !suite.repair) {
+    if (options.repair !== true || !suite.repair) {
       status = "blocked"
       reason = "repair is disabled or no repair adapter is configured"
       break

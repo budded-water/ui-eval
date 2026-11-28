@@ -5,11 +5,15 @@ import { execFileSync } from "node:child_process"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { EvaluateScenarioResult } from "../orchestrator/evaluate"
-import { runAgentSuite } from "./run"
+import { runAgentSuite as runSuite, type RunAgentDependencies, type RunAgentOptions } from "./run"
 import { initUiEvalProject } from "../cli/init"
 import { evaluateScenario } from "../orchestrator/evaluate"
 import { IncompleteCleanupError } from "../runtime/cleanup"
 import type { AgentSuite } from "./config"
+
+// Unit scenarios return in-memory reports. Persisted evidence is exercised by the integration tests.
+const runAgentSuite = (options: RunAgentOptions, dependencies: RunAgentDependencies) =>
+  runSuite(options, { evidenceDigest: async () => "fixture-digest", ...dependencies })
 
 const roots: string[] = []
 
@@ -353,10 +357,64 @@ describe("runAgentSuite", () => {
         snapshotFiles: async () => new Map([["app/page.ts", source]]),
       },
     )
-    expect(result.status).toBe("accepted")
-    expect(evaluate).toHaveBeenCalledTimes(4)
-    expect(result.iterations[1].scenarios[0].reusedFromIteration).toBeUndefined()
+    expect(result.status).toBe("blocked")
+    expect(result.reason).toContain("source changed during checks")
+    expect(evaluate).toHaveBeenCalledTimes(2)
+    expect(result.iterations[1].scenarios).toEqual([])
   })
+  it("requires explicit repair even with a configured repair adapter", async () => {
+    const projectRoot = await project({ repair: true })
+    const runCommand = vi.fn(scopeDeps.runCommand)
+    const result = await runAgentSuite({ projectRoot, suite: "rentals" }, {
+      ...scopeDeps, runCommand, evaluate: async () => ({ ...evaluation(), runs: [{ ...evaluation().runs[0], rawStatus: "fail" }] }),
+    })
+    expect(result.status).toBe("blocked")
+    expect(runCommand).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a dimension incomplete when a different check prevents a declared scenario", async () => {
+    const projectRoot = await project()
+    await updateSuite(projectRoot, (suite) => {
+      suite.scenarios[0].dimensions.push("maintainability")
+      suite.checks.push({ ...suite.checks[0], id: "blocked", dimension: "visual" })
+    })
+    const result = await runAgentSuite({ projectRoot, suite: "rentals" }, {
+      ...scopeDeps, runCommand: vi.fn().mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce({ exitCode: 1, stdout: "", stderr: "" }),
+    })
+    expect(result.iterations[0].dimensions).toContainEqual({ id: "maintainability", status: "not-evaluated", score: 0, evidence: ["check:quality"] })
+  })
+
+  it("binds repeated check IDs to separate executions for dimension and progress scores", async () => {
+    const projectRoot = await project()
+    await updateSuite(projectRoot, (suite) => { suite.checks.push({ ...suite.checks[0], onFailure: "block" }) })
+    const result = await runAgentSuite({ projectRoot, suite: "rentals" }, {
+      ...scopeDeps, runCommand: vi.fn().mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce({ exitCode: 1, stdout: "", stderr: "" }),
+    })
+    expect(result.status).toBe("blocked")
+    expect(result.iterations[0].dimensions.find(({ id }) => id === "maintainability")?.status).toBe("fail")
+    expect(result.iterations[0].progressScore).toBe(0.333333)
+  })
+
+  it.each(["altered", "missing"])("blocks when a later scenario leaves earlier evidence %s", async (defect) => {
+    const projectRoot = await project({ repair: true })
+    await updateSuite(projectRoot, (suite) => { suite.scenarios.push({ ...suite.scenarios[0], id: "later" }) })
+    let altered = false
+    const runCommand = vi.fn(scopeDeps.runCommand)
+    const result = await runAgentSuite({ projectRoot, suite: "rentals", repair: true }, {
+      ...scopeDeps, runCommand,
+      evaluate: async ({ scenario }) => { if (scenario === "later") altered = true; return evaluation() },
+      evidenceDigest: async ({ scenario }) => {
+        if (scenario !== "later" && altered && defect === "missing") throw new Error("report missing")
+        return scenario !== "later" && altered ? "changed" : "original"
+      },
+    })
+    expect(result.status).toBe("blocked")
+    expect(result.iterations[0].scenarios[0].accepted).toBe(false)
+    expect(runCommand).toHaveBeenCalledOnce()
+  })
+
   it("accepts only after checks and hard gates pass", async () => {
     const root = await project()
     const result = await runAgentSuite(

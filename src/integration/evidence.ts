@@ -37,7 +37,11 @@ async function reportPair(root: string, directory: string, jsonPath: string, htm
     htmlDigest: `sha256:${createHash("sha256").update(await boundedFile(html, 8 * 1024 * 1024)).digest("hex")}` }
 }
 
-export async function webIntegrationEvidence(root: string, suite: IntegrationSuite, scenarioId: string, output: EvaluateScenarioResult, sourceDigest: string): Promise<IntegrationStage["reports"]> {
+interface WebEvidenceScope extends Pick<IntegrationSuite, "projectId" | "executionProfile" | "browserChannel"> {
+  scenarios: readonly Pick<IntegrationSuite["scenarios"][number], "id" | "reference">[]
+}
+
+export async function webIntegrationEvidence(root: string, suite: WebEvidenceScope, scenarioId: string, output: EvaluateScenarioResult, sourceDigest: string): Promise<IntegrationStage["reports"]> {
   if (output.projectId !== suite.projectId || output.scenarioId !== scenarioId || !output.runs.length) throw new Error("Adapter returned empty or foreign scenario results")
   const project = await loadProjectConfig({ projectRoot: root })
   if (project.value.projectId !== suite.projectId) throw new Error("Integration project differs from capture configuration")

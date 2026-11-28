@@ -312,6 +312,8 @@ Current structured evidence payloads have their own versions, including:
 
 Console, network, and crash payloads include collection counts for captured, dropped, and truncated entries. Consumers must not interpret an empty retained array as proof that no observation was dropped.
 
+Web `visible`, `hidden` and `enabled` assertions accept a Boolean expectation and default to true. Web `text` and `url` require a string. A `no-crash` assertion accepts an omitted or true expectation. Existing declarations with incompatible expectations must be corrected before compilation.
+
 Step and assertion results retain status and error origin. Interaction correctness comes from explicit results, not from guessing behavior from pixels.
 
 ## Evaluation report semantics

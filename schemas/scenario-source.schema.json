@@ -782,106 +782,297 @@
                 "type": "string"
               },
               "assertion": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "id",
-                  "kind"
-                ],
-                "properties": {
-                  "id": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "kind": {
-                    "anyOf": [
-                      {
-                        "const": "visible",
-                        "type": "string"
-                      },
-                      {
-                        "const": "hidden",
-                        "type": "string"
-                      },
-                      {
-                        "const": "enabled",
-                        "type": "string"
-                      },
-                      {
-                        "const": "text",
-                        "type": "string"
-                      },
-                      {
-                        "const": "url",
-                        "type": "string"
-                      },
-                      {
-                        "const": "no-crash",
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "target": {
+                "anyOf": [
+                  {
                     "additionalProperties": false,
                     "type": "object",
                     "required": [
-                      "platform",
-                      "by",
-                      "value"
+                      "id",
+                      "target",
+                      "kind"
                     ],
                     "properties": {
-                      "platform": {
-                        "const": "web",
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      "by": {
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
                         "anyOf": [
                           {
-                            "const": "uiId",
+                            "const": "visible",
                             "type": "string"
                           },
                           {
-                            "const": "testId",
+                            "const": "hidden",
                             "type": "string"
                           },
                           {
-                            "const": "role",
-                            "type": "string"
-                          },
-                          {
-                            "const": "css",
-                            "type": "string"
-                          },
-                          {
-                            "const": "text",
+                            "const": "enabled",
                             "type": "string"
                           }
                         ]
                       },
-                      "value": {
+                      "expected": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "target",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
                         "minLength": 1,
                         "type": "string"
                       },
-                      "name": {
-                        "minLength": 1,
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "text",
+                        "type": "string"
+                      },
+                      "expected": {
                         "type": "string"
                       }
                     }
                   },
-                  "expected": {
-                    "anyOf": [
-                      {
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      {
-                        "type": "number"
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
                       },
-                      {
+                      "kind": {
+                        "const": "url",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "no-crash",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "const": true,
                         "type": "boolean"
                       }
-                    ]
+                    }
                   }
-                }
+                ]
               }
             }
           },
@@ -1275,106 +1466,297 @@
                 "type": "string"
               },
               "assertion": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "id",
-                  "kind"
-                ],
-                "properties": {
-                  "id": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "kind": {
-                    "anyOf": [
-                      {
-                        "const": "visible",
-                        "type": "string"
-                      },
-                      {
-                        "const": "hidden",
-                        "type": "string"
-                      },
-                      {
-                        "const": "enabled",
-                        "type": "string"
-                      },
-                      {
-                        "const": "text",
-                        "type": "string"
-                      },
-                      {
-                        "const": "url",
-                        "type": "string"
-                      },
-                      {
-                        "const": "no-crash",
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "target": {
+                "anyOf": [
+                  {
                     "additionalProperties": false,
                     "type": "object",
                     "required": [
-                      "platform",
-                      "by",
-                      "value"
+                      "id",
+                      "target",
+                      "kind"
                     ],
                     "properties": {
-                      "platform": {
-                        "const": "web",
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      "by": {
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
                         "anyOf": [
                           {
-                            "const": "uiId",
+                            "const": "visible",
                             "type": "string"
                           },
                           {
-                            "const": "testId",
+                            "const": "hidden",
                             "type": "string"
                           },
                           {
-                            "const": "role",
-                            "type": "string"
-                          },
-                          {
-                            "const": "css",
-                            "type": "string"
-                          },
-                          {
-                            "const": "text",
+                            "const": "enabled",
                             "type": "string"
                           }
                         ]
                       },
-                      "value": {
+                      "expected": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "target",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
                         "minLength": 1,
                         "type": "string"
                       },
-                      "name": {
-                        "minLength": 1,
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "text",
+                        "type": "string"
+                      },
+                      "expected": {
                         "type": "string"
                       }
                     }
                   },
-                  "expected": {
-                    "anyOf": [
-                      {
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      {
-                        "type": "number"
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
                       },
-                      {
+                      "kind": {
+                        "const": "url",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "no-crash",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "const": true,
                         "type": "boolean"
                       }
-                    ]
+                    }
                   }
-                }
+                ]
               }
             }
           },
@@ -1768,106 +2150,297 @@
                 "type": "string"
               },
               "assertion": {
-                "additionalProperties": false,
-                "type": "object",
-                "required": [
-                  "id",
-                  "kind"
-                ],
-                "properties": {
-                  "id": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "kind": {
-                    "anyOf": [
-                      {
-                        "const": "visible",
-                        "type": "string"
-                      },
-                      {
-                        "const": "hidden",
-                        "type": "string"
-                      },
-                      {
-                        "const": "enabled",
-                        "type": "string"
-                      },
-                      {
-                        "const": "text",
-                        "type": "string"
-                      },
-                      {
-                        "const": "url",
-                        "type": "string"
-                      },
-                      {
-                        "const": "no-crash",
-                        "type": "string"
-                      }
-                    ]
-                  },
-                  "target": {
+                "anyOf": [
+                  {
                     "additionalProperties": false,
                     "type": "object",
                     "required": [
-                      "platform",
-                      "by",
-                      "value"
+                      "id",
+                      "target",
+                      "kind"
                     ],
                     "properties": {
-                      "platform": {
-                        "const": "web",
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      "by": {
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
                         "anyOf": [
                           {
-                            "const": "uiId",
+                            "const": "visible",
                             "type": "string"
                           },
                           {
-                            "const": "testId",
+                            "const": "hidden",
                             "type": "string"
                           },
                           {
-                            "const": "role",
-                            "type": "string"
-                          },
-                          {
-                            "const": "css",
-                            "type": "string"
-                          },
-                          {
-                            "const": "text",
+                            "const": "enabled",
                             "type": "string"
                           }
                         ]
                       },
-                      "value": {
+                      "expected": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "target",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
                         "minLength": 1,
                         "type": "string"
                       },
-                      "name": {
-                        "minLength": 1,
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "text",
+                        "type": "string"
+                      },
+                      "expected": {
                         "type": "string"
                       }
                     }
                   },
-                  "expected": {
-                    "anyOf": [
-                      {
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "expected"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
                         "type": "string"
                       },
-                      {
-                        "type": "number"
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
                       },
-                      {
+                      "kind": {
+                        "const": "url",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind"
+                    ],
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "target": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "platform",
+                          "by",
+                          "value"
+                        ],
+                        "properties": {
+                          "platform": {
+                            "const": "web",
+                            "type": "string"
+                          },
+                          "by": {
+                            "anyOf": [
+                              {
+                                "const": "uiId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "testId",
+                                "type": "string"
+                              },
+                              {
+                                "const": "role",
+                                "type": "string"
+                              },
+                              {
+                                "const": "css",
+                                "type": "string"
+                              },
+                              {
+                                "const": "text",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "name": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "kind": {
+                        "const": "no-crash",
+                        "type": "string"
+                      },
+                      "expected": {
+                        "const": true,
                         "type": "boolean"
                       }
-                    ]
+                    }
                   }
-                }
+                ]
               }
             }
           },
@@ -2075,106 +2648,297 @@
           "assertions": {
             "type": "array",
             "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "id",
-                "kind"
-              ],
-              "properties": {
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "kind": {
-                  "anyOf": [
-                    {
-                      "const": "visible",
-                      "type": "string"
-                    },
-                    {
-                      "const": "hidden",
-                      "type": "string"
-                    },
-                    {
-                      "const": "enabled",
-                      "type": "string"
-                    },
-                    {
-                      "const": "text",
-                      "type": "string"
-                    },
-                    {
-                      "const": "url",
-                      "type": "string"
-                    },
-                    {
-                      "const": "no-crash",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "target": {
+              "anyOf": [
+                {
                   "additionalProperties": false,
                   "type": "object",
                   "required": [
-                    "platform",
-                    "by",
-                    "value"
+                    "id",
+                    "target",
+                    "kind"
                   ],
                   "properties": {
-                    "platform": {
-                      "const": "web",
+                    "id": {
+                      "minLength": 1,
                       "type": "string"
                     },
-                    "by": {
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "web",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "uiId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "role",
+                              "type": "string"
+                            },
+                            {
+                              "const": "css",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "kind": {
                       "anyOf": [
                         {
-                          "const": "uiId",
+                          "const": "visible",
                           "type": "string"
                         },
                         {
-                          "const": "testId",
+                          "const": "hidden",
                           "type": "string"
                         },
                         {
-                          "const": "role",
-                          "type": "string"
-                        },
-                        {
-                          "const": "css",
-                          "type": "string"
-                        },
-                        {
-                          "const": "text",
+                          "const": "enabled",
                           "type": "string"
                         }
                       ]
                     },
-                    "value": {
+                    "expected": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "target",
+                    "kind",
+                    "expected"
+                  ],
+                  "properties": {
+                    "id": {
                       "minLength": 1,
                       "type": "string"
                     },
-                    "name": {
-                      "minLength": 1,
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "web",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "uiId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "role",
+                              "type": "string"
+                            },
+                            {
+                              "const": "css",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "kind": {
+                      "const": "text",
+                      "type": "string"
+                    },
+                    "expected": {
                       "type": "string"
                     }
                   }
                 },
-                "expected": {
-                  "anyOf": [
-                    {
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "kind",
+                    "expected"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
                       "type": "string"
                     },
-                    {
-                      "type": "number"
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "web",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "uiId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "role",
+                              "type": "string"
+                            },
+                            {
+                              "const": "css",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
                     },
-                    {
+                    "kind": {
+                      "const": "url",
+                      "type": "string"
+                    },
+                    "expected": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "kind"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "target": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "platform",
+                        "by",
+                        "value"
+                      ],
+                      "properties": {
+                        "platform": {
+                          "const": "web",
+                          "type": "string"
+                        },
+                        "by": {
+                          "anyOf": [
+                            {
+                              "const": "uiId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "testId",
+                              "type": "string"
+                            },
+                            {
+                              "const": "role",
+                              "type": "string"
+                            },
+                            {
+                              "const": "css",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "kind": {
+                      "const": "no-crash",
+                      "type": "string"
+                    },
+                    "expected": {
+                      "const": true,
                       "type": "boolean"
                     }
-                  ]
+                  }
                 }
-              }
+              ]
             }
           }
         }

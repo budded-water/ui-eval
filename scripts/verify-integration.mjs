@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { cp, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -39,6 +39,14 @@ try {
   const scenario = JSON.parse(await readFile(scenarioPath, "utf8")); scenario.matrix.locales = ["en", "zh-CN"]
   await writeFile(scenarioPath, JSON.stringify(scenario))
   await writeFile(resolve(root, "ui-eval/engine.json"), JSON.stringify({ repository: pkg.repository.url, revision, bunVersion: pkg.packageManager.slice(4) }))
+  await mkdir(resolve(root, "ui-eval/agents"), { recursive: true })
+  await writeFile(resolve(root, "ui-eval/agents/smoke.json"), JSON.stringify({
+    apiVersion: "uieval.io/v1alpha1", kind: "AgentSuite", id: "smoke", revision: 1,
+    maxIterations: 1, plateau: { maxConsecutiveNoImprovement: 1, minScoreImprovement: 0 },
+    requiredDimensions: ["ui"], checks: [],
+    scenarios: [{ id: "home", dimensions: ["ui"], timeoutMs: 60_000 }],
+    mutation: { allowedPathPrefixes: ["src"], protectedPathPrefixes: ["ui-eval"], maxChangedFiles: 1 },
+  }))
   await exec("git", ["init", "-q"], { cwd: root })
   await exec("git", ["add", "."], { cwd: root })
   await exec("git", ["-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "commit", "-qm", "synthetic candidate"], { cwd: root })
@@ -50,6 +58,11 @@ try {
   assert.equal(passed.stages.find((stage) => stage.kind === "scenario").reports.length, 2)
   assert.deepEqual(JSON.parse(await readFile(passed.summaryPath, "utf8")), passed)
   assert.match(await readFile(passed.summaryHtmlPath, "utf8"), /smoke: pass/)
+  const agent = JSON.parse((await invoke(["agent", "smoke", "--format", "json"], 0)).stdout)
+  assert.equal(agent.status, "accepted")
+  assert.equal(agent.iterations[0].scenarios[0].reports.length, 2)
+  assert.deepEqual(JSON.parse(await readFile(agent.summaryPath, "utf8")), agent)
+  assert.match(await readFile(agent.summaryHtmlPath, "utf8"), /accepted/i)
   const suitePath = resolve(root, "ui-eval/integrations/smoke.json")
   const suite = JSON.parse(await readFile(suitePath, "utf8"))
   suite.checks.push({ id: "injected-defect", phase: "after", dimension: "synthetic-contract", failureOutcome: "candidate", command: process.execPath, args: ["-e", "process.exit(1)"], timeoutMs: 10000 })
